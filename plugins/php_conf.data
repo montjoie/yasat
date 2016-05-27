@@ -1,0 +1,92 @@
+#directive | value | comparaison operator | optional | ADVICE
+default_socket_timeout|20|NM
+safe_mode|on|s||PHP_CONF_SAFEMODE
+#safe_mode_exec_dir
+#safe_mode_include_dir etc...
+#include_path open_basedir ???
+#max_execution_time memory_limit post_max_size allow_url_open
+register_globals|off|s||PHP_CONF_REGISTER_GLOBALS
+allow_url_fopen|off|s
+expose_php|off|s||PHP_CONF_EXPOSE_PHP
+enable_dl|off|s||PHP_CONF_ENABLE_DL
+short_open_tag|off|s||PHP_CONF_SORT_OPEN_TAG
+asp_tags|off|s
+display_errors|off|s||PHP_CONF_DISPLAY_ERRORS
+log_errors|on|s
+display_startup_errors|off|s
+file_uploads|off|s||PHP_CONF_FILE_UPLOADS
+allow_url_include|off|s||PHP_CONF_ALLOW_URL_INCLUDE
+max_execution_time|20|NM
+max_input_time|61|NM
+#open_basedir TODO
+report_memleaks|on|s
+register_long_arrays|off|s||PHP_CONF_REGISTER_LONG_ARRAYS
+register_argc_argv|off|s||PHP_CONF_REGISTER_ARGC_ARGV
+#save_path
+#user_id and group_id
+
+#http://wiki.claroline.net/index.php/Security
+#http://www.php.net/manual/fr/features.safe-mode.functions.php
+disable_functions|shell_exec|C|N|PHP_CONF_EXECCOMM
+disable_functions|phpinfo|C|N|PHP_CONF_INFODISCLOSURE
+disable_functions|popen|C|N|PHP_CONF_EXECCOMM
+disable_functions|diskfreespace|C|N|PHP_CONF_INFODISCLOSURE
+disable_functions|disk_free_space|C|N|PHP_CONF_INFODISCLOSURE
+disable_functions|proc_open|C|N|PHP_CONF_EXECCOMM
+disable_functions|leak|C
+disable_functions|tmpfile|C
+disable_functions|exec|C|N|PHP_CONF_EXECCOMM
+disable_functions|system|C|N|PHP_CONF_EXECCOMM
+disable_functions|passthru|C|N|PHP_CONF_EXECCOMM
+disable_functions|eval|C
+#disable_functions|parse_ini_file|C
+disable_functions|dl|C
+disable_functions|set_time_limit|C
+disable_functions|apache_child_terminate|C
+disable_functions|apache_get_modules|C|N|PHP_CONF_INFODISCLOSURE
+disable_functions|apache_get_version|C|N|PHP_CONF_INFODISCLOSURE
+disable_functions|apache_getenv|C
+disable_functions|apache_note|C
+disable_functions|apache_getenv|C|N|PHP_CONF_INFODISCLOSURE
+disable_functions|apache_setenv|C
+disable_functions|virtual|C
+disable_functions|fsockopen|C
+disable_functions|ini_alter|C
+disable_functions|ini_set|C
+disable_functions|show_source|C
+disable_functions|proc_close|C
+disable_functions|proc_terminate|C
+#disable_functions|pfsockopen|C
+#disable_functions|escapeshel|C
+disable_functions|highlight_file|C
+disable_functions|pcntl_exec|C
+disable_functions|curl_exec|C
+disable_functions|curl_multi_exec|C
+#disable_functions|set_time_limit|C
+
+#http://seclists.org/fulldisclosure/2003/Aug/0633.html
+disable_functions|dlopen|C
+
+#http://groups.google.com/group/make-the-web-faster/browse_thread/thread/ddfbe82dd80408cc
+#magic_quotes_gpc must be on ?
+#register_argc_argv
+#always_populate_raw_post_data
+#session.use_trans_sid
+#session.auto_start.
+#memory limit
+#max_input_time
+#upload_max_size
+#enable_dl
+
+
+#mysql
+#mysql default password
+#
+#upload_max_filesize
+#post_max_size
+max_file_uploads|20|NM
+
+#http://php.net/session.name
+#session.name|PHPSESSID|snot
+session.name|phpsessid|snot||PHP_CONF_PHPSESSID
+session.auto_start|0|s

@@ -1,0 +1,24 @@
+EN,MYSQL_CONF_BIND=If possible, mysql should listen only on localhost
+EN,MYSQL_CONF_NO_SLOWQUERY_LOG=Log slow query
+  See <a href="http://dev.mysql.com/doc/refman/5.0/en/slow-query-log.html">http://dev.mysql.com/doc/refman/5.0/en/slow-query-log.html</a>
+ADVICEEND
+EN,MYSQL_CONF_BINLOGS=Are the binlogs useful to you ?
+  Binlogs are used for master/slave replication.
+  They can also be used for backups.
+  If you don't use binlogs, disable them.
+ADVICEEND
+EN,MYSQL_CONF_NO_EXPIRELOGSDAYS=Set an expire_logs_days
+  Binlogs can fill your storages if they aren't cleaned.
+  Use expire_logs_days to control how much binlogs you want.
+  See <a href="http://dev.mysql.com/doc/refman/5.0/en/server-system-variables.html#sysvar_expire_logs_days">http://dev.mysql.com/doc/refman/5.0/en/server-system-variables.html#sysvar_expire_logs_days</a>
+ADVICEEND
+EN,MYSQL_RUN_AS_ROOT=mysqld must not be run as root
+  Create a non-root unprivileged user for running mysqld.
+ADVICEEND
+EN,MYSQL_USER_HAVE_SHELL=Mysqld user must not have a shell
+  Set a non-shell setting for mysql user, like /bin/false or /bin/nologin
+ADVICEEND
+EN,MYSQL_LOG=Disable request log
+  Be aware that this log type is a performance killer.
+  See <a href="http://dev.mysql.com/doc/refman/5.0/en/query-log.html">http://dev.mysql.com/doc/refman/5.0/en/query-log.html</a>
+ADVICEEND

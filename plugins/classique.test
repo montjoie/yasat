@@ -1,0 +1,314 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check common problems"
+
+#TODO check TMOUT in /etc/profile and ~/.kde/share/config/kdesktoprc
+
+#YASAT_TEST_CLASSIQUE_UMASK1 NSAG=2.2.4.1 CCEID=4220-0 Check if the umask is present in /etc/sysconfig/init
+#YASAT_TEST_CLASSIQUE_UMASK2 NSAG=xxxx CCEID=xxx Check if the umask is present in /etc/profile
+#YASAT_TEST_CLASSIQUE_UMASK3 NSAG=xxxx CCEID=xxx Check if the umask is present in /etc/bashrc
+#YASAT_TEST_CLASSIQUE_UMASK4 NSAG=xxxx CCEID=xxx Check if the umask is present in /etc/login.defs
+#YASAT_TEST_CLASSIQUE_UMASK5 NSAG=xxxx CCEID=xxx Check if the umask is present in /etc/csh.cshrc
+UMASK_POSSIBLE_LOCATION='/etc/profile /etc/bashrc /etc/login.defs /etc/csh.cshrc /etc/sysconfig/init'
+UMASK_IS_GOOD=1
+for tmpfile in $UMASK_POSSIBLE_LOCATION
+do
+	if [ $SCAN_ROOT = '/' ] ; then
+		TMP_FILE="$tmpfile"
+	else
+		TMP_FILE="$SCAN_ROOT/$tmpfile"
+	fi
+	if [ -e "$TMP_FILE" ] ;then
+		FindValueOf $TMP_FILE umask JUSTTEST INSENSITIVE
+		if [ ! -z "$RESULTAT" ] ;then
+			T_CCID='3844-8'
+			um_want='077'
+			if [ "$TMP_FILE" = '/etc/login.defs' ] ;then T_CCID='14107-7' ;fi
+			if [ "$TMP_FILE" = '/etc/csh.cshrc' ] ; then T_CCID='4227-5' ;fi
+			if [ "$TMP_FILE" = '/etc/profile' ] ;   then T_CCID='14847-8' ;fi
+			if [ "$TMP_FILE" = '/etc/sysconfig/init' ] ;   then T_CCID='4220-0';i um_want=027;fi
+			TESTNAME="YASAT_TEST_CLASSIQUE_UMASK_IN_$TMP_FILE Check if $TMP_FILE have umask $um_want"
+			if [ "$RESULTAT" = $um_want ];then
+				Display --indent 2 --text "umask in $TMP_FILE" --result GOOD --color GREEN
+				Compliance --result 'OK' --plugin 'classique' --type 'CCE' --cid $T_CCID
+			else
+				Display --indent 2 --text "bad umask ($RESULTAT) in $TMP_FILE (not $um_want)" --result WARNING --color RED --advice UMASK_NOT077
+				Compliance --result 'NOK' --plugin 'classique' --type 'CCE' --cid $T_CCID
+				UMASK_IS_GOOD=0
+			fi
+		else
+			Display --indent 2 --text "umask in $TMP_FILE" --result NOTFOUND --color ORANGE
+		fi
+	fi
+done
+TESTNAME='YASAT_TEST_CLASSIQUE_UMASK All umask in /etc must be ok'
+if [ $UMASK_IS_GOOD -eq 1 ] ;then
+	Compliance --result 'OK' --plugin 'classique' --type 'NSAG' --cid '2.3.4.4' --type 'CCE' --cid '3870-3'
+else
+	Compliance --result 'NOK' --plugin 'classique' --type 'NSAG' --cid '2.3.4.4' --type 'CCE' --cid '3870-3'
+fi
+
+if [ -e "/etc/security/limits.conf" -o -e "/etc/security/limits.d" ] ;then
+	Display --indent 2 --text "/etc/security/limits.conf" --result FOUND --color GREEN
+	#check for fork bomb prevention (hard nproc)
+	#TODO for the moment just check if a rule is present (or not), need more analysis
+	TESTNAME='YASAT_TEST_CLASSIQUE_NPROC Check if there a limit of number of process in limits.conf'
+	Get_limits_conf hard nproc
+	if [ -z "$RESULTAT" ] ;then
+		Display --indent 4 --text "Limit for nproc" --result NOTFOUND --color ORANGE --advice NO_FORK_BOMB_PREVENTION
+	else
+		Display --indent 4 --text "Limit for nproc $RESULTAT" --result FOUND --color GREEN
+	fi
+
+	TESTNAME='YASAT_TEST_CLASSIQUE_COREDUMP NSAG=2.2.4.2 CCEID=4225-9 Disable Core Dumps in limits.conf'
+	Get_limits_conf hard core
+	if [ -z "$RESULTAT" ] ; then
+		NBLINE=0
+	else
+		NBLINE="`echo $RESULTAT |wc -l`"
+	fi
+	if [ $NBLINE = '0' ] ;then
+		Display --indent 4 --text "Limit for core" --result NOTFOUND --color ORANGE --advice LIMITS_NO_CORE_RESTRICTION
+		Compliance --result 'NOK' --plugin 'classique' --nsag '2.2.4.2' --cce '4225-9'
+	else
+		if [ $NBLINE -ge 2 ] ;then
+			Display --indent 4 --text "Limit for core" --result MULTIPLE --color RED --advice GLOBAL_MULTIPLE_DECLARATIONS
+			Compliance --result 'NOK' --plugin 'classique' --nsag '2.2.4.2' --cce '4225-9'
+		else
+			COREVALUE="`cat ${TMP_RESULT} | cut -d\  -f4`"
+			if [ $COREVALUE = '0' ] ;then
+				Display --indent 4 --text "Limit for core = $COREVALUE" --result FOUND --color GREEN
+				Compliance --result 'OK' --plugin 'classique' --nsag '2.2.4.2' --cce '4225-9'
+			else
+				Display --indent 4 --text "Limit for core = $COREVALUE" --result NOTFOUND --color ORANGE --advice LIMITS_NO_CORE_RESTRICTION
+				Compliance --result 'NOK' --plugin 'classique' --nsag '2.2.4.2' --cce '4225-9'
+			fi
+		fi
+	fi
+else
+	Display --indent 2 --text "/etc/security/limits.conf" --result NOTFOUND --color BLUE
+	Compliance --result 'NOTTESTED' --plugin 'classique' --nsag '2.2.4.2' --cce '4225-9'
+fi
+
+#if [ -e /etc/hosts.equiv ]
+#then
+#	Display --indent 2 --text "/etc/hosts.equiv" --result WARNING --color RED --advice TODO
+#fi
+
+if [ "$OS_TYPE" = 'Linux' ] ;then
+	TESTNAME='YASAT_TEST_CLASSIQUE_COREDUMP_SUID1 NSAG=2.2.4.2 CCEID=4247-3 Check if coredump for suid is disabled in sysctl.conf'
+	Get_sysctl fs.suid_dumpable
+	if [ "$RESULTAT" = '0' ] ; then
+		Display --indent 2 --text "SUID Coredumpable in sysctl.conf" --result FOUND --color GREEN
+		Compliance --result 'OK' --plugin 'classique' --type 'NSAG' --cid '2.2.4.2' --cce '4247-3'
+	else
+		Display --indent 2 --text "SUID Coredumpable in sysctl.conf" --result NOTFOUND --color ORANGE --advice SUID_COREDUMPABLE
+		Compliance --result 'NOK' --plugin 'classique' --type 'NSAG' --cid '2.2.4.2' --cce '4247-3'
+	fi
+	TESTNAME='YASAT_TEST_CLASSIQUE_COREDUMP_SUID2 NSAG=2.2.4.2.1 Check f coredump for suid is disabled via sysctl'
+	SUID_DUMP="`sysctl fs.suid_dumpable 2>> $ERROR_OUTPUT_FILE | sed 's/^.*=[[:space:]]*//'`"
+	if [ -z "$SUID_DUMP" ] ; then
+		Display --indent 2 --text "SUID Coredumpable" --result UNKNOW --color BLUE
+		Compliance --result 'NOTTESTED' --plugin 'classique' --type 'NSAG' --cid '2.2.4.2.1'
+	else
+		if [ $SUID_DUMP -eq 0 ] ; then
+			Display --indent 2 --text "SUID Coredumpable" --result NO --color GREEN
+			Compliance --result 'OK' --plugin 'classique' --type 'NSAG' --cid '2.2.4.2.1'
+		else
+			Display --indent 2 --text "SUID Coredumpable" --result YES --color ORANGE --advice SUID_COREDUMPABLE
+			Compliance --result 'NOK' --plugin 'classique' --type 'NSAG' --cid '2.2.4.2.1'
+		fi
+	fi
+fi
+
+TESTNAME='YASAT_TEST_CLASSIQUE_PASSWORD_MINLEN NSAG=2.3.1.7 check minimal password length'
+if [ -e "${ROOT_SCAN}/etc/login.defs" ] ;then
+	FindValueOf "${ROOT_SCAN}/etc/login.defs" PASS_MIN_LEN JUSTTEST
+	if [ -z "$RESULTAT" ] ;then
+		Display --indent 2 --text "Minimum password length" --result NOTSET --color RED --advice  PASSWORD_MIN_LENGTH
+		Compliance --result 'NOK' --plugin 'classique' --type 'NASG' --cid '2.3.1.7'
+	else
+		if [ $RESULTAT -le 7 ] ;then
+			Display --indent 2 --text "Minimum password length" --result "$RESULTAT" --color RED --advice PASSWORD_MIN_LENGTH
+		else
+			Display --indent 2 --text "Minimum password length" --result "$RESULTAT" --color GREEN
+		fi
+	fi
+fi
+
+
+#TODO check content of /etc/issue
+TESTNAME='YASAT_TEST_CLASSIQUE_LOGIN_BANNER Modify the System Login Banner'
+if [ -e "${ROOT_SCAN}/etc/issue" ] ; then
+	Compliance --result OK --plugin classique --nsag 2.3.7.1 --cce 4060-0
+else
+	Compliance --result NOK --plugin classique --nsag 2.3.7.1 --cce 4060-0
+fi
+
+
+TESTNAME='YASAT_TEST_CLASSIQUE_PASSWORD_EXPIRATION Set Password Expiration Parameters'
+Compliance --result 'NOTIMPL' --plugin 'classique' --type 'NSAG' --cid '2.3.1.7' --type 'CCE' --cid '4180-6'
+
+TESTNAME='YASAT_TEST_CLASSIQUE_PATH NSAG=2.3.4.1 CCEID=3301-9 Check the PATH variable'
+#TODO check for ::
+PATH_GOOD=1
+PATHVALUE="`export |grep [[:space:]]PATH= | sed 's/^.*PATH=//g' | sed 's/\"//g' | sed "s/\'//g" | sed 's/:/ /g'`"
+for directory in $PATHVALUE
+do
+	if [ ! -z "`echo $directory | grep -viE '^/usr/local/sbin$|^/usr/local/bin$|^/bin$|^/sbin/*$|^/usr/bin/*$|^/usr/sbin/*|/usr/x86_64-pc-linux-gnu/gcc-bin/.*'`" ] ;then
+		Display --indent 2 --text "PATH $directory" --result UNKNOWN --color ORANGE --advice PATH_UNKNOWN
+		PATH_GOOD=0
+	fi
+done
+if [ $PATH_GOOD -eq 1 ] ;then
+	Display --indent 2 --text "PATH variable" --result GOOD --color GREEN
+	Compliance --result OK --plugin classique --nsag 2.3.4.1 --cce 3301-9
+else
+	Compliance --result NOK --plugin classique --nsag 2.3.4.1 --cce 3301-9
+fi
+
+
+TESTNAME='YASAT_TEST_CLASSIQUE_TODO Ensure that Roots Path Does Not Include Relative Paths or Null Directories'
+Compliance --result NOTIMPL --plugin classique --nsag 2.3.4.1.1
+TESTNAME='YASAT_TEST_CLASSIQUE_TODO Ensure that Roots Path Does Not Include World-Writable or Group-Writable Directories'
+Compliance --result NOTIMPL --plugin classique --nsag 2.3.4.1.2 --cce 14957-5
+
+#TODO LD_PRELOAD and other library stuffs
+if [ -e /etc/ld.so.conf ]
+then
+	Display --indent 2 --text "/etc/ld.so.conf" --result FOUND --color GREEN
+	TMP_RESULT="${TEMPYASATDIR}/ldsoconf"
+	prepare_generic_conf /etc/ld.so.conf $TMP_RESULT 2> /dev/null
+	cat "$TMP_RESULT" | grep -v '^include' |
+	while read line
+	do
+		# TODO must use more better regex
+		if [ ! -z "`echo $line | grep -v '^/lib$' |grep -v '^/usr/lib$' |grep -v '^/usr/local/lib$' \
+			| grep -v '^/usr/kde/3.5/lib' | grep -v '^/usr/qt/[0-9]/lib' | grep -v '^/usr/[a-zA-Z0-9_]*-pc-linux-gnu/lib' \
+			| grep -v '^/usr/lib[64]*/[a-zA-Z0-9]*/*$' |grep -v '^/usr/lib64/openais$' \
+			| grep -v '^/*/usr/lib/opengl/xorg-x11/lib' | grep -v '^/lib/[a-zA-Z0-9_]-linux-gnu' \
+			| grep -v '^/*/lib/x86_64-linux-gnu' | grep -v '^/lib/[a-zA-Z0-9_]-linux-gnu' \
+			| grep -v '^/usr/lib32' | grep -v '^/usr/lib64' \
+			| grep -v '^/usr/local/lib32' | grep -v '^/usr/local/lib64' \
+			| grep -v '^/lib32' | grep -v '^/lib64' \
+			| grep -v '^/usr/lib/[a-zA-Z0-9_]*-linux-gnu' `" ]
+		then
+			Display --indent 4 --text "Unknown lib location $line" --result FOUND --color ORANGE --advice LD_SO_CONF_UNK_LIB
+		fi
+	done
+fi
+
+TESTNAME='YASAT_TEST_CLASSIQUE_CONSOLE CCEID=3685-5 NSAG=2.2.2.1 Check some device ownership'
+if [ -e "$SCAN_ROOT/etc/security/console.perms.d/50-default.perms" ] ; then
+	#TODO It seems this rules is not needed for recent centos, so no real testing
+	Compliance --result 'NOK' --plugin 'classique' --nsag '2.2.2.1' --cce '3685-5'
+else
+	Compliance --result 'OK' --plugin 'classique' --nsag '2.2.2.1' --cce '3685-5'
+fi
+
+#TODO find / -xdev -type d \( -perm -0002 -a ! -perm -1000 \) -print
+TESTNAME='YASAT_TEST_CLASSIQUE_WORLD_WRITABLE_STICKY Verify that All World-Writable Directories Have Sticky Bits Set'
+Compliance --result 'NOTIMPL' --plugin 'classique' --nsag '2.2.3.2' --cce '3399-3'
+
+#TODO find PART -xdev -type f -perm -0002 -print
+TESTNAME='YASAT_TEST_CLASSIQUE_WORLD_WRITABLE Find Unauthorized World-Writable Files'
+Compliance --result 'NOTIMPL' --plugin 'classique' --nsag '2.2.3.3' --cce '3795-2'
+
+#TODO find PART -xdev \( -perm -4000 -o -perm -2000 \) -type f -print
+TESTNAME='YASAT_TEST_CLASSIQUE_UNAUTHORIZED_SUID Find Unauthorized SUID/SGID System Executables'
+Compliance --result 'NOTIMPL' --plugin 'classique' --nsag '2.2.3.4' --cce '14340-4' --cce '14970-8'
+
+#find PART -xdev -type d -perm -0002 -uid +500 -print
+TESTNAME='YASAT_TEST_CLASSIQUE_WORLD_WRITABLE_OWNERSHIP Verify that All World-Writable Directories Have Proper Ownership'
+Compliance --result 'NOTIMPL' --plugin 'classique' --nsag '2.2.3.6' --cce '14794-2'
+
+if [ "$SCANTYPE" != "FULL" ] ;then
+	Display --indent 2 --text "Sanity files checks" --result SKIP --color BLUE --advice GLOBAL_SKIPPED_LONG_TESTS
+	TESTNAME='YASAT_TEST_CLASSIQUE_NO_OWNER NSAG=2.2.3.5 CCEID=3573-3,4223-4 Find and Repair Unowned Files'
+	Compliance --result 'NOTTESTED' --plugin classique --nsag '2.2.3.5' --cce '3573-3' --cce '4223-4'
+	return 1;
+fi
+
+
+TESTNAME='YASAT_TEST_CLASSIQUE_NO_OWNER NSAG=2.2.3.5 CCEID=3573-3,4223-4 Find and Repair Unowned Files'
+TMP_RESULT="${TEMPYASATDIR}/files_without_owner"
+echo '  Checking file without owner (long test)'
+find / -nouser 2> /dev/null > $TMP_RESULT
+RESULTAT=`cat $TMP_RESULT | wc -l`
+if [ $RESULTAT -eq 0 ] ;then
+	Display --indent 4 --text "No file without owner" --result OK --color GREEN
+	Compliance --result 'OK' --plugin classique --nsag '2.2.3.5' --cce '4223-4'
+else
+	Compliance --result 'NOK' --plugin classique --nsag '2.2.3.5' --cce '4223-4'
+	if [ $RESULTAT -le 10 ] ;then
+		Display --indent 4 --text "$RESULTAT files have no owner" --result WARNING --color RED --advice FILES_WITHOUT_OWNER
+		while read line
+		do
+			Display --indent 4 --text "$line" --result "`stat $STAT_USER $line`" --color RED
+		done < $TMP_RESULT
+	else
+		Display --indent 4 --text "$RESULTAT files have no owner" --result WARNING --color RED --advice FILES_WITHOUT_OWNER
+	fi
+fi
+
+
+TMP_RESULT="${TEMPYASATDIR}/files_without_group"
+echo '  Checking file without group (long test)'
+find / -nogroup 2> /dev/null > $TMP_RESULT
+RESULTAT=`cat $TMP_RESULT | wc -l`
+if [ $RESULTAT -eq 0 ] ;then
+	Display --indent 4 --text "No file without group" --result OK --color GREEN
+	Compliance --result 'OK' --plugin classique --nsag '2.2.3.5' --cce '3573-3'
+else
+	Compliance --result 'NOK' --plugin classique --nsag '2.2.3.5' --cce '3573-3'
+	if [ $RESULTAT -le 10 ] ;then
+		Display --indent 4 --text "$RESULTAT files have no group" --result WARNING --color RED --advice FILES_WITHOUT_GROUP
+		while read line
+		do
+			Display --indent 4 --text "$line" --result "`stat $STAT_GROUP $line`" --color RED
+		done < $TMP_RESULT
+	else
+		Display --indent 4 --text "$RESULTAT files have no group" --result WARNING --color RED --advice FILES_WITHOUT_GROUP
+	fi
+fi
+
+TMP_RESULT="${TEMPYASATDIR}/world.others"
+echo '  Checking file with write to others (long test)'
+find / -perm $PERM_OW ! -type l 2> /dev/null |grep -v '^/proc' | grep -v '^/selinux' |grep -v '^/dev' > $TMP_RESULT
+
+RESULTAT=`cat $TMP_RESULT | wc -l`
+if [ $RESULTAT -eq 0 ]
+then
+		Display --indent 4 --text "No file with others write access" --result OK --color GREEN
+else
+	if [ $RESULTAT -le 20 ]
+	then
+		Display --indent 4 --text "$RESULTAT files have others write access" --result WARNING --color RED
+		cat $TMP_RESULT |
+		while read line
+		do
+			Display --indent 4 --text "$line" --result "`stat $STAT_RIGHT $line`" --color RED
+		done
+	else
+		Display --indent 4 --text "$RESULTAT files have others write access" --result WARNING --color RED
+	fi
+fi
+

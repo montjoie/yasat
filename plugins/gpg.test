@@ -1,0 +1,128 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#experimental
+return 0
+
+Title "Check GPG"
+
+detect_gpg() {
+	if [ $# -le 0 ];then
+		Display --indent 2 --text "Missing parameter to detect_gpg" --result ERROR --color RED
+		return 1
+	fi
+	if [ ! -e "$1" ];then
+		Display --indent 2 --text "GPG in $1" --result NOTFOUND --color BLUE
+		return 1
+	fi
+	if [ -e "$1/.gnupg/" ];then
+		RESULTAT="$1/.gnupg/"
+		Display --indent 2 --text "GPG in $1" --result FOUND --color BLUE
+		return 0
+	fi
+	return 1
+}
+
+check_gpg_key() {
+	if [ $# -le 0 ];then
+		Display --indent 2 --text "Missing parameter to check_gpg_key" --result ERROR --color RED
+		return 1
+	fi
+	local readonly GPG_TMP=`mktemp`
+	Display --indent 2 --text "Check GPG key $1" --result INFO
+	gpg --export-options export-minimal --export $1 | gpg --list-packets > $GPG_TMP
+
+	#grep version $GPG_TMP | sed 's,.*version[[:space:]]*\([0-9]\).*,\1,'
+	local readonly ALGO=`grep -A2 'public key' $GPG_TMP |\
+		grep 'algo' |\
+		sed 's,.*algo[[:space:]]*\([0-9][0-9]*\).*,\1,'`
+	local readonly SIZE=`grep -A2 'public key' $GPG_TMP |\
+		grep 'pkey\[0\]:' |\
+		sed 's,.*\[\([0-9][0-9]*\) bits\].*,\1,'`
+	case $SIZE in
+	1024)
+	;;
+	2048)
+	;;
+	4096)
+	;;
+	*)
+		Display --indent 2 --text "Invalid size $SIZE" --result ERROR --color RED
+	;;
+	esac
+	case $ALGO in
+	1)
+		if [ $SIZE -le 2048 ];then
+			Display --indent 4 --text "RSA with insufficient size $SIZE" --result WARN --color ORANGE
+		else
+			Display --indent 4 --text "RSA $SIZE" --result GOOD --color GREEN
+		fi
+	;;
+	17)
+		if [ $SIZE -le 1024 ];then
+			Display --indent 4 --text "DSA with insufficient size $SIZE" --result WARN --color ORANGE
+		else
+			Display --indent 4 --text "DSA $SIZE" --result GOOD --color GREEN
+		fi
+	;;
+	*)
+		echo "unk"
+	;;
+	esac
+	#check for signature
+	if [ ! -z "`grep -A 2 signature $GPG_TMP|grep 'digest algo 1,'`" ];then
+		Display --indent 4 --text "Self signatures with MD5" --result FOUND --color ORANGE
+	else
+		Display --indent 4 --text "Self signatures with MD5" --result NOTFOUND --color GREEN
+	fi
+	if [ ! -z "`grep -A 2 signature $GPG_TMP|grep 'digest algo 2,'`" ];then
+		Display --indent 4 --text "Self signatures with SHA1" --result FOUND --color ORANGE
+	else
+		Display --indent 4 --text "Self signatures with SHA1" --result NOTFOUND --color GREEN
+	fi
+
+	rm $GPG_TMP
+}
+check_gpg() {
+	if [ $# -le 0 ];then
+		Display --indent 2 --text "Missing parameter to check_gpg" --result ERROR --color RED
+		return 1
+	fi
+	local gpgkeyid
+	gpg --homedir $1 -k |grep ^pub | cut -d\/ -f2 | cut -d\  -f1 |
+	while read gpgkeyid
+	do
+		check_gpg_key $gpgkeyid
+	done
+}
+
+my_getent
+ALLUSER=`grep -v '^#' ${MY_PASSWD} | cut -d\: -f6`
+for ihome in $ALLUSER
+do
+#	echo $iuser
+	detect_gpg "$ihome"
+	if [ $? -eq 0 ];then
+		check_gpg $RESULTAT
+	fi
+done
+
+
+return 0;

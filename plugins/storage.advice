@@ -1,0 +1,10 @@
+EN,TODO=To be done
+  To be done
+ADVICEEND
+EN,HDD_SMARTCTL=Monitor your hdd with S.M.A.R.T.
+  Install smartmontools
+  See <a href="http://smartmontools.sourceforge.net">http://smartmontools.sourceforge.net</a>
+ADVICEEND
+EN,HDD_READ_AHEAD_HIGH=Check the value of read_ahead
+  A too high value of read_ahead can decrease performance.
+ADVICEEND

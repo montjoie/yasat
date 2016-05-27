@@ -1,0 +1,59 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_PUPPET_CONF="/etc/puppet/puppet.conf /usr/local/etc/puppet/puppet.conf"
+PUPPET_CONF="/etc/puppet/puppet.conf"
+
+for LOCATION in ${POSSIBLE_PUPPET_CONF}
+do
+	if [ -e "${LOCATION}" ] ;then
+		PUPPET_CONF="${LOCATION}"
+	fi
+done
+
+PUPPET_CONF="`dirname $PUPPET_CONF`/puppet.conf"
+
+Title "Check Puppet"
+
+if [ ! -e "$PUPPET_CONF" ];then
+	return 1;
+fi
+
+#TODO puppet user
+
+Display --indent 2 --text "$PUPPET_CONF" --result FOUND --color GREEN
+get_simple_right "$PUPPET_CONF"
+if [ "$RESULTAT" = '640' ];then
+	Display --indent 4 --text "Right of $PUPPET_CONF" --result OK --color GREEN
+else
+	Display --indent 4 --text "Right of $PUPPET_CONF" --result "$RESULTAT" --color RED --advice GLOBAL_FILE_CHMOD640
+fi
+
+FindValueOf "$PUPPET_CONF" request_header_max_size JUSTTEST
+if [ -z "$RESULTAT" ];then
+	RESULTAT=20
+fi
+if [ "$RESULTAT" -le 20 ];then
+	Display --indent 4 --text "request_header_max_size <= 20kb" --result GOOD --color GREEN
+else
+	Display --indent 4 --text "request_header_max_size > 20kb" --result BAD --color ORANGE
+fi
+return 0;

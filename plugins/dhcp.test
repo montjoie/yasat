@@ -1,0 +1,59 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check dhcp"
+
+TESTNAME='YASAT_TEST_SERVICE_DHCPD NSAG=3.9.3 CCEID=4336-4 Check if the dhcpd service is disabled'
+Check_auto_start dhcpd packages no 3.9.3 4336-4
+
+DHCPD_PKGNAME='dhcp'
+case $LINUX_VERSION in
+	Debian)
+	DHCPD_PKGNAME='isc-dhcp-server'
+	;;
+	Centos)
+	DHCPD_PKGNAME='dhcp'
+	;;
+	'Red Hat')
+	DHCPD_PKGNAME='dhcp'
+	;;
+	Gentoo)
+	DHCPD_PKGNAME='net-misc/dhcp'
+	#TODO Package have USE server and client
+	;;
+esac
+#client net-misc/dhcpcd isc-dhcp-client
+
+TESTNAME='YASAT_TEST_PACKAGES_DHCPD NSAG=3.9.3 CCEID=4464-4 Check if the dhcp packages is installed'
+Is_installed_via_package_manager $DHCPD_PKGNAME packages no 3.9.3 4464-4
+
+TESTNAME='YASAT_TODO NSAG=3.9.4.1 CCEID=4257-2 Do Not Use Dynamic DNS'
+Compliance --result NOTIMPL --plugin dhcp --nsag 3.9.4.1 --cce 4257-2
+TESTNAME='YASAT_TODO NSAG=3.9.4.2 CCEID=4403-2 Deny Decline Messages'
+Compliance --result NOTIMPL --plugin dhcp --nsag 3.9.4.2 --cce 4403-2
+TESTNAME='YASAT_TODO NSAG=3.9.4.3 CCEID=4345-5 Deny BOOTP Queries'
+Compliance --result NOTIMPL --plugin dhcp --nsag 3.9.4.3 --cce 4345-5
+TESTNAME='YASAT_TODO NSAG=3.9.4.4 CCEID=3724-2,4243-2,4389-3,3913-1,4169-9,4318-2,4319-0 Minimize Served Information'
+Compliance --result NOTIMPL --plugin dhcp --nsag 3.9.4.4 --cce 3724-2 --cce 4243-2 --cce 4389-3 --cce 3913-1 --cce 4169-9 --cce 4318-2 --cce 4319-0
+TESTNAME='YASAT_TODO NSAG=3.9.4.5 CCEID=3733-3 Configure Logging'
+Compliance --result NOTIMPL --plugin dhcp --nsag 3.9.4.5 --cce 3733-3
+
+return 0;

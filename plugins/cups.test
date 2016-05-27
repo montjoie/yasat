@@ -1,0 +1,156 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_CUPS_CONF="/etc/cups/cupsd.conf /usr/local/etc/cups/cupsd.conf"
+CUPS_CONF="/etc/cups/cupsd.conf"
+
+for LOCATION in ${POSSIBLE_CUPS_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		CUPS_CONF="${LOCATION}"
+	fi
+done
+
+CUPS_CONF="`dirname $CUPS_CONF`/cupsd.conf"
+
+Title "Check CUPS"
+
+if [ ! -e "$CUPS_CONF" ] ;then
+	return 1;
+fi
+
+TESTNAME='YASAT_TEST_CUPS_SERVICE Disable the CUPS Service if Possible'
+Compliance --result 'NOTTESTED' --plugin cups --nsag 3.8.1 --cce 4112-9 --cce 3755-6
+TESTNAME='YASAT_TEST_CUPS_FIREWALL Disable Firewall Access to Printing Service if Possible'
+Compliance --result 'NOTTESTED' --plugin cups --nsag 3.8.2 --cce 3649-1
+
+
+Display --indent 2 --text "$CUPS_CONF" --result FOUND --color GREEN
+get_simple_right "$CUPS_CONF"
+if [ "$RESULTAT" = '640' ] ;then
+	Display --indent 4 --text "Right of $CUPS_CONF" --result OK --color GREEN
+else
+	Display --indent 4 --text "Right of $CUPS_CONF" --result "$RESULTAT" --color RED --advice GLOBAL_FILE_CHMOD640
+fi
+
+TESTNAME='YASAT_TEST_CUPS_LISTEN_LOCALHOST Listen only on localhost if possible'
+#Listen
+grep -i ^Listen "${CUPS_CONF}" | grep -v 'cups.sock' | sed 's/^Listen[[:space:]]*//g' |
+while read listen
+do
+	LISTENHOST="`echo $listen | cut -d\: -f1`"
+	if [ "${LISTENHOST}" = '127.0.0.1' -o "${LISTENHOST}" = 'localhost' -o "${LISTENHOST}" = '::1' ] ;then
+		Display --indent 4 --text "Listen on $listen" --result OK --color GREEN
+	else
+		Display --indent 4 --text "Listen on $listen" --result WARNING --color ORANGE --advice CUPS_LISTEN
+	fi
+done
+
+TESTNAME='YASAT_TEST_CUPS_BROWSING NSAG=3.8.3.1.1 CCEID=4420-6'
+FindValueOf $CUPS_CONF Browsing JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	if [ "$RESULTAT" = "On" -o "$RESULTAT" = "on" ] ;then
+		Display --indent 4 --text "Browsing" --result on --color ORANGE
+		Compliance --result NOK --plugin cups --nsag 3.8.3.1.1 --cce 4420-6
+	else
+		Display --indent 4 --text "Browsing" --result off --color GREEN
+		Compliance --result OK --plugin cups --nsag 3.8.3.1.1 --cce 4420-6
+	fi
+else
+	#TODO check the default value
+	Display --indent 4 --text "Browsing" --result NOTFOUND --color BLUE
+	Compliance --result NOK --plugin cups --nsag 3.8.3.1.1 --cce 4420-6
+fi
+
+TESTNAME='YASAT_TEST_CUPS_BROWSINGALLOW NSAG=3.8.3.1.1 CCEID=4407-3'
+FindValueOf $CUPS_CONF BrowseAllow JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	if [ "$RESULTAT" = "All" -o "$RESULTAT" = "all" ] ;then
+		Display --indent 4 --text "BrowseAllow" --result on --color ORANGE
+		Compliance --result NOK --plugin cups --nsag 3.8.3.1.1 --cce 4420-6
+	else
+		Display --indent 4 --text "BrowseAllow" --result none --color GREEN
+		Compliance --result OK --plugin cups --nsag 3.8.3.1.1 --cce 4420-6
+	fi
+else
+	#TODO check the default value
+	Display --indent 4 --text "BrowseAllow" --result NOTFOUND --color BLUE
+	Compliance --result NOK --plugin cups --nsag 3.8.3.1.1 --cce 4420-6
+fi
+
+TESTNAME='YASAT_TEST_CUPS_TODO Limit Printer Browsing to a Particular Subnet if Necessary'
+Compliance --result 'NOTIMPL' --plugin cups --nsag 3.8.3.1.2
+TESTNAME='YASAT_TEST_CUPS_TODO Disable Print Server Capabilities if Possible'
+Compliance --result 'NOTIMPL' --plugin cups --nsag 3.8.3.2
+TESTNAME='YASAT_TEST_CUPS_TODO Limit Access to the Web Administration Interface'
+Compliance --result 'NOTIMPL' --plugin cups --nsag 3.8.3.3
+
+
+#BrowseOrder allow,deny
+#BrowseAllow all
+#AuthType
+
+#try to find under which user cups is running
+#CUPSUSER=''
+#CUPSUSER="`ps aux | grep cupsd |grep -v grep | cut -d\  -f1`"
+
+#if [ -z "$CUPSUSER" ]
+#then
+#	CUPSUSER='root'
+#fi
+
+#for cupsdata in /usr/libexec/cups/ /usr/lib/cups/
+#do
+#	if [ -e "${cupsdata}" ]
+#	then
+#		Display --indent 2 --text "Cups DATA $cupsdata" --result FOUND --color GREEN
+#		TMP_RESULT="${TEMPYASATDIR}/cups.cdo"
+#		check_directory_owner "$cupsdata" "$CUPSUSER" $TMP_RESULT 4
+#		TMP_RESULT="${TEMPYASATDIR}/cups.cdg"
+#		check_directory_group "$cupsdata" "$CUPSUSER" $TMP_RESULT 4
+#	fi
+#done
+
+#TODO cceid 3755-6
+Check_auto_start cups cups no 3.8.1 4112-9
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
+	Display --indent 2 --text "Cups is started at boot" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ] ;then
+		Display --indent 2 --text "Cups is started at boot" --result YES --color BLUE
+	else
+		Display --indent 2 --text "Cups is started at boot" --result NO --color GREEN
+	fi
+fi
+
+Is_installed_via_package_manager cups
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
+	Display --indent 2 --text "Cups installation" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ] ;then
+		Display --indent 2 --text "Cups is installed by package" --result GOOD --color GREEN
+	else
+		Display --indent 2 --text "Cups is installed at hand" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND
+	fi
+fi
+
+return 0;

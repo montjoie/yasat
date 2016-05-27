@@ -1,0 +1,6 @@
+EN,POSTFIX_OBSOLETE_TLS=see http://www.postfix.org/TLS_README.html
+ADVICEEND
+EN,POSTFIX_NO_TLS=Enable TLS for sending mail via a TLS secured connection
+  See <a href="http://www.postfix.org/TLS_README.html">http://www.postfix.org/TLS_README.html</a>
+ADVICEEND
+

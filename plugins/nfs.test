@@ -1,0 +1,125 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+POSSIBLE_NFS_CONFIG_LOCATION='/etc/exports'
+NFS_CONFIG='/etc/exports'
+NFS_TAB='/etc/fstab'
+
+for LOCATION in ${POSSIBLE_NFS_CONFIG_LOCATION}
+do
+	if [ -d "${LOCATION}/" ]
+	then
+		NFS_CONFIG="${LOCATION}"
+	fi
+done
+
+Title "Check NFS (exports)"
+
+if [ ! -e "${PLUGINS_REP}/nfs.data" ] ; then
+	Display --indent 2 --text "nfs.data" --result NOTFOUND --color RED
+	exit 1
+fi
+
+if [ ! -e "$NFS_CONFIG" ]
+then
+	Display --indent 2 --text "No $NFS_CONFIG" --result NOTFOUND --color BLUE
+	return 1;
+fi
+
+Display --indent 2 --text "$NFS_CONFIG" --result FOUND --color BLUE
+
+grep -v ^# "$NFS_CONFIG" |grep -v '^[[:space:]]*$' |
+while read line
+do
+	EXPORTED_DIR="`echo $line | cut -d\  -f1`"
+	OPTIONS="`echo $line | cut -d\( -f2 | cut -d\) -f1 | sed 's/,/ /g'`"
+	Display --indent 4 --text "$EXPORTED_DIR" --result FOUND --color BLUE
+	for option in $OPTIONS
+	do
+		option_test="`grep ^${option} ${PLUGINS_REP}/nfs.data`"
+		if [ -z "$option_test" ] ; then
+			Display --indent 6 --text "$option" --result FOUND --color BLUE
+		else
+			advice="`echo $option_test | cut -d\, -f2`"
+			if [ -z "$advice" ] ; then
+				Display --indent 6 --text "$option" --result FOUND --color GREEN
+			else
+				Display --indent 6 --text "$option" --result FOUND --color ORANGE --advice "$advice"
+			fi
+		fi
+	done
+done
+
+##http://mirror.linux.org.au/pub/linux.conf.au/2008/slides/130-lca2008-nfs-tuning-secrets-d7.odp
+#http://www.troubleshooters.com/linux/nfs.htm
+#http://nfs.sourceforge.net/nfs-howto/ar01s05.html
+#TODO prefer async than sync
+
+#TODO hard not soft
+
+#TODO check /etc/conf.d/nfs or /etc/sysconfig/nfs for
+#static statd port (STATD_PORT=662 for redhat)
+#static lockd port LOCKD_TCPPORT=32803 LOCKD_UDPPORT=32769
+#static mountd port MOUNTD_PORT=892
+
+#TODO check if exported directory is a separate partition for more fun (noatime, nodiratime)
+
+#noatime or relatime
+
+#nosubtreecheck subtreecheck
+
+#rsize=8192,wsize=8192 ?
+
+#TODO nosuid noexec nodev on nfs mount
+
+#TODO /proc/net/rpc/nfsd in http://nfs.sourceforge.net/nfs-howto/ar01s05.html 5.6
+
+Title "Check NFS (client side)"
+
+if [ -e "$NFS_TAB" ] ; then
+	grep '[[:space:]]nfs[4]*[[:space:]]' "$NFS_TAB" |
+	while read line
+	do
+		IMPORTED_DIR="`echo $line | cut -d\  -f1 | cut -d\: -f2`"
+		OPTIONS="`echo $line | sed 's/[[:space:]][[:space:]]*/ /g' | cut -d\  -f4 | sed 's/,/ /g'`"
+		FOUND_INTR='no'
+		Display --indent 2 --text "NFS $IMPORTED_DIR" --result FOUND --color BLUE
+		for option in $OPTIONS
+		do
+			option_test="`grep ^${option} ${PLUGINS_REP}/nfs.data`"
+			if [ -z "$option_test" ] ; then
+				Display --indent 4 --text "$option" --result FOUND --color BLUE
+			else
+				advice="`echo $option_test | cut -d\, -f2`"
+				if [ -z "$advice" ] ; then
+					Display --indent 4 --text "$option" --result FOUND --color GREEN
+				else
+					Display --indent 4 --text "$option" --result FOUND --color ORANGE --advice "$advice"
+				fi
+			fi
+			if [ "$option" = "intr" ] ; then
+			FOUND_INTR='yes'
+			fi
+		done
+	if [ "$FOUND_INTR" = "no" ] ; then
+		Display --indent 4 --text "intr option" --result NOTFOUND --color RED --advice NFS_EXPORT_NO_INTR
+	fi
+	done
+fi

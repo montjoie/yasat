@@ -1,0 +1,189 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check PHP configuration"
+
+apache_find_conf
+if [ $? -ne 0 ];then
+	return 1
+fi
+
+> $TEMPYASATDIR/php_ini_list
+
+while read apache_conf_one
+do
+	prepare_apache_conf $apache_conf_one
+	if [ $? -ne 0 ];then
+		Display_error "ERROR: Cannot prepare configuration in $apache_conf_one"
+	fi
+	#find libphp.so and use strings for finding at-compilation-config-choice
+	grep -iE --no-filename '^LoadModule[[:space:]]*php' $TEMPYASATDIR/apache.conf | sed 's,[[:space:]][[:space:]]*, ,g' | cut -d\  -f3|
+	while read libphp_so
+	do
+		if [ ! -e $libphp_so ];then
+			libphp_so="$SERVERROOT/$libphp_so"
+		fi
+		if [ -e $libphp_so ];then
+			Display --indent 4 --text "Found $libphp_so" --result FOUND --color BLUE
+			strings $libphp_so |grep ^/etc/ |
+			while read possible_php_ini
+			do
+				if [ -e "$possible_php_ini/php.ini" ];then
+					Display --indent 4 --text "Found $possible_php_ini/php.ini" --result FOUND --color BLUE
+					echo "$possible_php_ini/php.ini" >> $TEMPYASATDIR/php_ini_list
+				fi
+			done
+		fi
+	done
+	# seek for php.ini in apache config
+	#TODO
+done < $TEMPYASATDIR/apache_list
+
+#find more php.ini
+find /etc/ -iname php.ini >> $TEMPYASATDIR/php_ini_list
+
+
+check_php_ini() {
+	local PHP_CONF_REP="$1"
+	if [ ! -e "$PHP_CONF_REP/php.ini" ];then
+		return 1
+	fi
+	Display --indent 2 --text "Checking $PHP_CONF_REP/php.ini" --result INFO --color BLUE
+
+if [ -e "${PLUGINS_REP}/php_conf.data" ] ; then
+	for i in `grep -v '^\#' $PLUGINS_REP/php_conf.data`
+	do
+		ldirective=`echo $i | cut -f1 -d\|`
+		lparam=`echo $i | cut -f2 -d\|`
+		loption=`echo $i | cut -f3 -d\|`
+		ltestoptional=`echo $i | cut -f4 -d\|`
+		OPT_ADVICE=''
+		OPT_ADVICE="`echo $i | cut -f5 -d\|`"
+		if [ -z $OPT_ADVICE ] ; then
+			OPT_ADVICE='NONE'
+		fi
+		Debug "check for $ldirective"
+		FindValueOfEqual $PHP_CONF_REP/php.ini $ldirective JUSTTEST
+		VAL="$RESULTAT"
+		if [ -z "$RESULTAT" ] ;	then
+			loption='NODEF'
+		fi
+		case $loption in
+			S)#string equal
+			if [ "$VAL" != "$lparam" ] ;then
+				#affiche_rouge "$ldirective pas a $lparam"
+				Display --indent 4 --text "$ldirective ( want $lparam )" --result "$VAL" --color RED --advice $OPT_ADVICE
+			else
+				#affiche_vert "GOOD"
+				Display --indent 4 --text "$ldirective " --result "$VAL" --color GREEN
+			fi
+			;;
+			s)#string equal casse insensitive
+			VAL=`echo $RESULTAT | tr A-Z a-z`
+			if [ "$VAL" != "$lparam" ] ;then
+				Display --indent 4 --text "$ldirective  ( want $lparam )" --result "$VAL" --color RED --advice $OPT_ADVICE
+			else
+				Display --indent 4 --text "$ldirective " --result "$VAL" --color GREEN
+			fi
+			;;
+			snot)#not string casse insensitive
+			VAL=`echo $RESULTAT | tr A-Z a-z`
+			if [ "$VAL" = "$lparam" ] ;then
+				Display --indent 4 --text "$ldirective  ( dont want $lparam )" --result "$VAL" --color RED --advice $OPT_ADVICE
+			else
+				Display --indent 4 --text "$ldirective " --result "$VAL" --color GREEN
+			fi
+			;;
+			NM)#Numeric max
+##			FindValueOf $PHP_CONF_REP/php.ini $ldirective
+			if [ -z "$RESULTAT" ] ;	then
+				Display --indent 4 --text "Missing declaration of $ldirective " --result WARNING --color RED --advice $OPT_ADVICE
+			else
+				if [ "$RESULTAT" -ge $lparam ] ;then
+					Display --indent 4 --text "$ldirective < $lparam" --result "$VAL" --color RED --advice $OPT_ADVICE
+				else
+					Display --indent 4 --text "$ldirective " --result "$VAL" --color GREEN
+				fi
+			fi
+			;;
+			C)#contains
+			if [ -z "$RESULTAT" ] ;	then
+				Display --indent 4 --text "Missing declaration of $ldirective " --result WARNING --color RED --advice $OPT_ADVICE
+			else
+				#this is ugly but it works
+				RESULTAT="beginline, $RESULTAT, endline"
+				if [ -z "`echo $RESULTAT |grep [,[:space:]]$lparam[,[:space:]]`" ] ;then
+					Display --indent 4 --text "$ldirective without $lparam" --result NOTFOUND --color RED --advice $OPT_ADVICE
+				else
+					Display --indent 4 --text "$ldirective " --result "$lparam" --color GREEN
+				fi
+			fi
+			;;
+			NODEF)
+				Display --indent 4 --text "No declaration of $ldirective (want $lparam)" --result WARNING --color RED --advice $OPT_ADVICE
+			;;
+			*)
+			Display --indent 4 --text "Unknown option $loption" --result ERROR --color RED
+			;;
+		esac
+	done
+	FindValueOfEqual $PHP_CONF_REP/php.ini 'error_log' JUSTTEST
+	if [ -z "$RESULTAT" ] ;	then
+		Display --indent 4 --text "Missing declaration de error_log " --result WARNING --color RED
+	else
+		REPLOG="`dirname $RESULTAT`"
+		Display --indent 4 --text "error_log $RESULTAT" --result DEFINED --color GREEN
+		if [ -e "$REPLOG" ] ; then
+			Find_apache_conf_location
+			if [ "$APACHE_CONF_REP" = 'NOTFOUND' ];then
+				prepare_apache_conf $APACHE_CONF_REP
+				APACHE_CONF_LOCATION_TO_TEST="${TEMPYASATDIR}/apache.conf"
+				if [ ! -e "$APACHE_CONF_LOCATION_TO_TEST" ] ; then
+					echo "Error no $APACHE_CONF_LOCATION_TO_TEST"
+					return 1;
+				fi
+				FindValueOf "$APACHE_CONF_LOCATION_TO_TEST" "User"
+			else
+				RESULTAT='root'
+			fi
+			Display --indent 6 --text "$REPLOG " --result FOUND --color GREEN
+			#check rights of apache on $REPLOG
+			if [ `stat $STAT_GROUP $REPLOG` = $RESULTAT ] ; then
+				Display --indent 8 --text "rights of $REPLOG " --result "$RESULTAT" --color GREEN
+			else
+				Display --indent 8 --text "rights of $REPLOG " --result WARNING --color RED
+			fi
+		else
+			Display --indent 6 --text "$REPLOG " --result NOTFOUND --color RED
+		fi
+	fi
+	#TODO error_reporting must be set to ??
+else
+	Display --indent 2 --text "ERROR No php_conf.data" --result ERROR --color RED --advice YASAT_BUG
+fi
+}
+
+cat $TEMPYASATDIR/php_ini_list | sort | uniq |
+while read php_ini_one
+do
+	check_php_ini `dirname $php_ini_one`
+done
+
+return 0;

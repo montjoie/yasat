@@ -1,0 +1,225 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#for LOCATION in ${POSSIBLE_APACHE_CONFIG_LOCATION}
+#do
+#	if [ -d "${LOCATION}/" ]
+#	then
+#		APACHE_CONF_REP="${LOCATION}"
+#	fi
+#done
+
+apache_find_conf
+if [ $? -ne 0 ];then
+        return 1
+fi
+
+apache_I_want_only_one
+
+Title "Check Apache configuration"
+
+TESTNAME='YASAT_TEST_APACHE_CONF_1 test the presence of apache.conf'
+if [ ! -d "$APACHE_CONF_REP" ] ;then
+	Display --indent 2 --text "No apache found" --result NOTFOUND --color BLUE
+	return 1;
+else
+	Display --indent 2 --text "$APACHE_CONF_REP " --result FOUND --color GREEN
+fi
+
+prepare_apache_conf $APACHE_CONF_REP
+APACHE_CONF_LOCATION_TO_TEST="${TEMPYASATDIR}/apache.conf"
+if [ ! -e "$APACHE_CONF_LOCATION_TO_TEST" ] ;then
+	echo "Error no $APACHE_CONF_LOCATION_TO_TEST"
+	return 1;
+fi
+
+
+if [ -e "${PLUGINS_REP}/apache_conf.data" ] ;then
+	for i in `grep -v '^\#' $PLUGINS_REP/apache_conf.data`
+	do
+		ldirective=`echo $i | cut -f1 -d\|`
+		lparam=`echo $i | cut -f2 -d\|`
+		loption=`echo $i | cut -f3 -d\|`
+		ltestoptional=`echo $i | cut -f4 -d\|`
+		OPT_ADVICE=''
+		OPT_ADVICE="`echo $i | cut -f5 -d\|`"
+		lnsagid="`echo $i | cut -f6 -d\|`"
+		lcceid="`echo $i | cut -f7 -d\|`"
+		if [ -z "$lnsagid" ] ; then
+			lnsagid=0
+		fi
+		if [ -z "$lcceid" ] ; then
+			lcceid=0
+		fi
+		TESTNAME="YASAT_TEST_APACHE_CONF_$ldirective Check if $ldirective is equal to $lparam"
+		FindValueOf $APACHE_CONF_LOCATION_TO_TEST $ldirective JUSTTEST
+		if [ -z "$RESULTAT" ] ;	then
+			if [ -z "$FINDERROR" ] ; then
+				if [ "$ltestoptional" = "Y" ] ; then
+					Display --indent 2 --text "Missing declaration of $ldirective " --result OPTIONAL --color BLUE
+				else
+					Display --indent 2 --text "Missing declaration of $ldirective " --result WARNING --color RED --advice $OPT_ADVICE
+				fi
+			else
+				if [ "$FINDERROR" = 'MULTIPLE' ] ; then
+					Display --indent 2 --text "Multiple declaration of $ldirective " --result WARNING --color RED --advice $OPT_ADVICE
+				else
+					echo "Arg a bug, unknown FINDERROR";
+				fi
+			fi
+		else
+		VAL="$RESULTAT"
+		case $loption in
+			S)#string equal
+			is_equal "$RESULTAT" "$lparam"
+			if [ $? -eq 1 ] ;then
+				Display --indent 2 --text "$ldirective != $lparam" --result "$RESULTAT" --color RED --advice "$OPT_ADVICE"
+				Compliance --result NOK --plugin apache --nsag $lnsagid --cce $lcceid
+			else
+				Display --indent 2 --text "$ldirective " --result "$RESULTAT" --color GREEN
+				Compliance --result OK --plugin apache --nsag $lnsagid --cce $lcceid
+			fi
+			;;
+			s)
+			#string equal case insensitive
+			is_equal "$RESULTAT" "$lparam" -i
+			if [ $? -eq 1 ] ; then
+				Display --indent 2 --text "$ldirective  != $lparam" --result "$RESULTAT" --color RED --advice "$OPT_ADVICE"
+				find_file_with_directive "$APACHE_CONF_REP" "^[[:space:]]*$ldirective"
+				add_correction "sed -i 's/^[[:space:]]*$ldirective.*/$ldirective $lparam/' $RES_FILE_WITH_DIRECTIVE"
+				Compliance --result NOK --plugin apache --nsag $lnsagid --cce $lcceid
+			else
+				Display --indent 2 --text "$ldirective " --result "$RESULTAT" --color GREEN
+				Compliance --result OK --plugin apache --nsag $lnsagid --cce $lcceid
+			fi
+			;;
+			snot)#not string case insensitive
+			is_equal "$RESULTAT" "$lparam" -i
+			if [ $? -eq 0 ];then
+				Display --indent 2 --text "$ldirective  != $lparam" --result "$RESULTAT" --color RED --advice "$OPT_ADVICE"
+				Compliance --result NOK --plugin apache --nsag $lnsagid --cce $lcceid
+			else
+				Display --indent 2 --text "$ldirective " --result "$RESULTAT" --color GREEN
+				Compliance --result OK --plugin apache --nsag $lnsagid --cce $lcceid
+			fi
+			;;
+			NM)#Numeric max
+			TESTNAME="YASAT_TEST_APACHE_CONF_$ldirective Check if $ldirective is less than $lparam"
+			if [ -z "$RESULTAT" ] ;then
+				Display --indent 2 --text "Missing declaration of $ldirective " --result WARNING --color RED --advice $OPT_ADVICE
+				Compliance --result NOK --plugin apache --nsag $lnsagid --cce $lcceid
+			else
+				if [ $RESULTAT -ge $lparam ] ;then
+					Display --indent 2 --text "$ldirective     <= $lparam" --result "$VAL" --color RED --advice $OPT_ADVICE
+					find_file_with_directive "$APACHE_CONF_REP" "^[[:space:]]*$ldirective"
+					add_correction "sed -i 's/^[[:space:]]*$ldirective.*/$ldirective $lparam/' $RES_FILE_WITH_DIRECTIVE"
+					Compliance --result NOK --plugin apache --nsag $lnsagid --cce $lcceid
+				else
+					Display --indent 2 --text "$ldirective " --result "$VAL" --color GREEN
+					Compliance --result OK --plugin apache --nsag $lnsagid --cce $lcceid
+				fi
+			fi
+			;;
+			*)
+			echo "Unknown option $loption"
+			;;
+		esac
+		fi
+	done
+else
+	echo "No apache_conf.data"
+fi
+
+TESTNAME='YASAT_TEST_APACHE_CONF_ERRORDOC_404 Check if an ErrorDocument for 404 is configured'
+#ErrorDocument\ 404|/error/http_not_found.html.var|snot|W
+FindValueOf $APACHE_CONF_LOCATION_TO_TEST 'ErrorDocument\ 404' JUSTTEST
+if [ ! -z "$RESULTAT" ];then
+	if [ "$RESULTAT" = '/error/HTTP_NOT_FOUND.html.var' ] ;then
+		Display --indent 2 --text "ErrorDocument 404" --result FOUND --color ORANGE --advice APACHE_ERRORDOC_CUSTOM
+	fi
+else
+	Display --indent 2 --text "ErrorDocument 500" --result NOTFOUND --color ORANGE --advice APACHE_ERRORDOC_CUSTOM
+fi
+
+TESTNAME='YASAT_TEST_APACHE_CONF_ERRORDOC_500 Check if an ErrorDocument for 500 is configured'
+FindValueOf $APACHE_CONF_LOCATION_TO_TEST 'ErrorDocument\ 500' JUSTTEST
+if [ ! -z "$RESULTAT" ];then
+	if [ "$RESULTAT" = '/error/HTTP_INTERNAL_SERVER_ERROR.html.var' ] ;then
+		Display --indent 2 --text "ErrorDocument 500" --result FOUND --color ORANGE --advice APACHE_ERRORDOC_CUSTOM
+	fi
+else
+	Display --indent 2 --text "ErrorDocument 500" --result NOTFOUND --color ORANGE --advice APACHE_ERRORDOC_CUSTOM
+fi
+
+TESTNAME='YASAT_TEST_APACHE_CONF_USER Check if the user parameter is set'
+FindValueOf $APACHE_CONF_LOCATION_TO_TEST "User"
+Check_apache_user $APACHE_CONF_REP $RESULTAT
+
+TMP_RESULT="${TEMPYASATDIR}/apache.tmpresult"
+
+if [ -z "$RESULTAT" ];then
+	Display --indent 2 --text "Missing declaration of User " --result WARNING --color RED
+else
+	TESTNAME='YASAT_TEST_APACHE_USER Check if apache user have a shell'
+	APACHESHELL="`getent passwd ${RESULTAT} | cut -d\: -f7`"
+	if [ `echo $APACHESHELL |grep 'sh' ` ]
+	then
+	Display --indent 2 --text "apache's shell $APACHESHELL is incorrect " --result WARNING --color RED --advice APACHE_USER_BAD_SHELL
+	else
+	Display --indent 2 --text "apache's shell $APACHESHELL is correct " --result OK --color GREEN
+	fi
+fi
+
+TESTNAME='YASAT_TEST_APACHE_CONF_GROUP Check if the group parameter is set'
+FindValueOf $APACHE_CONF_LOCATION_TO_TEST "Group"
+Check_apache_group $APACHE_CONF_REP $RESULTAT
+APACHE_GROUP="$RESULTAT"
+
+RESULTAT=`find $APACHE_CONF_REP ! -type l ! -user root -exec ls {} \;`
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "owner of $APACHE_CONF_REP/* " --result WARNING --color RED --advice APACHE_USER_OWNER_CONF_REP
+	echo "    $RESULTAT"
+else
+	Display --indent 2 --text "owner of $APACHE_CONF_REP/* " --result OK --color GREEN
+fi
+
+TESTNAME='YASAT_TEST_APACHE_USER_5 Check the owner/group of apache confdir'
+check_directory_group $APACHE_CONF_REP $ROOTGROUP $TMP_RESULT 2 APACHE_USER_GROUP_CONF_REP
+
+TESTNAME='YASAT_TEST_APACHE_USER_6 Check the right of apache confdir'
+check_directory_others $APACHE_CONF_REP $TMP_RESULT 2 APACHE_USER_OTHERS_CONF_REP
+
+TESTNAME='YASAT_TEST_APACHE_USER_7 Check presence of passwd file in confdir'
+find $APACHE_CONF_REP -type f -iname '*pass*' -o -iname '*htaccess*' |
+while read line
+do
+	Display --indent 2 --text "Found passwd $line " --result "FOUND" --color RED --advice APACHE_USER_PASSWD_IN_CONF_REP
+done
+
+return 0;
+
+RESULTAT=`find $APACHE_CONF_REP ! -type l ! -user root -exec ls {} \;`
+if [ ! -z "$RESULTAT" ];then
+	Display --indent 2 --text "owner of $APACHE_CONF_REP " --result WARNING --color RED
+	echo "    $RESULTAT"
+else
+	Display --indent 2 --text "owner of $APACHE_CONF_REP " --result OK --color GREEN
+fi

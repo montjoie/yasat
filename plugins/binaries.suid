@@ -1,0 +1,4 @@
+/bin/mount
+/bin/umount
+/bin/ping
+/bin/ping6

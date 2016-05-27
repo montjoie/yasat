@@ -1,0 +1,154 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+POSSIBLE_TOMCAT_CONFIG_LOCATION="/etc/tomcat /etc/tomcat-5.5 /etc/tomcat-6"
+
+#find /etc/ -type d -iname 'tomcat*'
+#find / -type d -iname 'jakarta-tomcat-*'
+
+# tomcat*/conf/server.xml
+#/var/lib/tomcat on gentoo
+#apache-tomcat-5.5.28/ jakarta-tomcat-5.5.23
+
+#grepping CATALINA_BASE= in etc can inform if a tomcat is present
+
+#In web.xml check for value of Xpoweredby (must be false)
+#TODO check <Server port="8005" shutdown="xxxx"> the xxx must not be a simple password
+
+Title "Check Tomcat"
+
+if [ "$SCANTYPE" != "FULL" ] ;then
+	Display --indent 2 --text "Check tomcat" --result SKIP --color BLUE --advice GLOBAL_SKIPPED_LONG_TESTS
+	return 1;
+fi
+
+TMP_RESULT="${TEMPYASATDIR}/tomcat_locations"
+TMP_RESULT2="${TEMPYASATDIR}/tomcat_rights"
+echo "  Searching for a tomcat installation, please wait..."
+#find /sources ! -fstype nfs -iregex '.*tomcat[0-9.-]*/conf' > $TMP_RESULT
+find / -fstype nfs -prune -o -fstype proc -prune -o -iregex '.*tomcat[0-9.-]*/conf' -print > $TMP_RESULT
+
+if [ "`cat $TMP_RESULT | wc -l`" -eq 0 ] ;then
+	Display --indent 2 --text "No tomcat found" --result NOTFOUND --color GREEN
+	return 1;
+fi
+
+cat $TMP_RESULT |
+while read line
+do
+	REP_WEBAPPS="`echo $line | sed 's/conf.*/webapps/g'`"
+	BASE_TOMCAT="`echo $line | sed 's/conf.*//g' | sed 's/\/$//g'`"
+	SERVERXML="$line/server.xml"
+	PASSFILE="$line/tomcat-users.xml"
+	TOMCAT_VERSION="`echo $BASE_TOMCAT | sed 's/^.*tomcat-//g'`"
+	TOMCAT_MAJOR_VERSION="`echo $TOMCAT_VERSION | sed 's/\.[0-9]*$//g' | grep '^[0-9][0-9.]*'`"
+	TOMCAT_MINOR_VERSION="`echo $TOMCAT_VERSION | sed 's/^.*\.//g' | grep '^[0-9][0-9]*'`"
+	if [ -z "`echo $TOMCAT_MAJOR_VERSION |grep '[0-9.]*'`" -o -z "`echo $TOMCAT_MINOR_VERSION |grep '[0-9.]*'`" ]
+	then
+		TOMCAT_MINOR_VERSION="0"
+		TOMCAT_MAJOR_VERSION="0"
+	fi
+
+	echo "DEBUG MAJOR=$TOMCAT_MAJOR_VERSION MINOR=$TOMCAT_MINOR_VERSION"
+	if [ -e "$REP_WEBAPPS" ]
+	then
+		Display --indent 2 --text "Webapps $REP_WEBAPPS" --result FOUND --color GREEN
+		#check default webapps jsp-examples balancer servlets-examples tomcat-docs webdav manager
+		ls $REP_WEBAPPS |
+		while read webapp_line
+		do
+			if [ ! -z "`echo $webapp_line | grep -iE 'balancer|manager|webdav|jsp-examples|servlets-examples|tomcat-docs'`" ]
+			then
+				Display --indent 4 --text "Default webapp $webapp_line" --result FOUND --color ORANGE --advice TOMCAT_DEFAULT_WEBAPP
+			fi
+		done
+	fi
+	if [ -e "$SERVERXML" ]
+	then
+		Display --indent 2 --text "server.xml $SERVERXML" --result FOUND --color GREEN
+	fi
+	if [ -e "$PASSFILE" ]
+	then
+		Display --indent 2 --text "PASSFILE $PASSFILE" --result FOUND --color GREEN
+		grep 'password=' "$PASSFILE" |
+		while read passline
+		do
+#			echo "    Check $passline"
+			PASSNAME="`echo $passline | sed 's/^.*name="//g' | sed 's/\".*//g'`"
+			PASSWORD="`echo $passline | sed 's/^.*password="//g' | sed 's/\".*//g'`"
+#			echo "      NAME=$PASSNAME $PASSWORD"
+			#known password jonas tomcat admin
+			if [ ! -z "`echo $PASSWORD | grep -iE 'tomcat|admin|jonas'`" ]
+			then
+				Display --indent 4 --text "Default password for $PASSNAME" --result "$PASSWORD" --color RED --advice TOMCAT_DEFAULT_PASSWORD
+			fi
+		done
+	fi
+	if [ -e "$BASE_TOMCAT" ]
+	then
+		Display --indent 2 --text "Tomcat $TOMCAT_VERSION found at $BASE_TOMCAT" --result FOUND --color GREEN
+
+		check_directory_others $BASE_TOMCAT $TMP_RESULT2 4
+
+	fi
+	if [ "$TOMCAT_MAJOR_VERSION" != "0" -a "$TOMCAT_MINOR_VERSION" != "0" ] ;then
+		if [ "$TOMCAT_MAJOR_VERSION" = "5.5" -a "$TOMCAT_MINOR_VERSION" -le 34 ] ;then
+			Display --indent 2 --text "Tomcat $TOMCAT_VERSION" --result OLD --color ORANGE
+		else
+			if [ "$TOMCAT_MAJOR_VERSION" = "5.0" ] ; then
+				#obsolete version
+				Display --indent 2 --text "Tomcat $TOMCAT_VERSION" --result OLD --color RED
+			fi
+		fi
+	fi
+	#TODO check for Connector
+	TMP_RESULT="${TEMPYASATDIR}/tomcat_server.tmp"
+	echo "" >  $TMP_RESULT
+	echo "" >  ${TMP_RESULT}.final
+	cat $SERVERXML | 
+	while read line
+	do
+		echo -n "$line" | sed 's,-->,\n-->\n,g' | sed 's,<!--,\n<!--\n,g' | sed 's,/>,/>\n,g' | sed 's,</,\n</,g' >> $TMP_RESULT
+	done
+	echo "" >>  $TMP_RESULT
+	COMMENT=0
+	while read line
+	do
+		echo "read $COMMENT $line"
+		if [ $COMMENT -eq 0 ] ; then
+			if [ "$line" = '<!--' ] ; then
+				COMMENT=1
+			else
+				echo "$line" >> ${TMP_RESULT}.final
+			fi
+		else
+			if [ "$line" = '-->' ] ; then
+				COMMENT=0
+			fi
+		fi
+	done < $TMP_RESULT
+	rm $TMP_RESULT
+	rm ${TMP_RESULT}.final
+
+done
+
+
+
+

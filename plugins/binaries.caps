@@ -1,0 +1,20 @@
+#all POSIX CAPS is at /usr/include/linux/capability.h
+#
+# list taken from http://coupleprogramming.eu/blog/?p=103
+# https://wiki.archlinux.org/index.php/Using_File_Capabilities_Instead_Of_Setuid
+#
+# CAPS listed in upcase or not
+chage=CAP_DAC_READ_SEARCH
+chsh=CAP_CHOWN,CAP_DAC_READ_SEARCH,CAP_FSETID,CAP_SETUID
+chfn=CAP_CHOWN,CAP_DAC_READ_SEARCH,CAP_FSETID,CAP_SETUID
+dumpcap=net_admin,net_raw
+#gpasswd=cap_chown cap_dac_override cap_setuid
+mount=CAP_DAC_OVERRIDE,CAP_SYS_ADMIN
+#newgrp=cap_dac_override,cap_setgid
+passwd=CAP_CHOWN,CAP_DAC_OVERRIDE,CAP_FOWNER
+ping net_raw
+traceroute net_raw
+umount=CAP_DAC_OVERRIDE,CAP_SYS_ADMIN,CAP_CHOWN
+unix_chkpwd=CAP_DAC_OVERRIDE
+wireshark=net_raw
+Xorg=cap_chown,cap_dac_override,cap_sys_rawio,cap_sys_admin

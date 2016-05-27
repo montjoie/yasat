@@ -1,0 +1,30 @@
+EN,BIND_HIDE_VERSION=Hide bind's version
+  Set version to none in the options section of your bind configuration
+  <div class="conf">version none;</div>
+  See <a href="http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html">http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html</a>
+ADVICEEND
+EN,BIND_HIDE_HOSTNAME=Hide bind's hostname
+  Set hostname to none in the options section of your bind configuration
+  <div class="conf">hostname none;</div>
+  See <a href="http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html">http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html</a>
+ADVICEEND
+EN,BIND_HIDE_SERVERID=Hide bind's server-id
+  Set server-id to none in the options section of your bind configuration
+  <div class="conf">server-id none;</div>
+  See <a href="http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html">http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html</a>
+ADVICEEND
+EN,BIND_DISALLOW_RECURSIVE_QUERY=Disallow global access to recursive query
+  Set an ACL to recursive query with a allow-recursion { 127.0.0.1; } for example
+  You can also disable recursion altogether with the recursion no; directive
+  <div class="conf">recursion no;</div>
+  <div class="conf">allow-recursion { 127.0.0.1; }</div>
+  See <a href="http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html">http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html</a>
+ADVICEEND
+EN,BIND_MAX_CACHE_SIZE=Limit the amount of cache used by bind
+  By default bind can exhausts all memory with its cache.
+  Limit it with max-cache-size.
+  <div class="conf">max-cache-size 4000000;</div>
+  See <a href="http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html">http://www.bind9.net/manual/bind/9.3.2/Bv9ARM.ch06.html</a>
+ADVICEEND
+EN,BIND_ENABLE_DNSSEC_VALIDATION=Enable the dnssec validation
+ADVICEEND

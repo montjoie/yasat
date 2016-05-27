@@ -1,0 +1,10 @@
+security.warn_viewing_mixed,SYSTEM_USER_FIREFOX_MIXED_HTTPS
+app.update.auto,SYSTEM_USER_FIREFOX_NO_AUTO_UPDATE
+security.warn_entering_weak,TODO
+xpinstall.whitelist.required,TODO
+browser.safebrowsing.malware.enabled,TODO
+browser.safebrowsing.enabled,TODO
+security.OCSP.enabled,TODO
+browser.cache.disk_cache_ssl,TODO
+network.http.sendSecureXSiteReferrer,TODO
+security.enable_ssl2,TODO

@@ -1,0 +1,493 @@
+#binary | rights | OS | owner
+/sbin/unix_chkpwd|4711|Gentoo
+/sbin/mount.nfs|4511|Gentoo
+/bin/umount|4711|Gentoo
+/bin/su|4711|Gentoo
+/bin/ping|4711|Gentoo
+/bin/mount|4711|Gentoo
+/bin/passwd|4711|Gentoo
+/usr/sbin/ssmtp|2711|Gentoo
+/usr/sbin/amcheck|4750|Gentoo
+/usr/sbin/postdrop|2755|Gentoo
+/usr/sbin/postqueue|2755|Gentoo
+/usr/sbin/fping6|4711|Gentoo
+/usr/sbin/fping|4711|Gentoo
+/usr/sbin/rscsi|4711|Gentoo
+/usr/bin/lppasswd|4711|Gentoo
+/usr/bin/rcp|4711|Gentoo
+/usr/bin/chsh|4711|Gentoo
+/usr/bin/chfn|4711|Gentoo
+/usr/bin/crontab|2751|Gentoo
+/usr/bin/sudoedit|4111|Gentoo
+/usr/bin/cpufreq-selector|4711|Gentoo
+/usr/bin/expiry|4711|Gentoo
+/usr/bin/smbumount|4711|Gentoo
+/usr/bin/man|2551|Gentoo
+/usr/bin/newrole|4511|Gentoo
+/usr/bin/gpasswd|4711|Gentoo
+/usr/bin/Xorg|4711|Gentoo
+/usr/bin/dotlockfile|2751|Gentoo
+/usr/bin/slocate|2711|Gentoo
+/usr/bin/write|2751|Gentoo
+/usr/bin/rlogin|4711|Gentoo
+/usr/bin/newgrp|4711|Gentoo
+/usr/bin/sudo|4711|Gentoo
+/usr/bin/dumpcap|6550|Gentoo
+/usr/bin/fusermount|4711|Gentoo
+/usr/bin/rsh|4711|Gentoo
+/usr/bin/chage|4711|Gentoo
+/usr/bin/smbmnt|4711|Gentoo
+/usr/bin/mutt_dotlock|2751|Gentoo
+/bin/ping6|4711|Gentoo
+/usr/sbin/traceroute6|4711|Gentoo
+/usr/bin/dspam|2511|Gentoo
+/usr/bin/dspamc|2511|Gentoo
+/usr/bin/screen|2751|Gentoo
+/usr/sbin/mtr|4710|Gentoo
+/usr/bin/cdda2wav|4711|Gentoo
+/usr/bin/v4l-conf|4711|Gentoo
+/usr/bin/cdrecord|4711|Gentoo
+/usr/bin/readcd|4711|Gentoo
+/usr/bin/locate|2711|Gentoo
+/usr/bin/pkexec|4711|Gentoo
+/usr/bin/cgexec|4711|Gentoo
+/usr/libexec/lockspool|4511|Gentoo
+/usr/libexec/polkit-agent-helper-1|4711|Gentoo
+/usr/libexec/dbus-daemon-launch-helper|4710|Gentoo
+/usr/libexec/gnome-pty-helper|2751|Gentoo
+/usr/libexec/squid/pinger|4710|Gentoo
+/usr/libexec/squid/basic_ncsa_auth|4710|Gentoo
+/usr/lib/misc/utempter/utempter|2751|Gentoo
+/usr/lib/misc/glibc/pt_chown|4711|Gentoo
+/usr/lib/misc/ssh-keysign|4711|Gentoo
+/usr/lib/polkit-1/polkit-agent-helper-1|4711|Gentoo
+/usr/lib/kde4/libexec/fileshareset|4711|Gentoo
+/usr/sbin/amservice|4710|Gentoo
+/usr/libexec/amanda/killpgrp|4750|Gentoo
+/usr/libexec/amanda/application/amgtar|4710|Gentoo
+/usr/libexec/amanda/application/amstar|4710|Gentoo
+/usr/libexec/amanda/calcsize|4750|Gentoo
+/usr/libexec/amanda/dumper|4750|Gentoo
+/usr/libexec/amanda/planner|4750|Gentoo
+/usr/libexec/amanda/runtar|4750|Gentoo
+/usr/libexec/amanda/rundump|4750|Gentoo
+/usr/lib/nagios/plugins/check_dhcp|4710|Gentoo
+/usr/lib/nagios/plugins/check_ide_smart|4710|Gentoo
+/usr/lib/nagios/plugins/check_icmp|4710|Gentoo
+/usr/lib/mailman/mail/mailman|2751|Gentoo
+/usr/lib/mailman/cgi-bin/admin|2751|Gentoo
+/usr/lib/mailman/cgi-bin/rmlist|2751|Gentoo
+/usr/lib/mailman/cgi-bin/create|2751|Gentoo
+/usr/lib/mailman/cgi-bin/subscribe|2751|Gentoo
+/usr/lib/mailman/cgi-bin/roster|2751|Gentoo
+/usr/lib/mailman/cgi-bin/edithtml|2751|Gentoo
+/usr/lib/mailman/cgi-bin/private|2751|Gentoo
+/usr/lib/mailman/cgi-bin/listinfo|2751|Gentoo
+/usr/lib/mailman/cgi-bin/options|2751|Gentoo
+/usr/lib/mailman/cgi-bin/confirm|2751|Gentoo
+/usr/lib/mailman/cgi-bin/admindb|2751|Gentoo
+/usr/libexec/squid/ncsa_auth|4710|Gentoo
+/usr/libexec/mc/cons.saver|2751|Gentoo
+/usr/lib/virtualbox/VirtualBox|4710|Gentoo
+/usr/lib/virtualbox/VBoxHeadless|4710|Gentoo
+/usr/lib/virtualbox/VBoxSDL|4710|Gentoo
+/usr/lib/virtualbox/VBoxNetDHCP|4710|Gentoo
+/usr/lib/virtualbox/VBoxNetAdpCtl|4710|Gentoo
+
+#Debian
+/sbin/unix_chkpwd|4555|Etch|
+/bin/ping|4755|Etch|
+/bin/umount|4755|Etch|
+/bin/mount|4755|Etch
+/bin/ping6|4755|Etch|
+/bin/su|4755|Etch
+/usr/sbin/postqueue|2555|Etch
+/usr/sbin/postdrop|2555|Etch
+/usr/bin/gpasswd|4755|Etch
+/usr/bin/traceroute.lbl|4755|Etch
+/usr/bin/passwd|4755|Etch|
+/usr/bin/bsd-write|2755|Etch
+/usr/bin/gpg|4755|Etch
+/usr/bin/screen|2755|Etch
+/usr/bin/expiry|2755|Etch
+/usr/bin/wall|2755|Etch
+/usr/bin/chage|2755|Etch
+/usr/bin/chfn|4755|Etch
+/usr/bin/sudo|4755|Etch
+/usr/bin/newgrp|4755|Etch
+/usr/bin/crontab|2755|Etch
+/usr/bin/chsh|4755|Etch
+/usr/bin/sudoedit|4755|Etch
+/usr/bin/ssh-agent|2755|Etch
+/usr/bin/X|6755|Etch
+
+/sbin/unix_chkpwd|2755|Lenny
+/sbin/mount.nfs|4755|Lenny
+/bin/ping|4755|Lenny
+/bin/umount|4755|Lenny
+/bin/mount|4755|Lenny
+/bin/ping6|4755|Lenny
+/bin/su|4755|Lenny
+/usr/sbin/postqueue|2555|Lenny
+/usr/sbin/postdrop|2555|Lenny
+/usr/sbin/exim4|4755|Lenny
+/usr/bin/gpasswd|4755|Lenny
+/usr/bin/procmail|6755|Lenny
+/usr/bin/traceroute.lbl|4755|Lenny
+/usr/bin/passwd|4755|Lenny
+/usr/bin/bsd-write|2755|Lenny
+/usr/bin/mutt_dotlock|2755|Lenny
+/usr/bin/dotlockfile|2755|Lenny
+/usr/bin/lockfile|2755|Lenny
+/usr/bin/mlocate|2755|Lenny
+/usr/bin/gpg|4755|Lenny
+/usr/bin/screen|2755|Lenny
+/usr/bin/expiry|2755|Lenny
+/usr/bin/wall|2755|Lenny
+/usr/bin/chage|2755|Lenny
+/usr/bin/chfn|4755|Lenny
+/usr/bin/sudo|4755|Lenny
+/usr/bin/newgrp|4755|Lenny
+/usr/bin/crontab|2755|Lenny
+/usr/bin/chsh|4755|Lenny
+/usr/bin/sudoedit|4755|Lenny
+/usr/bin/ssh-agent|2755|Lenny
+/usr/bin/at|6755|Lenny
+/usr/bin/pkexec|4711|Lenny
+
+#squeeze
+/sbin/unix_chkpwd|2755|Squeeze
+/sbin/mount.nfs|4755|Squeeze
+/sbin/mount.cifs|4755|Squeeze
+/bin/ping|4755|Squeeze
+/bin/umount|4755|Squeeze
+/bin/mount|4755|Squeeze
+/bin/ping6|4755|Squeeze
+/bin/su|4755|Squeeze
+/usr/sbin/postqueue|2555|Squeeze
+/usr/sbin/postdrop|2555|Squeeze
+/usr/sbin/exim4|4755|Squeeze
+/usr/sbin/pwauth|2755|Squeeze
+/usr/bin/gpasswd|4755|Squeeze
+/usr/bin/procmail|6755|Squeeze
+/usr/bin/traceroute.lbl|4755|Squeeze
+/usr/bin/passwd|4755|Squeeze
+/usr/bin/bsd-write|2755|Squeeze
+/usr/bin/mutt_dotlock|2755|Squeeze
+/usr/bin/dotlockfile|2755|Squeeze
+/usr/bin/lockfile|2755|Squeeze
+/usr/bin/mlocate|2755|Squeeze
+/usr/bin/gpg|4755|Squeeze
+/usr/bin/screen|2755|Squeeze
+/usr/bin/expiry|2755|Squeeze
+/usr/bin/wall|2755|Squeeze
+/usr/bin/chage|2755|Squeeze
+/usr/bin/chfn|4755|Squeeze
+/usr/bin/sudo|4755|Squeeze
+/usr/bin/newgrp|4755|Squeeze
+/usr/bin/crontab|2755|Squeeze
+/usr/bin/chsh|4755|Squeeze
+/usr/bin/sudoedit|4755|Squeeze
+/usr/bin/ssh-agent|2755|Squeeze
+/usr/bin/at|6755|Squeeze
+/usr/bin/mtr|4755|Squeeze
+/usr/bin/pkexec|4711|Squeeze
+/usr/bin/tcptraceroute.mt|4755|Squeeze
+/usr/bin/mlock|2755|Squeeze
+/usr/bin/beep|4755|Squeeze
+/usr/lib/openssh/ssh-keysign|4755|Squeeze
+/usr/lib/mc/cons.saver|2755|Squeeze
+/usr/lib/pt_chown|4755|Squeeze
+/usr/lib/eject/dmcrypt-get-device|4755|Squeeze
+/usr/lib/apache2/suexec|4754|Squeeze
+/usr/lib/vdr/vdr-shutdown.wrapper|6750|Squeeze
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper|4754|Squeeze
+/usr/lib/virtualbox/VBoxNetAdpCtl|4511|Squeeze
+/usr/lib/virtualbox/VBoxNetDHCP|4511|Squeeze
+/usr/lib/virtualbox/VBoxHeadless|4511|Squeeze
+/usr/lib/virtualbox/VirtualBox|4511|Squeeze
+/usr/lib/virtualbox/VBoxSDL|4511|Squeeze
+
+#Wheezy
+/sbin/unix_chkpwd|2755|Wheezy
+/sbin/mount.nfs|4755|Wheezy
+/sbin/mount.cifs|4755|Wheezy
+/bin/ping|4755|Wheezy
+/bin/umount|4755|Wheezy
+/bin/mount|4755|Wheezy
+/bin/ping6|4755|Wheezy
+/bin/rdisc6|4755|Wheezy
+/bin/su|4755|Wheezy
+/usr/sbin/postqueue|2555|Wheezy
+/usr/sbin/postdrop|2555|Wheezy
+/usr/sbin/exim4|4755|Wheezy
+/usr/bin/gpasswd|4755|Wheezy
+/usr/bin/procmail|6755|Wheezy
+/usr/bin/traceroute.lbl|4755|Wheezy
+/usr/bin/passwd|4755|Wheezy
+/usr/bin/bsd-write|2755|Wheezy
+/usr/bin/mutt_dotlock|2755|Wheezy
+/usr/bin/dotlockfile|2755|Wheezy
+/usr/bin/lockfile|2755|Wheezy
+/usr/bin/mlocate|2755|Wheezy
+/usr/bin/gpg|4755|Wheezy
+/usr/bin/screen|2755|Wheezy
+/usr/bin/expiry|2755|Wheezy
+/usr/bin/wall|2755|Wheezy
+/usr/bin/chage|2755|Wheezy
+/usr/bin/chfn|4755|Wheezy
+/usr/bin/sudo|4755|Wheezy
+/usr/bin/newgrp|4755|Wheezy
+/usr/bin/crontab|2755|Wheezy
+/usr/bin/chsh|4755|Wheezy
+/usr/bin/sudoedit|4755|Wheezy
+/usr/bin/ssh-agent|2755|Wheezy
+/usr/bin/at|6755|Wheezy|daemon
+/usr/bin/pkexec|4755|Wheezy
+/usr/bin/rltraceroute6|4755|Wheezy
+/usr/bin/ndisc6|4755|Wheezy
+/usr/bin/lppasswd|4755|Wheezy
+/usr/lib/openssh/ssh-keysign|4755|Wheezy
+/usr/lib/mc/cons.saver|2755|Wheezy
+/usr/lib/pt_chown|4755|Wheezy
+/usr/lib/eject/dmcrypt-get-device|4755|Wheezy
+/usr/lib/policykit-1/polkit-agent-helper-1|4755|Wheezy
+/usr/lib/uml/uml_net|4750|Wheezy
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper|4754|Wheezy
+
+#Jessie
+/sbin/unix_chkpwd|2755|Jessie
+/sbin/mount.nfs|4755|Jessie
+/sbin/mount.cifs|4755|Jessie
+/bin/ping|4755|Jessie
+/bin/umount|4755|Jessie
+/bin/mount|4755|Jessie
+/bin/ping6|4755|Jessie
+/bin/rdisc6|4755|Jessie
+/bin/su|4755|Jessie
+/usr/sbin/postqueue|2555|Jessie
+/usr/sbin/postdrop|2555|Jessie
+/usr/sbin/exim4|4755|Jessie
+/usr/bin/gpasswd|4755|Jessie
+/usr/bin/procmail|6755|Jessie
+/usr/bin/traceroute.lbl|4755|Jessie
+/usr/bin/passwd|4755|Jessie
+/usr/bin/bsd-write|2755|Jessie
+/usr/bin/mutt_dotlock|2755|Jessie
+/usr/bin/dotlockfile|2755|Jessie
+/usr/bin/lockfile|2755|Jessie
+/usr/bin/mlocate|2755|Jessie
+/usr/bin/gpg|4755|Jessie
+/usr/bin/screen|2755|Jessie
+/usr/bin/expiry|2755|Jessie
+/usr/bin/wall|2755|Jessie
+/usr/bin/chage|2755|Jessie
+/usr/bin/chfn|4755|Jessie
+/usr/bin/sudo|4755|Jessie
+/usr/bin/newgrp|4755|Jessie
+/usr/bin/crontab|2755|Jessie
+/usr/bin/chsh|4755|Jessie
+/usr/bin/sudoedit|4755|Jessie
+/usr/bin/ssh-agent|2755|Jessie
+/usr/bin/at|6755|Jessie|daemon
+/usr/bin/pkexec|4755|Jessie
+/usr/bin/rltraceroute6|4755|Jessie
+/usr/bin/ndisc6|4755|Jessie
+/usr/bin/lppasswd|4755|Jessie
+/usr/lib/openssh/ssh-keysign|4755|Jessie
+/usr/lib/mc/cons.saver|2755|Jessie
+/usr/lib/pt_chown|4755|Jessie
+/usr/lib/eject/dmcrypt-get-device|4755|Jessie
+/usr/lib/policykit-1/polkit-agent-helper-1|4755|Jessie
+/usr/lib/uml/uml_net|4750|Jessie
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper|4754|Jessie
+
+#Freebsd
+/sbin/mksnap_ffs|4550|FreeBSD
+/sbin/ping|4555|FreeBSD
+/sbin/ping6|4555|FreeBSD
+/sbin/shutdown|4550|FreeBSD
+/sbin/poweroff|4550|FreeBSD
+/bin/rcp|4555|FreeBSD
+/usr/sbin/authpf|6555|FreeBSD
+/usr/sbin/authpf-noip|6555|FreeBSD
+/usr/sbin/lpc|2555|FreeBSD
+/usr/sbin/ppp|4550|FreeBSD
+/usr/sbin/pppd|4550|FreeBSD
+/usr/sbin/sliplogin|4550|FreeBSD
+/usr/sbin/timedc|4555|FreeBSD
+/usr/sbin/traceroute|4555|FreeBSD
+/usr/sbin/traceroute6|4555|FreeBSD
+/usr/sbin/trpt|2555|FreeBSD
+/usr/bin/at|4555|FreeBSD
+/usr/bin/atq|4555|FreeBSD
+/usr/bin/atrm|4555|FreeBSD
+/usr/bin/batch|4555|FreeBSD
+/usr/bin/btsockstat|2555|FreeBSD
+/usr/bin/chpass|4555|FreeBSD
+/usr/bin/chfn|4555|FreeBSD
+/usr/bin/chsh|4555|FreeBSD
+/usr/bin/ypchpass|4555|FreeBSD
+/usr/bin/ypchfn|4555|FreeBSD
+/usr/bin/ypchsh|4555|FreeBSD
+/usr/bin/fstat|2555|FreeBSD
+/usr/bin/lock|4555|FreeBSD
+/usr/bin/login|4555|FreeBSD
+/usr/bin/netstat|2555|FreeBSD
+/usr/bin/opieinfo|4555|FreeBSD
+/usr/bin/opiepasswd|4555|FreeBSD
+/usr/bin/passwd|4555|FreeBSD
+/usr/bin/yppasswd|4555|FreeBSD
+/usr/bin/rlogin|4555|FreeBSD
+/usr/bin/rsh|4555|FreeBSD
+/usr/bin/su|4555|FreeBSD
+/usr/bin/wall|2555|FreeBSD
+/usr/bin/write|2555|FreeBSD
+/usr/bin/crontab|4555|FreeBSD
+/usr/bin/lpq|6555|FreeBSD
+/usr/bin/lpr|6555|FreeBSD
+/usr/bin/lprm|6555|FreeBSD
+/usr/bin/quota|4555|FreeBSD
+/usr/libexec/sendmail/sendmail|2555|FreeBSD
+/usr/libexec/ulog-helper|4555|FreeBSD
+/usr/libexec/ssh-keysign|4555|FreeBSD
+
+#Red Hat
+/bin/ping|4755|Red Hat
+/bin/ping6|4755|Red Hat
+/bin/umount|4755|Red Hat
+/bin/mount|4755|Red Hat
+/bin/su|4755|Red Hat
+/sbin/umount.nfs|4755|Red Hat
+/sbin/mount.nfs|4755|Red Hat
+/sbin/mount.nfs4|4755|Red Hat
+/sbin/umount.nfs4|4755|Red Hat
+/sbin/unix_chkpwd|4755|Red Hat
+/sbin/shutdown|4754|Red Hat
+/sbin/pam_timestamp_check|4755|Red Hat
+/sbin/netreport|2755|Red Hat
+/usr/bin/write|2755|Red Hat
+/usr/bin/passwd|4755|Red Hat
+/usr/bin/chfn|4711|Red Hat
+/usr/bin/wall|2555|Red Hat
+/usr/bin/rcp|4755|Red Hat
+/usr/bin/rlogin|4755|Red Hat
+/usr/bin/chsh|4711|Red Hat
+/usr/bin/sudo|4111|Red Hat
+/usr/bin/locate|2711|Red Hat
+/usr/bin/gpasswd|4755|Red Hat
+/usr/bin/crontab|6755|Red Hat
+/usr/bin/newgrp|4755|Red Hat
+/usr/bin/sudoedit|4111|Red Hat
+/usr/bin/chage|4755|Red Hat
+/usr/bin/rsh|4755|Red Hat
+/usr/bin/screen|2755|Red Hat
+/usr/bin/at|4755|Red Hat
+/usr/bin/ssh-agent|2755|Red Hat
+/usr/bin/lockfile|2755|Red Hat
+/usr/bin/Xorg|4711|Red Hat
+/usr/sbin/userisdnctl|4755|Red Hat
+/usr/sbin/suexec|4510|Red Hat
+/usr/sbin/lockdev|2755|Red Hat
+/usr/sbin/sendmail.sendmail|2755|Red Hat
+/usr/sbin/mtr|4755|Red Hat
+/usr/sbin/userhelper|4711|Red Hat
+/usr/sbin/fping6|4755|Red Hat
+/usr/sbin/fping|4755|Red Hat
+/usr/sbin/usernetctl|4755|Red Hat
+/usr/sbin/postqueue|2755|Red Hat
+/usr/sbin/postdrop|2755|Red Hat
+/usr/sbin/ccreds_validate|4755|Red Hat
+/usr/libexec/openssh/ssh-keysign|4755|Red Hat
+/usr/libexec/utempter/utempter|2711|Red Hat
+/lib/dbus-1/dbus-daemon-launch-helper|4750|Red Hat
+
+/sbin/mount.nfs|4755|Ubuntu
+/sbin/unix_chkpwd|2755|Ubuntu
+/bin/ping|4755|Ubuntu
+/bin/umount|4755|Ubuntu
+/bin/mount|4755|Ubuntu
+/bin/ping6|4755|Ubuntu
+/bin/su|4755|Ubuntu
+/usr/bin/wall|2755|Ubuntu
+/usr/bin/mail-touchlock|2755|Ubuntu
+/usr/bin/X|6755|Ubuntu
+/usr/bin/crontab|2755|Ubuntu
+/usr/bin/newgrp|4755|Ubuntu
+/usr/bin/mail-lock|2755|Ubuntu
+/usr/bin/xterm with|2755|Ubuntu
+/usr/bin/bsd-write|2755|Ubuntu
+/usr/bin/dotlockfile|2755|Ubuntu
+/usr/bin/gpasswd|4755|Ubuntu
+/usr/bin/ssh-agent|2755|Ubuntu
+/usr/bin/mail-unlock|2755|Ubuntu
+/usr/bin/chfn|4755|Ubuntu
+/usr/bin/chage|2755|Ubuntu
+/usr/bin/chsh|4755|Ubuntu
+/usr/bin/expiry|2755|Ubuntu
+/usr/bin/screen|2755|Ubuntu
+/usr/bin/sudoedit|4755|Ubuntu
+/usr/bin/passwd|4755|Ubuntu
+/usr/bin/sudo|4755|Ubuntu
+/usr/lib/amanda/calcsize|4754|Ubuntu
+/usr/lib/amanda/rundump|4754|Ubuntu
+/usr/lib/amanda/runtar|4754|Ubuntu
+/usr/lib/amanda/killpgrp|4754|Ubuntu
+/usr/lib/openssh/ssh-keysign|4755|Ubuntu
+/usr/lib/pt_chown|4755|Ubuntu
+/usr/lib/eject/dmcrypt-get-device|4755|Ubuntu
+
+
+/usr/sbin/authpf|6555|OpenBSD
+/usr/sbin/authpf-noip|6555|OpenBSD
+/usr/bin/lpr|6555|OpenBSD
+/usr/bin/lprm|6555|OpenBSD
+
+#ArchLinux
+/sbin/unix_chkpwd|6755|arch
+/bin/su|4555|arch
+/bin/mount|4755|arch
+/bin/umount|4755|arch
+/bin/ping|4755|arch
+/bin/ping6|4755|arch
+/bin/traceroute|4555|arch
+/bin/traceroute6|4755|arch
+/usr/bin/chfn|4755|arch
+/usr/bin/write|2755|arch
+/usr/bin/newgrp|4755|arch
+/usr/bin/expiry|4755|arch
+/usr/bin/gpasswd|4755|arch
+/usr/bin/passwd|4755|arch
+/usr/bin/rsh|4775|arch
+/usr/bin/crontab|4755|arch
+/usr/bin/chage|4755|arch
+/usr/bin/ksu|4755|arch
+/usr/bin/rlogin|4775|arch
+/usr/bin/chsh|4755|arch
+/usr/bin/rcp|4775|arch
+/usr/lib/pt_chown|4755|arch
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper|4750|arch
+
+/sbin/unix_chkpwd|4755|Fedora
+/sbin/pam_timestamp_check|4755|Fedora
+/sbin/netreport|2755|Fedora
+/bin/su|4755|Fedora
+/bin/mount|4755|Fedora
+/bin/umount|4755|Fedora
+/usr/sbin/usernetctl|4755|Fedora
+/usr/sbin/sendmail.sendmail|2755|Fedora
+/usr/bin/chage|4755|Fedora
+/usr/bin/wall|2555|Fedora
+/usr/bin/newgrp|4755|Fedora
+/usr/bin/chsh|4711|Fedora
+/usr/bin/sudo|4111|Fedora
+/usr/bin/sudoedit|4111|Fedora
+/usr/bin/chfn|4711|Fedora
+/usr/bin/gpasswd|4755|Fedora
+/usr/bin/crontab|6755|Fedora
+/usr/bin/passwd|4755|Fedora
+/usr/bin/write|2755|Fedora
+/usr/bin/lockfile|2755|Fedora
+/usr/libexec/utempter/utempter|2711|Fedora
+/usr/libexec/openssh/ssh-keysign|2111|Fedora
+/lib/dbus-1/dbus-daemon-launch-helper|4750|Fedora

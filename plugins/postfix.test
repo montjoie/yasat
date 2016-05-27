@@ -1,0 +1,102 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+POSSIBLE_POSTFIX_CONF="/etc/postfix/main.cf /usr/local/etc/postfix/main.cf"
+POSTFIX_CONF="/etc/postfix/main.cf"
+
+for LOCATION in ${POSSIBLE_POSTFIX_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		POSTFIX_CONF="${LOCATION}"
+	fi
+done
+
+Title "Check postfix"
+
+if [ ! -e "$POSTFIX_CONF" ]
+then
+	return 1;
+fi
+
+FindValueOfEqual $POSTFIX_CONF smtp_tls_cert_file JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "TLS $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 CERT
+else
+	Display --indent 2 --text "No TLS" --result ADVICE --color ORANGE --advice POSTFIX_NO_TLS
+fi
+
+FindValueOfEqual $POSTFIX_CONF smtp_tls_key_file JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "TLS $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 PRIVKEY
+else
+	Display --indent 2 --text "No TLS" --result ADVICE --color ORANGE --advice POSTFIX_NO_TLS
+fi
+
+
+FindValueOfEqual $POSTFIX_CONF smtpd_tls_cert_file JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "TLS $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 CERT
+else
+	Display --indent 2 --text "No TLS" --result ADVICE --color ORANGE --advice POSTFIX_NO_TLS
+fi
+
+
+FindValueOfEqual $POSTFIX_CONF smtpd_tls_key_file JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "TLS $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 PRIVKEY
+else
+	Display --indent 2 --text "No TLS" --result ADVICE --color ORANGE --advice POSTFIX_NO_TLS
+fi
+
+FindValueOfEqual $POSTFIX_CONF smtpd_use_tls JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "smtpd_use_tls is obsolete, use smtpd_tls_security_level instead" --result OBSOLETE --color ORANGE --advice POSTFIX_OBSOLETE_TLS
+else
+	Display --indent 2 --text "No smtpd_use_tls" --result NOTFOUND --color GREEN
+fi
+
+FindValueOfEqual $POSTFIX_CONF smtp_use_tls JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "smtp_use_tls is obsolete, use smtp_tls_security_level instead" --result OBSOLETE --color ORANGE --advice POSTFIX_OBSOLETE_TLS
+else
+	Display --indent 2 --text "No smtp_use_tls" --result NOTFOUND --color GREEN
+fi
+
+
+# http://www.postfix.org/TLS_README.html
+#TODO relay domains
+#TODO obsolete smtpd_use_tls
+#TODO check rights of file (like virtual_uid_maps)
+#TODO check ending of smtpd_sender_restriction (must be reject_unauth_destination)
+
+#TODO smtpd_tls_protocols sslv2/v3
+
+return 0;

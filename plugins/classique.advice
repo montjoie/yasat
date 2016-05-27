@@ -1,0 +1,27 @@
+EN,UMASK_NOT027=Set umask to 027
+  With a 027 umask, new files/directory would not be viewable by other people.
+ADVICEEND
+EN,UMASK_NOT077=Set umask to 077
+  With a 077 umask, new files/directory would not be viewable by other people.
+ADVICEEND
+EN,NO_FORK_BOMB_PREVENTION=Set a hard ulimit
+  See man limits.conf for setting a hard nproc limit
+  This is important in shared environment (Universities, shared hosting, etc.)
+ADVICEEND
+EN,FILES_WITHOUT_OWNER=Correct the permissions for these files
+  The list of these files can be found in files_without_owner in the YASAT temp directory.
+ADVICEEND
+EN,FILES_WITHOUT_GROUP=Correct the group permissions for these files
+EN,LIMITS_NO_CORE_RESTRICTION=Prevent the creation of core files
+  If you don't want to debug a process crash, disable core files.
+  See <a href="http://en.wikipedia.org/wiki/Core_dump">http://en.wikipedia.org/wiki/Core_dump</a> for definition of a corefile.
+ADVICEEND
+EN,LD_SO_CONF_UNK_LIB=Check if this libray location is normal
+EN,SUID_COREDUMPABLE=Disable coredump for suid binaries
+  You can disable coredump for suid binaries with sysctl fs.suid_dumpable=0
+ADVICEEND
+EN,PASSWORD_MIN_LENGTH=Set minimal password length to at least 8 or more
+  This can be configured in /etc/login.defs
+ADVICEEND
+EN,PATH_UNKNOWN=Check if this value is supposed to be in your PATH
+ADVICEEND

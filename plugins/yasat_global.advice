@@ -1,0 +1,47 @@
+EN,GLOBAL_MULTIPLE_DECLARATIONS=Unable to discern which declaration is really used
+EN,GLOBAL_FILE_CHMOD640=This file must be chmoded 640 or 600
+  <div class="command">chmod 640 <i>filename</i></div>
+ADVICEEND
+EN,GLOBAL_FILE_CHMOD600=This file must be chmoded 600
+  <div class="command">chmod 600 <i>filename</i></div>
+ADVICEEND
+EN,GLOBAL_FILE_MUST_BE_OWNED_BY_ROOT=This file must be owned by the root user
+EN,GLOBAL_FILE_MUST_BE_GROUPED_BY_ROOT=This file must be group owned by the root user (root or wheel)
+EN,GLOBAL_FILE_OTHER_WRITABLE=Do a chmod o-w <i>name_of_the_file</i>
+EN,GLOBAL_FILE_OTHER_READABLE=Do a chmod o-rxw <i>name_of_the_file</i>
+EN,GLOBAL_INTERNAL_ERROR=Internal error, probably a bug
+EN,GLOBAL_SKIPPED_LONG_TESTS=Long tests skipped, use -f to include them
+EN,YASAT_BUG=Argg a bug, please report it.
+EN,YASAT_DENIED=You got a permission denied, are you root ?
+EN,CERTIFICATE_OUTDATED=This certificate will outdated soon.
+EN,GLOBAL_PACKAGE_INSTALLED_AT_HAND=Why have you installed this package manually ?
+  Installing software from manually is not recommended, because you have to do all 
+  patch management your self. (no security patch tracking)
+ADVICEEND
+EN,GLOBAL_PRIVATE_KEY_NOT_PASSWORD_PROTECTED=Password protect your private key
+  openssl rsa -in nopassword.key -des3 -out password.key
+  You will be prompted for a passphrase.
+  -des3 could be replaced by -aes128, -aes192, or -aes256 if you want a stronger cipher for encryption.
+ADVICEEND
+EN,GLOBAL_RSA_KEY_SIZE=RSA keys must be 2048bits at minimum
+  see <a href="http://www.openssl.org/docs/HOWTO/keys.txt">http://www.openssl.org/docs/HOWTO/keys.txt</a>
+ADVICEEND
+EN,GLOBAL_BINARY_PIE=TODO
+  See <a href="http://www.gentoo.org/proj/en/hardened/pie-ssp.xml">http://www.gentoo.org/proj/en/hardened/pie-ssp.xml</a>
+  <a href="http://www.gentoo.org/proj/en/hardened/hardened-toolchain.xml">http://www.gentoo.org/proj/en/hardened/hardened-toolchain.xml</a>
+ADVICEEND
+EN,GLOBAL_BINARY_SSP=TODO
+  See <a href="http://www.gentoo.org/proj/en/hardened/pie-ssp.xml">http://www.gentoo.org/proj/en/hardened/pie-ssp.xml</a>
+  <a href="http://www.gentoo.org/proj/en/hardened/hardened-toolchain.xml">http://www.gentoo.org/proj/en/hardened/hardened-toolchain.xml</a>
+ADVICEEND
+EN,GLOBAL_UNSECURE_SIGN_ALGO=Unsecure algorithm used
+  Certificate with MD5 signature are subject to collision attacks.
+  <a href="http://technet.microsoft.com/en-us/security/advisory/961509">http://technet.microsoft.com/en-us/security/advisory/961509</a>
+ADVICEEND
+EN,SSL_PROTOCOL_SSLV2=SSLV2 is deprecated, disable it with -SSLv2
+  SSLv2 is known to be a weak protection, disable it.
+  see <a href="http://httpd.apache.org/docs/2.2/mod/mod_ssl.html#sslprotocol">http://httpd.apache.org/docs/2.2/mod/mod_ssl.html#sslprotocol</a>
+ADVICEEND
+EN,SSL_PROTOCOL_SSLV3=SSLV3 is deprecated, disable it with -SSLv3
+  SSLv3 is known to be a weak protection, disable it. (TODO POODLE attack)
+ADVICEEND

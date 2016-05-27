@@ -1,0 +1,85 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check ntp and ntpd"
+
+#I known only ntpd and openntpd
+FOUND_NTPD=0
+ACTUAL_NTPD=''
+#/usr/sbin/ntpd can be ntpd or openntpd
+#On openBSD openntpd is ntpd:
+POSSIBLE_NTPD_BINARIES="/usr/sbin/ntpd openntpd ntpd: ntpd chronyd /usr/sbin/chronyd"
+
+for NTPD_TO_TEST in $POSSIBLE_NTPD_BINARIES
+do
+	RESULTAT="`ps aux |grep -i $NTPD_TO_TEST |grep -v grep`"
+	if [ ! -z "$RESULTAT" ]
+	then
+		Display --indent 2 --text "$NTPD_TO_TEST" --result FOUND --color GREEN
+		FOUND_NTPD=1
+		ACTUAL_NTPD="$NTPD_TO_TEST"
+	fi
+done
+
+TESTNAME='YASAT_TEST_NTPD NSAG=3.10.2.2 Test if a NTP server is running'
+if [ $FOUND_NTPD -eq 0 ] ;then
+		Display --indent 2 --text "NTP daemon" --result NOTFOUND --color RED --advice NTPD_NO_NTPD
+		Compliance --result NOK --plugin ntp --nsag 3.10.2.2
+else
+		Display --indent 2 --text "NTP daemon $ACTUAL_NTPD" --result FOUND --color GREEN
+		Compliance --result OK --plugin ntp --nsag 3.10.2.2
+fi
+
+POSSIBLE_NTPD_CONF="/etc/openntpd/ntpd.conf /etc/ntpd.conf /etc/ntp.conf"
+NTPD_CONF='/etc/ntpd.conf'
+for LOCATION in ${POSSIBLE_NTPD_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		NTPD_CONF="${LOCATION}"
+	fi
+done
+
+TESTNAME='YASAT_TEST_NTPD_AUTOSTART NSAG=3.10.2.2.1 CCEID=4376-0 Check if the service ntpd is enabled'
+Check_auto_start ntpd ntp yes 3.10.2.2.1 4376-0
+
+if [ -e "$NTPD_CONF" ] ;then
+	Display --indent 2 --text "$NTPD_CONF" --result FOUND --color BLUE
+else
+	Display --indent 2 --text "NTPD configuration file" --result NOTFOUND --color BLUE
+fi
+
+TESTNAME='YASAT_TEST_TODO_NTPD_RESTRICT NSAG=3.10.2.2.2 CCEID=4134-3 Deny All Access to ntpd by Default'
+Compliance --result NOTIMPL --plugin NTP --nsag 3.10.2.2.2 --cce 4134-3
+TESTNAME='YASAT_TEST_TODO_NTPD_REMOTE NSAG=3.10.2.2.3 CCEID=4385-1 Specify a Remote NTP Server for Time Data'
+Compliance --result NOTIMPL --plugin NTP --nsag 3.10.2.2.3 --cce 4385-1
+TESTNAME='YASAT_TEST_TODO_NTPD_CLIENT NSAG=3.10.2.2.4 Allow Legitimate NTP Clients to Access the Server'
+Compliance --result NOTIMPL --plugin NTP --nsag 3.10.2.2.4
+
+#if [ "$OS_TYPE" = 'BSD' ]
+#then
+#TODO ntpdate_enable="YES"
+#TODO ntpd_enable="YES"
+#fi
+
+#TODO restrict default ignore
+
+return 0;

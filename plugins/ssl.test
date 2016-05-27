@@ -1,0 +1,143 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#Red Hat have PKI under /etc/pki
+SSL_REP="`echo ${SCAN_ROOT}/etc/ssl | sed 's,//*,/,g'`"
+
+#TODO check value of default_bits for < 2048
+#TODO default_md
+
+Title "Check SSL"
+
+if [ ! -e "$SCAN_ROOT/$SSL_REP" ] ; then
+	if [ -e "$SCAN_ROOT/etc/pki" ] ; then
+		SSL_REP="`echo $SCAN_ROOT/etc/pki | sed 's,//*,/,g'`"
+	fi
+fi
+
+if [ -e "$SSL_REP" ];then
+	Display --indent 2 --text "$SSL_REP" --result FOUND --color BLUE
+
+	RESULTAT=`find $SSL_REP ! -user root -exec ls {} \;`
+	if [ ! -z "$RESULTAT" ] ; then
+		Display --indent 2 --text "owner of $SSL_REP " --result WARNING --color RED
+		echo "    $RESULTAT"
+	else
+		Display --indent 2 --text "owner of $SSL_REP " --result OK --color GREEN
+	fi
+
+	if [ -d $SSL_REP/private ] ; then
+		TMP_RESULT="${TEMPYASATDIR}/ssl_private.tmp"
+		check_directory_others "$SSL_REP/private" "$TMP_RESULT" 2 SSL_BAD_PRIVATE_RIGHT
+	fi
+fi
+
+POSSIBLE_JAVA_DIR=""
+KEYSTORE_PASSWORD='changeit'
+TMP_RESULT="${TEMPYASATDIR}/java.out"
+KEYSTORE='/usr/lib/jvm/sun-jdk-1.6/jre/lib/security/cacerts'
+#TODO find -L /usr/lib/jvm/
+
+TMP_LIST="${TEMPYASATDIR}/list.out"
+TMP_CERT="${TEMPYASATDIR}/tmp_cert.out"
+
+STAT_NB=0
+STAT_TOTAL=0
+
+CERT_INVALID_LIST="${TEMPYASATDIR}/clist.out"
+
+echo "" > $CERT_INVALID_LIST
+
+Check_tool_presence certutil LOCAL
+if [ $? -eq 0 ] ; then
+	Display --indent 2 --text "certutil tool" --result FOUND --color BLUE
+	my_getent
+	cut -d\: -f6 ${MY_PASSWD} | sort | uniq |
+	while read homedir
+	do
+		#TODO location of .evolution ?
+		if [ -e "$homedir/.mozilla/firefox/profiles.ini" ] ; then
+			for profile in `grep '^Path=' "${homedir}/.mozilla/firefox/profiles.ini" | sed 's/^Path=//'`
+			do
+				Display --indent 2 --text "Check certificate in ${homedir}/.mozilla/firefox/$profile" --result INFO --color BLUE
+				check_nss_certificate 4 "${homedir}/.mozilla/firefox/$profile"
+			done
+		fi
+		if [ -e "$homedir/.thunderbird/profiles.ini" ] ; then
+			for profile in `grep '^Path=' "${homedir}/.thunderbird/profiles.ini" | sed 's/^Path=//'`
+			do
+				Display --indent 2 --text "Check certificate in ${homedir}/.thunderbird/$profile" --result INFO --color BLUE
+				check_nss_certificate 4 "${homedir}/.thunderbird/$profile"
+			done
+		fi
+	done
+else
+	Display --indent 2 --text "certutil tool" --result NOTFOUND --color BLUE
+fi
+if [ -e "$TMP_CERT" ];then
+	rm $TMP_CERT
+fi
+
+if [ -e "$SSL_REP/certs" ] ; then
+	Display --indent 2 --text "Check certificate in $SSL_REP/certs" --result INFO --color BLUE
+	find $SSL_REP/certs ! -type d | grep -v README > $TMP_LIST
+	while read line
+	do
+		if [ -e "$line" -a ! -d "$line" ] ;then
+			check_certificate "$line" 2
+			if [ $RESULTAT = 'BAD' ] ; then
+				STAT_NB=$(($STAT_NB+1))
+				echo "$line" >> $CERT_INVALID_LIST
+			fi
+			STAT_TOTAL=$(($STAT_TOTAL+1))
+		fi
+	done < $TMP_LIST
+	#echo $STAT_NB $STAT_TOTAL
+fi
+STAT_NB=0
+STAT_TOTAL=0
+
+Check_tool_presence keytool LOCAL
+if [ $? -eq 0 ] ; then
+	Display --indent 2 --text "keytool tool" --result FOUND --color BLUE
+	#TODO detect other path of keystore
+	# /etc/java-6-sun/security/cacerts
+	# /usr/lib/jvm/java-6-sun:jre/lib/security/cacerts
+	if [ -e $KEYSTORE ] ; then
+		echo "$KEYSTORE_PASSWORD" | keytool -keystore $KEYSTORE -list 2> /dev/null | grep trustedCertEntry |cut -d\, -f1 > $TMP_LIST
+		#TODO check return code of keytool
+		while read calias
+		do
+#			Display --indent 2 --text "Cert $calias" --result FOUND --color BLUE
+		        echo "$KEYSTORE_PASSWORD" | keytool -keystore $KEYSTORE -exportcert -alias $calias -rfc > $TMP_RESULT 2> /dev/null
+			#TODO check return code of keytool
+			check_certificate $TMP_RESULT 4 "$calias"
+			if [ $RESULTAT = 'BAD' ] ; then
+				STAT_NB=$(($STAT_NB+1))
+			fi
+			STAT_TOTAL=$(($STAT_TOTAL+1))
+		        rm $TMP_RESULT
+		done < $TMP_LIST
+		echo $STAT_NB $STAT_TOTAL
+	fi
+fi
+
+
+return 0;

@@ -1,0 +1,127 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check package repository"
+
+#gentoo
+if [ "$LINUX_VERSION" = 'Gentoo' ];then
+	#TODO check last sync
+	#TODO webrsync
+	#TODO gpg check
+	return 0;
+fi
+
+#TODO do an option (like --parano?) for alerting of non-official repo
+
+ALL_REPO_HAVE_GPG=0
+TESTNAME='YASAT_TEST_REPO_GPGCHECK1 CCEID=14914-6 NSAG=2.1.2.3.3 Check if the package manager check gpg signatures'
+YUMCONF="$SCAN_ROOT/etc/yum.conf"
+if [ -e "$YUMCONF" ] ; then
+	FindValueOfEqual "$YUMCONF" gpgcheck JUSTTEST
+	if [ $RESULTAT = '1' ] ; then
+		Display --indent 2 --text "gpgcheck" --result ENABLED --color GREEN
+		Compliance --plugin "repo" --result 'OK' --type 'CCE' --cid '14914-6' --type 'NSAG' --cid '2.1.2.3.3'
+		ALL_REPO_HAVE_GPG=1
+	else
+		Display --indent 2 --text "gpgcheck" --result DISABLED --color RED
+		Compliance --plugin "repo" --result 'NOK' --type 'CCE' --cid '14914-6' --type 'NSAG' --cid '2.1.2.3.3'
+		add_correction "sed -i 's/gpgcheck=0/gpgcheck=1/' $YUMCONF"
+	fi
+fi
+
+YUM_REPOD="$SCAN_ROOT/etc/yum.repos.d"
+if [ -e "$YUM_REPOD" ] ; then
+	Display --indent 2 --text "yum repo" --result FOUND --color BLUE
+	ls ${YUM_REPOD}/*.repo |
+	while read repo
+	do
+		REPOFILE=`basename $repo`
+		Display --indent 4 --text "$REPOFILE" --result FOUND --color BLUE
+		while read line
+		do
+			if [ ! -z "`echo $line |grep '^gpgcheck='`" ] ; then
+				REPO_GPG=`echo $line | cut -d\= -f2`
+			fi
+			if [ ! -z "`echo $line |grep '^enabled='`" ] ; then
+				REPO_ENABLED=`echo $line | cut -d\= -f2`
+			fi
+			if [ ! -z "`echo $line |grep '^\['`" ] ; then
+				if [ ! -z "$REPONAME" ] ; then
+					if [ $REPO_GPG -eq 0 ] ; then
+						TESTNAME='YASAT_TEST_REPO_GPGCHECK2 CCEID=14813-0 NSAG=2.1.2.3.4 Check if all repo have  gpg signatures enabled'
+						Display --indent 8 --text "gpgcheck" --result DISABLED --color RED
+						ALL_REPO_HAVE_GPG=0
+					fi
+					if [ $REPO_ENABLED -eq 0 ] ; then
+						Display --indent 8 --text "status" --result DISABLED --color BLUE
+					fi
+				fi
+				REPONAME="`echo $line | cut -d\[ -f2 | cut -d\] -f1`"
+				Display --indent 6 --text "$REPONAME" --result FOUND --color BLUE
+				REPO_GPG=0
+				REPO_ENABLED=1
+			fi
+		done < $repo
+		if [ ! -z "$REPONAME" ] ; then
+			if [ $REPO_GPG -eq 0 ] ; then
+				Display --indent 8 --text "gpgcheck" --result DISABLED --color RED
+			fi
+			if [ $REPO_ENABLED -eq 0 ] ; then
+				Display --indent 8 --text "status" --result DISABLED --color BLUE
+			fi
+		fi
+	done
+	if [ $ALL_REPO_HAVE_GPG -eq 1 ] ;then
+		Compliance --plugin "repo" --result 'OK' --type 'CCE' --cid '14813-0'
+		Compliance --plugin "repo" --result 'OK' --type 'NSAG' --cid '2.1.2.3.4'
+	else
+		Compliance --plugin "repo" --result 'NOK' --type 'CCE' --cid '14813-0'
+		Compliance --plugin "repo" --result 'NOK' --type 'NSAG' --cid '2.1.2.3.4'
+	fi
+fi
+#TODO check gpgkey=
+#/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-6
+#rpm -qa gpg-pubkey*
+#rpm -qa gpg-pubkey* | xargs rpm -qi |grep Summary
+#rpm -q --queryformat "%{SUMMARY}\n" gpg-pubkey
+#gpg(CentOS-5 Key (CentOS 5 Official Signing Key) <centos-5-key@centos.org>)
+#gpg(CFEngine AS (CFEngine Community package repository) <community@cfengine.com>)
+TESTNAME='Ensure Red Hat GPG Key is Installed'
+Compliance --result 'NOTIMPL' --plugin 'repo' --nsag '2.1.2.1.1' --cce '14440-2'
+
+#APT
+APT_SOURCELISTD="$SCAN_ROOT/etc/apt/sources.list.d"
+if [ -e "$SCAN_ROOT/etc/apt/" ] ; then
+	Display --indent 2 --text "APT repo" --result FOUND --color BLUE
+	TMP_SRCLIST="$TEMPYASATDIR/src.list"
+	cat "$SCAN_ROOT/etc/apt/sources.list" > $TMP_SRCLIST
+	cat $APT_SOURCELISTD/*.list >> $TMP_SRCLIST 2> /dev/null
+	if [ -z "`grep '^deb http://security.debian.org/' $TMP_SRCLIST`" ] ; then
+		Display --indent 4 --text "security mirror" --result DISABLED --color RED
+	else
+		Display --indent 4 --text "security mirror" --result ENABLED --color GREEN
+	fi
+fi
+
+
+#BSD
+
+return 0;

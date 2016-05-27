@@ -1,0 +1,81 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check SELinux status"
+
+if [ ! -e "$SCAN_ROOT/etc/selinux" -o ! -e "$SCAN_ROOT/etc/selinux/config" ] ; then
+	TESTNAME='Check SELinux'
+	Compliance --result 'NOTTESTED' --plugin selinux --nsag 2.4.2 --nsag 2.4.2.1 --nsag 2.4.3.1 --nsag 2.4.3.2 --nsag 2.4.4 --nsag 2.4.5 --cce 3977-6 --cce 3999-0 --cce 4254-9 --cce 4148-3 --cce 3668-1 --cce 4129-3 --cce 14991-4
+	return 0;
+fi
+
+TESTNAME='YASAT_TEST_SELINUX_ENABLED NSAG=2.4.2 CCEID=3977-6 Check if SELinux is enabled'
+FindValueOfEqual $SCAN_ROOT/etc/selinux/config SELINUX JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Compliance --result NOK --plugin selinux --nsag 2.4.2 --cce '3977-6' --cce '3999-0'
+	Display --indent 2 --text "SELinux" --result DISABLED --color RED
+else
+	if [ "$RESULTAT" = 'disabled' ] ; then
+		Compliance --result NOK --plugin selinux --nsag 2.4.2 --cce '3977-6' --cce '3999-0'
+		Display --indent 2 --text "SELinux" --result DISABLED --color RED
+	else
+		Compliance --result OK --plugin selinux --nsag 2.4.2 --cce '3977-6'
+		Display --indent 2 --text "SELinux" --result ENABLED --color GREEN
+		TESTNAME='YASAT_TEST_SELINUX_ENFORCING NSAG=2.4.2 CCEID=3999-0 Check if SELinux is enforced'
+		if [ "$RESULTAT" = 'enforcing' ] ; then
+			Display --indent 2 --text "SELinux" --result ENFORCING --color GREEN
+			Compliance --result OK --plugin selinux --nsag 2.4.2 --cce '3999-0'
+		else
+			Display --indent 2 --text "SELinux" --result PERMISSIVE --color ORANGE
+			Compliance --result NOK --plugin selinux --nsag 2.4.2 --cce '3999-0'
+		fi
+	fi
+fi
+
+TESTNAME='YASAT_TEST_SELINUX_MODE NSAG=2.4.2 Check if SELinux is in targeted mode'
+FindValueOfEqual $SCAN_ROOT/etc/selinux/config SELINUXTYPE JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "SELinux Mode" --result $RESULTAT --color GREEN
+fi
+
+TESTNAME='YASAT_TEST_SELINUX_CURRENT_ENABLE NSAG=2.4.2.1 Check if SELinux is currently enabled'
+if [ "$SCAN_ROOT" = '/' ] ; then
+	Display --indent 2 --text "SELinux current mode" --result TODO --color BLUE
+	Compliance --result 'NOTIMPL' --plugin selinux --nsag 2.4.2.1
+else
+	Display --indent 2 --text "SELinux current mode" --result SKIP --color BLUE
+	Compliance --result 'NOTTESTED' --plugin selinux --nsag 2.4.2.1
+fi
+
+TESTNAME='Disable and Remove SETroubleshoot if Possible'
+Compliance --result 'NOTIMPL' --plugin selinux --nsag 2.4.3.1 --cce 4254-9 --cce 4148-3
+
+TESTNAME='Disable MCS Translation Service (mcstrans) if Possible'
+Compliance --result 'NOTIMPL' --plugin selinux --nsag 2.4.3.2 --cce 3668-1 --cce 4129-3
+
+TESTNAME='Check for Unconfined Daemons'
+Compliance --result 'NOTIMPL' --plugin selinux --nsag 2.4.4
+
+TESTNAME='Check for Unlabeled Device Files'
+Compliance --result 'NOTIMPL' --plugin selinux --nsag 2.4.5 --cce 14991-4
+
+return 0;
+

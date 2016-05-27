@@ -1,0 +1,22 @@
+EN,FIREWALL_POLICY_INPUT=Configure your firewall with a drop by default policy
+  See <a href="http://www.netfilter.org/">http://www.netfilter.org/</a> for tutorials and howto
+ADVICEEND
+EN,FIREWALL_POLICY_OUTPUT=Configure your firewall with a drop by default policy
+  See <a href="http://www.netfilter.org/">http://www.netfilter.org/</a> for tutorials and howto
+ADVICEEND
+EN,FIREWALL_POLICY_FORWARD=Unless this machine is a router, DROP forwarding
+  See <a href="http://www.netfilter.org/">http://www.netfilter.org/</a> for tutorials and howto
+ADVICEEND
+EN,FIREWALL_TEST_ERROR=Arggg I cannot test your firewall
+  Perhaps it's a bug or perhaps you have some security that prevent me to check your firewall.
+ADVICEEND
+EN,FIREWALL_IPV6_NO_FW=Install ip6tables and configure a firewall
+  IPv6 is enabled on this machine, and you don't have a firewall for it.
+ADVICEEND
+EN,FIREWALL_PF_NOT_ENABLED=Enable PF firewall
+  Enable the firewall.
+  See <a href="http://www.freebsd.org/doc/en/books/handbook/firewalls-pf.html">http://www.freebsd.org/doc/en/books/handbook/firewalls-pf.html</a>
+ADVICEEND
+EN,FIREWALL_PF_NO_RULES=TODO
+  See <a href="http://www.freebsd.org/doc/en/books/handbook/firewalls-pf.html">http://www.freebsd.org/doc/en/books/handbook/firewalls-pf.html</a>
+ADVICEEND

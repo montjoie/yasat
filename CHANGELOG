@@ -1,0 +1,122 @@
+* 15 April 2015 839
+- Fix crashes when /etc/apache2/envvars is absent. Solve debian bug #756840
+- Add more setuid to binaries database. Solve debian bug #756839
+- Add jessie to osdetection
+- Some internal rewriting of apache plugins (merging of apache_user in apache_conf)
+- The firewall plugin could badly detect default policy
+- accounting plugin now know blowfish
+- Add dovecot plugin
+- dovecot plugin test cipherlist and ssl protocols
+- dns plugin test for chrooted bind
+- dns plugin test if dynamic update are enabled
+- dns plugin test if dnssec validation is enabled
+- dns plugin now handle better file inclusion
+- And still lots of minor enhancement
+
+* 30 April 2014 755
+- Fix the "cant shift that many" bug
+- Fix the make test
+- Lots of internal rewritting
+
+* 08 July 2013 YASAT 700
+- Check_certificate check for unsecured algorithms like md5
+- Check_certificate test RSA key size
+- Check certificate used by apache
+- Fix debian bug #690636 (logwatch plugin)
+- Check cipher list of cyrus
+- Check all certificate in firefox/thunderbird certificate store
+- Check all certificate in java certificate store
+- Check all certificate in openssl
+- Handle very old find (4.1.20)
+- Begin of work for adding the scanroot options
+- New plugin for testing package repository
+- New option (--compliance) for printing compliance to the NSA Guide
+- New plugin SELinux
+- Add the testing of yum repositories
+- Check hash methods for system password
+- Check for SamHain presence
+- Test the crypt method of password protected keys
+- Handle better embedded system with less or different binaries (tput, expr, ...) but still lots of work like for OpenWrt
+- Detection of OpenWrt
+- General enhancement of all plugins
+
+* 21 May 2012 YASAT 526
+- Now test the SSLCipherSuite for apache
+- Enhancement: Check size of private key
+- bug: The availability of echo -e was badly tested
+- bug: apache_vhost tested certificate as private key instead of certificate filetype
+- bug: apache_vhost could badly analyze order by clause
+- typo some advice links was bad
+- internal: link tester for advices
+- Enhancement: ssh test
+- Enhancement: vsftpd test
+- Fix some remaining bashism
+- Check the presence of Firewire kernel modules
+- Correction of some problems with dash and some empty variables (shift: cant shift that many)
+- Renamed yasat.sh to yasat
+- Lots of spelling fix
+- Enhancement: now correctly find the user running bind9 under debian
+- Lots of small fix for future Debian Wheezy
+
+* 29 December 2011 YASAT 456
+- add chronyd to known ntpd servers
+- add CONFIG_DEBUG_SET_MODULE_RONX to kernel test
+- add logwatch test from Mr Sande
+- add password encryption test for shadow
+- add the list of command needed to correct problems reported by YASAT in yasat_correct.shell
+- More kernel checks
+- Check for remote syslog logging
+- Check for auditd daemon
+- Arch Linux detection and pacman support
+- Lots of misc enhancement 
+
+* 14 June 2011 YASAT 421
+- Skip option patch from Mr Sande
+- Misc enhancement from Mr Didier
+- Lots of known location added to apache_vhosts
+- Typo in partition.test
+- Misc enhancement
+- POSIX CAPS test for setuid binaries
+
+* 07 March 2011 YASAT 400
+- YASAT incorrectly searched umask value (thanks to Mikal Sande for report and patch)
+- YASAT now have a manpage
+- The CheckFile function will now check if the binary tested have SSP and PIE
+- Lots of advice spell checking and enhancement by Mikal Sande.
+
+* 04 January 2011 YASAT 385
+- Misc modifications of PHP, apache, LDAP, SSH, MySQL
+- Initial test of security options of firefox
+- Better BIND server test
+- Basic support of checking technology behind a vhost (like PHP for testing php_admin_values like open_basedir)
+- Test of NFS mount options and NFSD exports options
+- Basic test if private key is password protected
+
+* 02 August 2010 YASAT 351
+- Minor corrections for FreeBSD
+- yasat.sh is no longer /bin/bash (all bashisms seems fixed)
+
+* 12 July 2010 YASAT 347
+- Add CUPS tests
+- Add Squid tests
+- Add Samba tests
+- more tests for mysql, kernel, bind, cyrus
+- Minor improvement for apache, package, network, snmp tests
+- Add the check-update option to YASAT
+- Add a css to html report for better HTML report (add div command and div conf)
+- Add test for password visible in mysql_history
+- Added Debian Lenny to binaries checks
+- And still lots of minor bugs corrections and  improvements
+
+* 03 June 2010 YASAT 286
+- Correct makefile
+
+* 26 May 2010 YASAT 280
+- Better support of OpenBSD (securelevel, encrypted swap, etc...)
+- apache mod_deflate tests
+- more kernel test
+- Inetd basic support
+
+* 02 March 2010 YASAT 247
+- Better support of RedHat
+

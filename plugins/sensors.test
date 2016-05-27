@@ -1,0 +1,80 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check sensors and temperature monitoring"
+
+#TODO detect if we are inside a VM (so no need of IPMI/sensors)
+
+#TODO on many servers there are no sensors and the use of IPMI is necessary
+if [ "$OS_TYPE" = 'Linux' ] ; then
+	Check_tool_presence sensors
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "No sensors binary" --result WARNING --color RED --advice TEMP_SENSORS
+	else
+		Display --indent 2 --text "sensors binary" --result FOUND --color GREEN
+	fi
+else
+    	Display --indent 2 --text "HW temperature monitoring" --result NOTFOUND --color BLUE --advice TEMP_SENSOR_PROGRAM_UNK
+fi
+
+#check /dev/ipmi0
+FOUND_IPMI=0
+if [ -e /dev/ipmi0 ] ;then
+	Display --indent 2 --text "IPMI BMC" --result FOUND --color BLUE
+	FOUND_IPMI=1
+fi
+
+if [ $FOUND_IPMI -ge 1 -o "$SCAN_PROFILE" = 'server' ];then
+	Check_tool_presence ipmitool
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "No ipmitool binary" --result WARNING --color RED --advice IPMI_NO_BINARY
+	else
+		IPMI_TMP="${TEMPYASATDIR}/ipmi.out"
+		#when doing ipmitool lan print seek for snmp community string
+		ipmitool lan print > $IPMI_TMP
+		#TODO test ret value of ipmitool
+		IPMI_SNMP_COMM="`grep -i snmp $IPMI_TMP | cut -d\: -f2- | sed 's/[[:space:]]*//g'`"
+		if [ -z "$IPMI_SNMP_COMM" ];then
+			Display --indent 2 --text "IPMI SNMP Comunity" --result NOTFOUND --color BLUE
+		else
+			if [ "$IPMI_SNMP_COMM" = "public" ];then
+				Display --indent 2 --text "IPMI SNMP Community" --result WARNING --color RED --advice IPMI_BAD_SNMP_COMM
+			else
+				Display --indent 2 --text "IPMI SNMP Community" --result GOOD --color GREEN
+			fi
+		fi
+	fi
+fi
+
+#Usefull http://wiki.nagios-fr.org/supervision/ipmi
+
+#MCELOG this test is present here and in kernel, need to find the best place
+if [ -e /dev/mcelog ] ;then
+	Display --indent 2 --text "/dev/mcelog" --result FOUND --color BLUE
+	Check_tool_presence mcelog
+	if [ $? -eq 1 ];then
+		Display --indent 4 --text "mcelog tool" --result NOTFOUND --color RED --advice MCELOG_TOOL
+	else
+		Display --indent 4 --text "mcelog tool" --result FOUND --color GREEN
+	fi
+fi
+
+return 0;

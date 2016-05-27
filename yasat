@@ -1,0 +1,546 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+umask 027
+
+#test SHELL variable and/or /bin/sh link to "set -o nounset" if we are using bash
+#if [ "$SHELL" = '/bin/bash' ] ; then
+	#echo "Using bash $BASH_VERSINFO"
+	#set -o nounset
+#fi
+
+#TODO use http://wiki.apache.org/httpd/DistrosDefaultLayout for missing
+APACHE_CONF_REP="/etc/apache2"
+POSSIBLE_APACHE_CONFIG_LOCATION="/etc/apache2/ /etc/apache22/ /etc/apache13/ /etc/apache/ /usr/local/etc/httpd/ /usr/local/etc/apache22/ /usr/apache22/etc/ /usr/local/apache2/conf /etc/httpd/conf/ /etc/httpd/ /usr/pkg/etc/httpd/ /usr/local/etc/apache2/ /var/www/conf/"
+POSSIBLE_SNMP_DAEMON_CONFIG_LOCATION="/etc/snmpd /etc/snmp /usr/local/etc/snmpd /usr/local/etc/snmp /usr/local/etc"
+POSSIBLE_PHP_CONF_REP="/etc/php.ini /etc/php5/apache2/php.ini /private/etc/php.ini /etc/php/apache2-php5/php.ini /usr/local/etc/php.ini /usr/local/lib/php.ini /var/www/conf/php.ini /etc/php/apache2-php5.3/php.ini /etc/php/apache2-php5.4/php.ini"
+POSSIBLE_MYSQL_CONF_REP="/etc/mysql/my.cnf /usr/local/etc/mysql/my.cnf"
+POSSIBLE_APACHE_BIN="/usr/sbin/apache2 /usr/local/sbin/httpd /usr/local/sbin/apache2 /usr/sbin/httpd"
+
+DEBUG=0
+
+TEMPYASATDIR="`echo ~/.yasat/`"
+mkdir -p $TEMPYASATDIR
+HTML_OUTPUT=""
+HTML_COMPLIANCE_OUTPUT="${TEMPYASATDIR}/compliance.html"
+HTML_COMPLIANCE_OUTPUT_PREFIX="${TEMPYASATDIR}/compliance"
+> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG
+> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT
+HTML_COMPLIANCE_BODY_OUTPUT="${TEMPYASATDIR}/compliance_body.html"
+> $HTML_COMPLIANCE_BODY_OUTPUT
+ERROR_OUTPUT_FILE="${TEMPYASATDIR}/yasat.err"
+REPORT_OUTPUT="${TEMPYASATDIR}/yasat.report"
+CORRECT_FILE="${TEMPYASATDIR}/yasat_correct.shell"
+ADVICELANG="EN"
+PLUGINS_REP="./plugins"
+SCANTYPE=""
+NOPAUSE='no'
+ONEPLUGIN=''
+SKIPPED_TESTS=''
+#by default common is on the same place that yasat
+#but it can be copied to $DESTDIR/$PREFIX/share/yasat/common
+YASAT_ROOT='.'
+SCAN_ROOT='/'
+HIDESR=0
+COL_WIDTH=80
+#info = 0 green =1 warning,orange=2 red,error =3
+PRINT_LEVEL=0
+YASAT_VERSION=839
+YASAT_STAT_RED=0
+YASAT_STAT_ORANGE=0
+YASAT_STAT_GREEN=0
+YASAT_COMP_GREEN=0
+YASAT_COMP_ORANGE=0
+YASAT_COMP_RED=0
+DO_COMPLIANCE='none'
+SCAN_PROFILE='server' #or desktop
+TMP_FILE_CREATED=""
+
+if [ -e '/etc/yasat/yasat.conf' ] ;then
+	. /etc/yasat/yasat.conf
+	echo 'Found /etc/yasat/yasat.conf'
+fi
+if [ -e '/usr/local/etc/yasat/yasat.conf' ] ;then
+	. /usr/local/etc/yasat/yasat.conf
+	echo 'Found /usr/local/etc/yasat/yasat.conf'
+fi
+if [ -e "$TEMPYASATDIR/yasat.conf" ] ;then
+	. $TEMPYASATDIR/yasat.conf
+	echo "Found $TEMPYASATDIR/yasat.conf"
+fi
+
+COMPLIANCE_OUTPUT="$TEMPYASATDIR/compliance"
+> $COMPLIANCE_OUTPUT
+
+if [ -e "$REPORT_OUTPUT" ] ;then
+	rm $REPORT_OUTPUT
+fi
+if [ -e "$CORRECT_FILE" ] ;then
+	rm $CORRECT_FILE
+fi
+if [ ! -e "${YASAT_ROOT}/common" -a -e '/usr/share/yasat/common' ];then
+	YASAT_ROOT='/usr/share/yasat/'
+	PLUGINS_REP="${YASAT_ROOT}/plugins"
+fi
+if [ ! -e "${YASAT_ROOT}/common" ];then
+	echo "ERROR: Cannot find the common file" >&2
+	exit 1
+fi
+. ${YASAT_ROOT}/common
+if [ $# -eq 0 ] ;then
+	print_help
+	exit 0;
+fi
+
+trap armageddon INT
+
+while [ $# -ge 1 ]; do
+	case $1 in
+	--help)
+		shift
+		print_help
+		exit 0;
+	;;
+	-h)
+		shift
+		print_help
+		exit 0;
+	;;
+	--debug)
+		shift
+		DEBUG=1
+	;;
+	-d)
+		shift
+		DEBUG=1
+	;;
+	--full-scan)
+		shift
+		SCANTYPE='FULL'
+		echo "Enabling FULL SCAN"
+	;;
+	-f)
+		shift
+		SCANTYPE='FULL'
+		echo "Enabling FULL SCAN"
+	;;
+	--nopause)
+		shift
+		NOPAUSE='yes'
+	;;
+	-a)
+		shift
+		NOPAUSE='yes'
+	;;
+	-s)
+		shift
+	;;
+	--standard)
+		shift
+	;;
+	-l)
+		shift
+		if [ -d "$PLUGINS_REP" ]
+		then
+			ls $PLUGINS_REP/ | grep '.test'
+			exit 0;
+		fi
+	;;
+	--list)
+		shift
+		if [ -d "$PLUGINS_REP" ]
+		then
+			ls $PLUGINS_REP/ | grep '.test'
+			exit 0;
+		fi
+	;;
+	--desc)
+		shift
+		if [ -z "$1" ] ; then
+			Display_error "Missing parameter for --desc"
+			print_help
+			exit 1;
+		fi
+			print_desc "$1"
+			exit 0
+		shift
+	;;
+	--skip)
+		shift
+		for TEST in `echo $1 | sed 's/,/\n/g'`;
+		do
+			if [ -f "${PLUGINS_REP}/${TEST}.test" ]; then
+				SKIPPED_TESTS="${SKIPPED_TESTS}${TEST}"
+			else
+				echo "Invalid test $TEST"
+				echo "see $0 --list for all tests"
+				exit 1
+			fi
+		done
+		shift
+	;;
+	--plugin)
+		shift
+		if [ -z "$1" ] ;then
+			echo "Missing parameter for --plugin"
+			print_help
+			exit 1;
+		fi
+		ONEPLUGIN="$1"
+		if [ ! -e "$1" ] ; then
+			if [ ! -e "$PLUGINS_REP/$1" ] ; then
+				if [ ! -e "$PLUGINS_REP/$1.test" ] ; then
+					echo "$1 do not exists"
+					exit 1;
+				else
+					ONEPLUGIN="$PLUGINS_REP/$1.test"
+				fi
+			else
+				ONEPLUGIN="$PLUGINS_REP/$1"
+			fi
+		fi
+		shift
+	;;
+	-1)
+		shift
+		if [ -z "$1" ] ; then
+			echo "Missing parameter for --plugin"
+			print_help
+			exit 1;
+		fi
+		ONEPLUGIN="$1"
+		if [ ! -e "$1" ] ; then
+			if [ ! -e "$PLUGINS_REP/$1" ] ; then
+				if [ ! -e "$PLUGINS_REP/$1.test" ] ; then
+					echo "plugin $1 do not exists"
+					exit 1;
+				else
+					ONEPLUGIN="$PLUGINS_REP/$1.test"
+				fi
+			else
+				ONEPLUGIN="$PLUGINS_REP/$1"
+			fi
+		fi
+		shift
+	;;
+	--Plugin)
+		shift
+		if [ -z "$1" ] ;then
+			echo "Missing parameter for --Plugin"
+			print_help
+			exit 1;
+		fi	
+		ONEPLUGIN="$PLUGINS_REP/$1"
+		if [ ! -e "$ONEPLUGIN" ] ;then
+			echo "$1 do not exists"
+			exit 1;
+		fi
+		shift
+	;;
+	-p)
+		shift
+		if [ -z "$1" ] ;then
+			echo "Missing parameter for --Plugin"
+			print_help
+			exit 1;
+		fi	
+		ONEPLUGIN="$PLUGINS_REP/$1"
+		if [ ! -e "$ONEPLUGIN" ] ;then
+			echo "$1 do not exists"
+			exit 1;
+		fi
+		shift
+	;;
+	-H)
+		shift
+		HTML_OUTPUT="`echo ~/.yasat/yasat.html`"
+		echo "Enabling output in $HTML_OUTPUT"
+	;;
+	--html)
+		shift
+		HTML_OUTPUT="`echo ~/.yasat/yasat.html`"
+		echo "Enabling output in $HTML_OUTPUT"
+	;;
+	--html-output )
+		shift
+		if [ "$1x" = "x" ]
+		then
+			echo "Missing parameter for --html-output"
+			print_help
+			exit 1;
+		fi
+		HTML_OUTPUT="$1"
+		shift
+		echo "HTML output is $HTML_OUTPUT"
+		echo "" > "$HTML_OUTPUT"
+	;;
+	--advice-lang )
+		shift
+		if [ "$1x" = "x" ]
+		then
+			echo "Missing parameter for --advice-lang"
+			print_help
+			exit 1;
+		fi
+		ADVICELANG=$1
+		shift
+		echo "ADVICELANG is $ADVICELANG"
+	;;
+	--print-level)
+		shift
+		if [ -z "$1" ]
+		then
+			echo 'Missing parameter for --print-level'
+			print_help
+			exit 1;
+		fi
+		if [ $1 -ge 4 -o $1 -lt 0 ]
+		then
+			echo 'The level must be between 0 and 3'
+			exit 1
+		fi
+		PRINT_LEVEL=$1
+		shift
+	;;
+	-P)
+		shift
+		if [ -z "$1" ] ;then
+			echo 'Missing parameter for --plugins-dir'
+			print_help
+			exit 1;
+		fi
+		if [ ! -e "$1" ] ; then
+			echo "$1 do not exist"
+			exit 1
+		fi
+		PLUGINS_REP="$1"
+		shift
+		echo "PLUGINS_REP is now $PLUGINS_REP"
+	;;
+	--plugins-dir)
+		shift
+		if [ -z "$1" ] ;then
+			echo 'Missing parameter for --plugins-dir'
+			print_help
+			exit 1;
+		fi
+		if [ ! -e "$1" ] ; then
+			echo "$1 do not exist"
+			exit 1
+		fi
+		PLUGINS_REP="$1"
+		shift
+		echo "PLUGINS_REP is now $PLUGINS_REP"
+	;;
+	--check-update)
+		shift
+		Check_for_update
+	;;
+	--send-support)
+		shift
+		send_support
+	;;
+	--listtest)
+		shift
+		list_all_yasat_test
+		exit 0
+	;;
+	--desktop)
+		SCAN_PROFILE="desktop"
+		shift
+	;;
+	--server)
+		SCAN_PROFILE="server"
+		shift
+	;;
+	--hidesr)
+		#hidden option for the moment:)
+		shift
+		HIDESR=1
+	;;
+	--scanroot)
+		shift
+		if [ -z "$1" ] ;then
+			echo "Missing parameter for --scanroot"
+			exit 1
+		fi
+		SCAN_ROOT="$1"
+		shift
+		if [ ! -e "$SCAN_ROOT" ] ; then
+			echo "$SCAN_ROOT does not exists"
+			exit 1
+		fi
+		#TODO SCAN_ROOT must always end with a /
+	;;
+	-r)
+		shift
+		if [ -z "$1" ] ;then
+			echo "Missing parameter for --scanroot"
+			exit 1
+		fi
+		SCAN_ROOT="$1"
+		shift
+		if [ ! -e "$SCAN_ROOT" ] ; then
+			echo "$SCAN_ROOT does not exists"
+			exit 1
+		fi
+	;;
+	--compliance)
+		shift
+		if [ -z "$1" ] ;then
+			echo "Missing parameter for --compliance"
+			exit 1
+		fi
+		KNOW_ARG=0
+		if [ "$1" = 'all' ];then
+			KNOW_ARG=1
+			DO_COMPLIANCE='cce nsa'
+		fi
+		if [ "$1" = 'cce' ];then
+			KNOW_ARG=1
+			DO_COMPLIANCE='cce'
+		fi
+		if [ "$1" = 'nsa' ];then
+			KNOW_ARG=1
+			DO_COMPLIANCE='nsa'
+		fi
+		if [ "$KNOW_ARG" -eq 0 ] ;then
+			echo "Unknown argument $1"
+			exit 1
+		fi
+		shift
+	;;
+	-V)
+		echo "yasat $YASAT_VERSION"
+		exit 0
+	;;
+	--version)
+		echo "yasat $YASAT_VERSION"
+		exit 0
+	;;
+	*)
+		echo "unrecognized option $1"
+		print_help
+		exit 1
+	;;
+	esac
+done
+
+#TODO test wring to ERROR_OUTPUT_FILE
+
+Display --indent 2 --text "Using YASAT version" --result $YASAT_VERSION --color GREEN
+
+if [ "`id -u`" = "0" ] ;then
+	Display --indent 2 --text "Using YASAT with UID=0" --result OK --color GREEN
+else
+	Display --indent 2 --text "Using YASAT with UID!=0 Some test may fail" --result WARNING --color ORANGE
+	if [ $NOPAUSE = "no" ]
+	then
+		echo ""
+		echo "Press ENTER to continue Ctrl/C to quit"
+		read void
+	fi
+fi
+
+SELINUX_CONTEXT="`id -Z 2> /dev/null`"
+if [ $? -ne 0 ]
+then
+	Display --indent 2 --text "Using YASAT without SELinux" --result OK --color BLUE
+else
+	Display --indent 2 --text "Using YASAT with SELinux context=$SELINUX_CONTEXT" --result OK --color BLUE
+fi
+
+. ${YASAT_ROOT}/osdetection
+
+Display --indent 2 --text "Detecting OS... " --result DONE --color GREEN
+
+echo "    ${LINUX_VERSION} ${OS} $OS_FULLNAME"
+
+#tput is not available on embedded devices
+Check_tool_presence tput
+if [ "$RESULTAT" = 'notfound' ];then
+	COL_WIDTH=79
+else
+	COL_WIDTH="`tput cols`"
+	if [ ! -z "$COL_WIDTH" ] ;then
+		Display --indent 2 --text "Detecting TERM width... " --result "$COL_WIDTH" --color GREEN
+	else
+		COL_WIDTH=79
+		Display --indent 2 --text "Detecting TERM width... " --result "ERROR" --color RED
+		Debug "TODO"
+	fi
+fi
+
+print_color_chart
+if [ ! -z "$SKIPPED_TESTS" ]; then
+	echo "Skipped tests"
+	for TEST in `echo $SKIPPED_TESTS`; do
+		echo "  $TEST"
+	done
+	echo ""
+fi
+
+if [ ! -z $REPORT_OUTPUT ]
+then
+	echo ""
+	echo "At the end of the audit, the report will be available at $REPORT_OUTPUT"
+	echo ""
+fi
+
+if [ ! -z "$HTML_OUTPUT" ] ;then
+	echo '<html><head><title>YASAT report</title><link href="./yasat.css" rel="stylesheet" type="text/css"></head><body>'> "${HTML_OUTPUT}"
+	echo "<i>Generated by YASAT $YASAT_VERSION </i>" >> "${HTML_OUTPUT}"
+	cp "${YASAT_ROOT}/yasat.css" "`dirname ${HTML_OUTPUT}`"
+fi
+
+if [ -d "$PLUGINS_REP" ] ; then
+	LISTE_ADVICE="`ls $PLUGINS_REP/*.advice`"
+	cat $LISTE_ADVICE | grep $ADVICELANG > ${YASAT_ROOT}/yasat.advices
+
+	if [ -z "$ONEPLUGIN" ] ; then
+		Debug "Analyse de $PLUGINS_REP"
+		if [ -z "$SKIPPED_TESTS" ] ; then
+			LISTE_PLUGINS=`ls $PLUGINS_REP/*test`
+		else
+			SKIPPED_TESTS=`echo $SKIPPED_TESTS | tr " " "|"`
+			LISTE_PLUGINS=`ls $PLUGINS_REP/*test | grep -Ev $SKIPPED_TESTS`
+		fi
+		for A_PLUGIN in $LISTE_PLUGINS
+		do
+			. $A_PLUGIN
+#			Title "run $0 --plugin $A_PLUGIN to replay this test"
+			Debug "End of $A_PLUGIN"
+			if [ "$NOPAUSE" = 'no' ] ; then
+				echo ""
+				echo "Press ENTER to continue Ctrl/C to quit"
+				read void
+			fi
+		done
+	else
+		. $ONEPLUGIN
+	fi
+fi
+
+Compliance_result
+
+if [ ! -z "$HTML_OUTPUT" ]
+then
+	echo '</html>' >> "$HTML_OUTPUT"
+fi

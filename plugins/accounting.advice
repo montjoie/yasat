@@ -1,0 +1,33 @@
+EN,ACCOUNTING_NOT_ENABLED=Enable the accounting with accton
+  See <a href="https://savannah.gnu.org/projects/acct/">https://savannah.gnu.org/projects/acct/</a>
+ADVICEEND
+EN,ACCOUNTING_BSD_NOT_ENABLED=Enable the accounting in rc.conf with accounting_enable=YES
+  See <a href="http://www.freebsd.org/doc/en/books/handbook/security-accounting.html">http://www.freebsd.org/doc/en/books/handbook/security-accounting.html</a>
+ADVICEEND
+EN,ACCOUNTING_MISSING_FILE=This file is missing, touch it
+  /var/log/wtmp, /var/log/btmp, /var/log/faillog, /var/log/lastlog are used for recording logins.
+  It is not normal that it doesn't exists
+ADVICEEND
+EN,ACCOUNTING_BTMP=Create this file for the lastb command
+  Lastb is the same as last command, except that by default it shows a log of the file /var/log/btmp, which contains all the bad login attempts.
+  See man lastb for more informations.
+  <div class="command">touch /var/log/btmp && chmod 600 /var/log/btmp</div>
+  The permissions can be different for some Operating systems (Debian Etch use 660).
+ADVICEEND
+EN,ACCOUNTING_FAILLOG=Create this file for the faillog command
+  faillog displays the contents of the failure log database (/var/log/faillog). It can also set the failure counters and limits
+  See man faillog for more informations
+  <div class="command">touch /var/log/faillog && chmod 600 /var/log/faillog</div>
+ADVICEEND
+EN,INSTALL_AUDITD=Install the auditd daemon
+  auditd is a usefull daemon.
+  TODO add more infos
+ADVICEEND
+EN,DO_NOT_USE_DES=DES is considered broken
+  DES should be considered cryptographically broken and so not to be used for hashing password.
+  Use a better algorithm like sha256/sha512.
+ADVICEEND
+EN,DO_NOT_USE_MD5=MD5 is considered broken
+  MD5 should be considered cryptographically broken and so not to be used for hashing password.
+  Use a better algorithm like sha256/sha512.
+ADVICEEND

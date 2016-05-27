@@ -1,0 +1,7 @@
+EN,NTPD_NO_NTPD=Install an NTP daemon
+  You have two choices
+  NTP <a href="http://www.ntp.org/">http://www.ntp.org/</a>
+  OpenNTPD <a href="http://www.openntpd.org/">http://www.openntpd.org/</a>
+  If you have an NTP daemon installed but yasat doesn't find it, please let me know.
+ADVICEEND
+

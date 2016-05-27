@@ -1,0 +1,19 @@
+EN,SYSTEM_LOG_TWO_LOGGERS=Strange, you have two system loggers
+  Certainly a yasat bug...
+ADVICEEND
+EN,SYSTEM_LOG_NO_LOGGERS=Configure and run a system logger
+  Install a system logger like syslog-ng, or any other you might prefer.
+  If you have already a system logger runnning and yasat doesn't report it, please let me know.
+ADVICEEND
+EN,SYSLOGNG_NOLOGHOST=Set up a remote logging server
+  Centralize your logs in a dedicated server
+  TODO
+ADVICEEND
+EN,SYSLOG_NOLOGHOST=Set up a remote logging server
+  Centralize your logs in a dedicated server
+  TODO
+ADVICEEND
+EN,RSYSLOG_NOLOGHOST=Set up a remote logging server
+  Centralize your logs in a dedicated server
+  TODO
+ADVICEEND

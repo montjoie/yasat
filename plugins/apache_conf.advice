@@ -1,0 +1,74 @@
+EN,APACHE_CONF_TIMEOUT=configure timeout below 20s
+  Your timeout is too high, for protection against DoS set it low.
+  20s is good enough.
+  <div class="conf">Timeout 20</div>
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#timeout">http://httpd.apache.org/docs/2.2/mod/core.html#timeout</a>
+ADVICEEND
+EN,APACHE_CONF_HOSTNAMELOOKUPS=Set HostNameLookup to off
+  It's better for performance and network traffic.
+  <div class="conf">HostNameLookup off</div>
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#hostnamelookups">http://httpd.apache.org/docs/2.2/mod/core.html#hostnamelookups</a>
+ADVICEEND
+EN,APACHE_CONF_SERVERSIGNATURE=Hide apache version by setting serversignature off
+  Hide your apache version
+  <div class="conf">ServerSignature off</div>
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#serversignature">http://httpd.apache.org/docs/2.2/mod/core.html#serversignature</a>
+ADVICEEND
+EN,APACHE_CONF_SERVERTOKENS=Hide apache version by setting servertokens to prod
+  Hide your apache version
+  <div class="conf">servertokens prod</div>
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#servertokens">http://httpd.apache.org/docs/2.2/mod/core.html#servertokens</a>
+ADVICEEND
+EN,APACHE_CONF_PROXYREQUESTS=You are acting as an open-proxy, check your configuration for be sure to enable only local users
+  See <a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy.html">http://httpd.apache.org/docs/2.2/mod/mod_proxy.html</a>
+ADVICEEND
+EN,APACHE_CONF_TRACEENABLE=Disable the TRACE debugging function.
+  See <a href="http://httpd.apache.org/docs/2.0/mod/core.html#traceenable">http://httpd.apache.org/docs/2.0/mod/core.html#traceenable</a>
+  <a href="http://www.ducea.com/2007/10/22/apache-tips-disable-the-http-trace-method/">http://www.ducea.com/2007/10/22/apache-tips-disable-the-http-trace-method/</a>
+ADVICEEND
+EN,APACHE_CONF_LIMITREQUESTBODY=Set the limitrequestbody directive
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestbody">http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestbody</a>
+ADVICEEND
+EN,APACHE_CONF_LIMITREQUESTFIELDS=Set the LimitRequestFields directive
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#LimitRequestFields">http://httpd.apache.org/docs/2.2/mod/core.html#LimitRequestFields</a>
+ADVICEEND
+EN,APACHE_CONF_LIMITREQUESTFIELDSIZE=Set the LimitRequestFieldsize directive
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfieldsize">http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfieldsize</a>
+ADVICEEND
+EN,APACHE_CONF_LIMITREQUESTLINE=Set the limitrequestline directive
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestline">http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestline</a>
+ADVICEEND
+EN,APACHE_ERRORDOC_CUSTOM=Use a custom ErrorDocument
+  If possible, make and use a custom ErrorDocument branded according to your website.
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#errordocument">http://httpd.apache.org/docs/2.2/mod/core.html#errordocument</a>
+ADVICEEND
+EN,APACHE_CONF_KEEPALIVES=Enable keepalive
+  <div class="conf">KeepAlive on</div>
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalive">http://httpd.apache.org/docs/2.2/mod/core.html#keepalive</a>
+ADVICEEND
+EN,APACHE_CONF_KEEPALIVE_TIMEOUT=Decrease the value of keepalivetimeout
+  According toe the official documentation <i>Setting KeepAliveTimeout to a high value may cause performance problems in heavily loaded servers. The higher the timeout, the more server processes will be kept occupied waiting on connections with idle clients.</i>
+  <div class="conf">KeepAliveTimeout 5</div>
+  See <a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout">http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout</a>
+ADVICEEND
+EN,APACHE_USER_OWNER_CONF_REP=Apache configuration files must be owned by root
+  Apache doesn't have to own its configuration files.
+  <div class="command">chown -R root <i>apache_conf_root</i></div>
+ADVICEEND
+EN,APACHE_USER_GROUP_CONF_REP=Apache configuration files must be group owned by root
+  Apache reads its config files when root (before setuid to apache/www-data user)
+  <div class="command">chgrp -R root <i>apache_conf_root</i></div>
+ADVICEEND
+EN,APACHE_USER_OTHERS_CONF_REP=Apache configuration files must not have others access
+  Others don't need to read apache configuration files
+  <div class="command">chmod -R o-rwx <i>apache_conf_root</i></div>
+ADVICEEND
+EN,APACHE_USER_BAD_SHELL=apache must not have a shell
+  Set a non-shell setting to apache user like /bin/false or /bin/nologin
+  <div class="command">usermod -s /bin/false www-data</div>
+ADVICEEND
+EN,APACHE_USER_PASSWD_IN_CONF_REP=It's preferred to put htpasswd files in a directory group owned by apache that is not a docroot
+  Apache reads password files after "setuiding" to apache/www-data
+  Example:
+  Put your htpasswd files in /var/www/.htpasswd and docroot in /var/www/servername
+ADVICEEND

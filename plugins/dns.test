@@ -1,0 +1,279 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+POSSIBLE_BIND_CONF="/etc/bind/named.conf /etc/named.conf /etc/named/named.conf /var/named/etc/named.conf"
+#full path to bind conf
+BIND_CONF=''
+#directory where bind is chrooted (must end with a /)
+BIND_CHROOT_DIR=''
+#full path to filtered bind conf
+BIND_CONF_LOCATION_TO_TEST=''
+NAMED_USER='named' #default, under debian it is bind 
+NAMED_GROUP='named'
+
+# TODO gentoo: find chroot in /etc/conf.d/named
+
+Title "Check dns and bind conf"
+
+
+# we check first all way to find if bind is in a chroot
+
+if [ -e /etc/default/bind9 ] ; then
+	NAMED_USER=`grep 'OPTIONS=' /etc/default/bind9 | cut -d\" -f2 |sed 's,.*-u,,g' | cut -d\  -f2`
+	NAMED_GROUP_ID="`grep ^${NAMED_USER}: /etc/passwd|cut -d\: -f4`"
+	if [ ! -z $NAMED_GROUP_ID ];then
+		NAMED_GROUP="`grep :${NAMED_GROUP_ID}: /etc/group | cut -d\: -f1`"
+	fi
+fi
+
+TESTNAME='YASAT_TEST_BIND_PROCESS Check if bind is running'
+find_process '/usr/.*bin/named' nonroot
+ret=$?
+if [ $ret -ge 1 ];then
+	if [ $ret -ge 2 ];then
+		Display --indent 2 --text "Number of bind running is high" --result "$ret" --color ORANGE
+	else
+		NAMED_USER="$FIND_PROCESS_USER"
+	fi
+TESTNAME='YASAT_TEST_BIND_CHROOT NSAG=3.14.3.2 CCEID=3985-9,4487-5,4258-0 Run DNS Software in a chroot Jail'
+	detect_chroot
+	ret=$?
+	if [ $ret -eq 0 ];then
+		Display --indent 2 --text "Bind is not chrooted" --result INFO --color BLUE
+		Compliance --result KO --plugin dns --nsag 3.14.3.2 --cce 3985-9 --cce 4487-5 --cce 4258-0
+	else
+		if [ $ret -eq 2 ];then
+			Compliance --result NOTTESTED --plugin dns --nsag 3.14.3.2 --cce 3985-9 --cce 4487-5 --cce 4258-0
+		else
+			Display --indent 2 --text "Bind is chrooted in $BIND_CHROOT_DIR" --result GOOD --color GREEN
+			Compliance --result OK --plugin dns --nsag 3.14.3.2 --cce 3985-9 --cce 4487-5 --cce 4258-0
+		fi
+	fi
+fi
+
+for LOCATION in ${POSSIBLE_BIND_CONF}
+do
+	if [ -e "${SCAN_ROOT}${BIND_CHROOT_DIR}${LOCATION}" ] ;then
+		BIND_CONF="${SCAN_ROOT}${BIND_CHROOT_DIR}${LOCATION}"
+		BIND_CONF_DIR="`dirname $BIND_CONF`"
+	fi
+done
+
+if [ -z "$BIND_CONF" ];then
+	TESTNAME='YASAT_TEST_BIND_DISABLE NSAG=3.14.1 CCEID=3578-2,4219-2 Disable DNS Server if Possible'
+	Compliance --result OK --plugin dns --nsag 3.14.1 --cce 3578-2 --cce 4219-2
+	return 0
+fi
+
+prepare_bind_conf "$BIND_CONF" "$BIND_CONF_DIR"
+if [ $? -ne 0 ];then
+	return 1
+fi
+
+BIND_CONF_LOCATION_TO_TEST="${TEMPYASATDIR}/named.conf"
+if [ ! -e "$BIND_CONF_LOCATION_TO_TEST" ] ;then
+	echo "ERROR: no $BIND_CONF_LOCATION_TO_TEST"
+	return 1;
+fi
+
+
+TESTNAME='YASAT_TEST_BIND_DISABLE NSAG=3.14.1 CCEID=3578-2,4219-2 Disable DNS Server if Possible'
+if [ "$SCAN_PROFILE" = 'desktop' ];then
+	Display --indent 2 --text "Do you need a DNS server" --result INFO --color ORANGE
+	Compliance --result KO --plugin dns --nsag 3.14.1 --cce 3578-2 --cce 4219-2
+else
+	Compliance --result NOTTESTED --plugin dns --nsag 3.14.1 --cce 3578-2 --cce 4219-2
+fi
+
+TESTNAME='YASAT_TEST_BIND_FIREWALL NSAG=3.14.3.3 Configure Firewalls to Protect the DNS Server'
+Compliance --result NOTIMPL --plugin dns --nsag 3.14.3.3
+TESTNAME='YASAT_TEST_BIND_SEPARATEDNS NSAG=3.14.4.1 Run Separate DNS Servers for External and Internal Queries if Possible'
+Compliance --result NOTIMPL --plugin dns --nsag 3.14.4.1
+TESTNAME='YASAT_TEST_BIND_TODO1 NSAG=3.14.4.2 Use Views to Partition External and Internal Information if Necessary'
+Compliance --result NOTIMPL --plugin dns --nsag 3.14.4.2
+TESTNAME='YASAT_TEST_BIND_DISABLE_ZONE_TRANSFERS NSAG=3.14.4.3 Disable Zone Transfers from the Nameserver if Possible'
+Compliance --result NOTIMPL --plugin dns --nsag 3.14.4.3
+TESTNAME='YASAT_TEST_BIND_AUTH_TRANSFERS NSAG=3.14.4.4 Authenticate Zone Transfers if Necessary'
+Compliance --result NOTIMPL --plugin dns --nsag 3.14.4.4
+
+
+TESTNAME='YASAT_TEST_BIND_DISABLE_DYNAMIC_UPDATES NSAG=3.14.4.5 CCEID=4399-2 Disable Dynamic Updates if Possible'
+#all allow-update must be set to none
+in_allow_update=0
+bind_dynamic_update=0
+while read bind_line
+do
+	if [ $in_allow_update -eq 1 ];then
+		echo $bind_line | grep -v 'none' | grep -q '[a-z0-9A-Z]'
+		if [ $? -eq 0 ];then
+			#echo "ALLOW_UPDATE $bind_line"
+			bind_dynamic_update=1
+		fi
+	fi
+	if [ "$bind_line" = 'allow-update' ];then
+		#echo "Found allow-update"
+		in_allow_update=1
+	fi
+	echo $bind_line | grep -q '}'
+	if [ $? -eq 0 ];then
+		in_allow_update=0
+	fi
+done < $BIND_CONF_LOCATION_TO_TEST
+if [ $bind_dynamic_update -eq 0 ];then
+	Display --indent 2 --text "Dynamic Updates are disabled" --result GOOD --color GREEN
+	Compliance --result OK --plugin dns --nsag 3.14.4.5 --cce 4399-2
+else
+	Display --indent 2 --text "Dynamic Updates are enabled" --result INFO --color BLUE
+	Compliance --result KO --plugin dns --nsag 3.14.4.5 --cce 4399-2
+fi
+
+TESTNAME='YASAT_TEST_BIND_VERSION Check that bind hide its version'
+FindValueOf $BIND_CONF_LOCATION_TO_TEST version JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "Hiding version" --result NOTFOUND --color RED --advice BIND_HIDE_VERSION --comp KO dns
+else
+	is_equal "$RESULTAT" 'none' -i -f '[[:space:]]*;' -f '"'
+	if [ $? -eq 0  ];then
+		Display --indent 2 --text "Hiding version (set to none)" --result FOUND --color GREEN --comp OK dns
+	else
+		Display --indent 2 --text "Hiding version" --result "$RESULTAT" --color ORANGE --advice BIND_HIDE_VERSION --comp KO dns
+	fi
+fi
+
+TESTNAME='YASAT_TEST_BIND_HOSTNAME Check that bind hide its hostname'
+FindValueOf $BIND_CONF_LOCATION_TO_TEST hostname JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+        Display --indent 2 --text "Hiding hostname" --result NOTFOUND --color RED --advice BIND_HIDE_HOSTNAME --comp KO dns
+else
+	is_equal "$RESULTAT" 'none' -i -f '[[:space:]]*;' -f '"'
+        if [ $? -eq 0 ];then
+                Display --indent 2 --text "Hiding hostname (set to none)" --result FOUND --color GREEN --comp OK dns
+        else
+                Display --indent 2 --text "Hiding hostname" --result "$RESULTAT" --color ORANGE --advice BIND_HIDE_HOSTNAME --comp KO dns
+        fi
+fi
+
+TESTNAME='YASAT_TEST_BIND_SERVERID Check that server-id is disabled'
+#server-id is none by default according to docs
+FindValueOf $BIND_CONF_LOCATION_TO_TEST server-id JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+        Display --indent 2 --text "Hiding server-id" --result NOTFOUND --color GREEN --comp OK dns
+else
+	is_equal "$RESULTAT" 'none' -i -f '[[:space:]]*;'
+        if [ $? -eq 0 ];then
+                Display --indent 2 --text "Hiding server-id" --result FOUND --color GREEN --comp OK dns
+        else
+                Display --indent 2 --text "Hiding server-id" --result "$RESULTAT" --color ORANGE --advice BIND_HIDE_SERVERID --comp KO dns
+        fi
+fi
+
+#max-cache-size xxx;
+FindValueOf $BIND_CONF_LOCATION_TO_TEST max-cache-size JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+        Display --indent 2 --text "Set max-cache-size" --result NOTFOUND --color RED --advice BIND_MAX_CACHE_SIZE
+else
+        Display --indent 2 --text "max-cache-size set at" --result "$RESULTAT" --color GREEN
+fi
+
+TESTNAME='YASAT_TEST_BIND_RECURSIVE_QUERY Check if the bind server allow recursive query'
+ALLOW_PUBLIC_RECURSION=1
+FindValueOf $BIND_CONF_LOCATION_TO_TEST recursion JUSTTEST
+if [ "$RESULTAT" = "no" ];then
+	Display --indent 2 --text "Restrict recursive query" --result FOUND --color GREEN --comp OK dns
+	ALLOW_PUBLIC_RECURSION=0
+fi
+RECURSION=0
+for i in `cat $BIND_CONF_LOCATION_TO_TEST`
+do
+        if [ "$i" = "allow-recursion" ] ;then
+                RECURSION=1
+                ALLOW_PUBLIC_RECURSION=0
+		Display --indent 2 --text "Restrict recursive query" --result FOUND --color GREEN --comp OK dns
+        fi
+        if [ "$i" = "};" ] ;then
+                RECURSION=0
+        fi
+done
+
+if [ $ALLOW_PUBLIC_RECURSION -eq 1 ] ; then
+	Display --indent 2 --text "Restrict recursive query" --result ERROR --color RED --advice BIND_DISALLOW_RECURSIVE_QUERY --comp KO dns
+fi
+
+#allow-query-cache {mynetworks;};
+#http://www.bortzmeyer.org/fermer-les-recursifs-ouverts.html
+#additional-from-cache no.
+
+TESTNAME='YASAT_TEST_BIND_DNSSEC_ENABLE Check if DNSSEC is enabled'
+FindValueOf $BIND_CONF_LOCATION_TO_TEST dnssec-enable JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+        Display --indent 2 --text "dnssec-enable" --result NOTFOUND --color ORANGE --advice BIND_ENABLE_DNSSEC_VALIDATION --comp KO dns
+else
+	is_equal "$RESULTAT" 'yes' -i -f '[[:space:]]*;'
+        if [ $? -eq 0 ];then
+                Display --indent 2 --text "dnssec-enable" --result FOUND --color GREEN --comp OK dns
+        else
+                Display --indent 2 --text "dnssec-enable" --result "$RESULTAT" --color ORANGE --advice BIND_ENABLE_DNSSEC_VALIDATION --comp KO dns
+        fi
+fi
+
+
+TESTNAME='YASAT_TEST_BIND_DNSSEC_VALIDATION Check if DNSSEC validation is enabled'
+FindValueOf $BIND_CONF_LOCATION_TO_TEST dnssec-validation JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+        Display --indent 2 --text "dnssec-validation" --result NOTFOUND --color ORANGE --comp KO dns
+else
+	is_equal "$RESULTAT" 'yes' -i -f '[[:space:]]*;' -2 'auto'
+        if [ $? -eq 0 ];then
+                Display --indent 2 --text "dnssec-validation" --result FOUND --color GREEN --comp OK dns
+        else
+                Display --indent 2 --text "dnssec-validation" --result "$RESULTAT" --color ORANGE --advice BIND_ENABLE_DNSSEC_VALIDATION --comp KO dns
+        fi
+fi
+
+TESTNAME='YASAT_TEST_BIND_PKG Check if bind is installed via a package manager'
+Is_installed_via_package_manager $BIND_PACKAGE_NAME
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ; then
+	Display --indent 2 --text "$BIND_PACKAGE_NAME installation" --result UNKNOWN --color BLUE --comp NOTTESTED dns
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "$BIND_PACKAGE_NAME is installed by package" --result GOOD --color GREEN --comp OK dns
+	else
+		Display --indent 2 --text "$BIND_PACKAGE_NAME is installed at hand" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND --comp KO dns
+	fi
+fi
+
+
+while read named_conf
+do
+	check_a_file "$named_conf" 2 root $NAMED_GROUP 640
+done < "$TEMPYASATDIR/named.filelist"
+
+
+TMP_RESULT="${TEMPYASATDIR}/bind_var.out"
+#check right of /var/bind/ of /var/named
+#if [ -d /var/bind/ ] ; then
+#	check_directory_owner /var/bind/ $NAMED_USER $TMP_RESULT 4
+#fi
+
+#TODO test version with dig @localhost version.bind chaos txt
+
+return 0;
+

@@ -1,0 +1,317 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#   Copyright (C) 2010-2011 Mikal Sande
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check logwatch"
+
+#YASAT_TEST_LOGWATCH NSAG=2.6.1.4 Check if logwatch is used
+
+# Variables
+CONFIG_PATHS_ETC='/etc/logwatch/default.conf/logwatch.conf /etc/logwatch/conf/logwatch.conf /usr/share/logwatch/default.conf/logwatch.conf'
+CONFIG_PATH="/etc/logwatch/"
+CONFIG_FILE=''
+EXEC_NAMES='logwatch logwatch.pl'
+EXEC_FILE=''
+
+
+# Default settings used in Logwatch that are tested if the directive
+# isn't found in the configfile
+TMPDIR_DEFAULT='/var/cache/logwatch'
+
+
+# Find the executable
+for FILE in $EXEC_NAMES; do
+	which $FILE > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		EXEC_FILE=`which $FILE`
+	fi
+done
+
+
+# Find the config file. Look in /etc/logwatch first
+for FILE in $CONFIG_PATHS_ETC; do
+	if [ -f "$FILE" ]; then
+		CONFIG_FILE=$FILE
+	fi
+done
+
+if [ -z "$CONFIG_FILE" -a ! -e $CONFIG_PATH ] ; then
+	return 0;
+fi
+
+# Look in /etc/logwatch/ to see if there is a config file that is 
+# not in the expected place
+if [ -z "$CONFIG_FILE" ]; then
+	for FILE in `find $CONFIG_PATH | grep 'logwatch.conf$'`; do
+		if [ -f "$FILE" ]; then
+			CONFIG_FILE=$FILE
+		fi
+	done
+fi
+
+if [ ! -e $CONFIG_FILE ] ; then
+	return 0;
+fi
+
+# all testing is based on the config file, therefore the test skips itself 
+# if the config can't be found
+if [ -z "$CONFIG_FILE" ]; then
+	Display --indent 2 --text "No logwatch config found" --result SKIPPING --color YELLOW
+	return 1
+else
+	Display --indent 2 --text "Config file $CONFIG_FILE" --result FOUND --color BLUE
+
+	if [ -z "$EXEC_FILE" ]; then
+		Display --indent 2 --text "Couldn't find logwatch.pl $EXEC_FILE" --result NOTFOUND --color ORANGE
+	else
+		Display --indent 2 --text "Executable $EXEC_FILE" --result FOUND --color BLUE
+	fi
+fi
+
+
+####
+# test TmpDir directive
+####
+FindValueOf $CONFIG_FILE tmpdir JUSTTEST INSENSITIVE
+RESULTAT=`echo $RESULTAT | tr -d " ="`
+
+# Check if there is a TmpDir directive in the config,
+# if not check the default setting
+if [ ! -z "$RESULTAT" ]; then
+	TMP_DIR=$RESULTAT
+else
+	# safe default
+	Display --indent 2 --text "TmpDir not found, default setting used" --result INFO --color BLUE --advice LOGWATCH_TMPDIR_DEFAULT
+	TMP_DIR=$TMPDIR_DEFAULT
+fi
+
+# Check the directory
+if [ -d $TMP_DIR ]; then
+	OCTAL_RIGHTS=`stat -c %a $TMP_DIR`
+	compare_right $OCTAL_RIGHTS 750 YES
+	if [ $? -ne 0 ]; then
+		Display --indent 2 --text "TmpDir = $TMP_DIR" --result WARNING --color RED --advice LOGWATCH_TMPDIR_OTHER_READABLE
+	else
+		Display --indent 2 --text "TmpDir = $TMP_DIR" --result OK --color GREEN
+	fi
+else
+	Display --indent 2 --text "TmpDir = $TMP_DIR" --result NOTFOUND --color RED --advice LOGWATCH_TMPDIR_NOT_FOUND
+fi
+
+
+###
+# test Save directive
+###
+FindValueOf $CONFIG_FILE save JUSTTEST INSENSITIVE
+RESULTAT=`echo $RESULTAT | tr -d " ="`
+if [ ! -z "$RESULTAT" ]; then
+	RESULTAT=`dirname $RESULTAT`
+	if [ -d "$RESULTAT" ]; then
+		OCTAL_RIGHTS=`stat -c %a $RESULTAT`
+		compare_right $OCTAL_RIGHTS 750 YES
+		if [ $? -ne 0 ]; then
+			Display --indent 2 --text "Save = $RESULTAT" --result WARNING --color RED --advice LOGWATCH_SAVE_OTHER_READABLE
+		else
+			Display --indent 2 --text "Save = $RESULTAT" --result OK --color GREEN
+		fi
+	else
+		Display --indent 2 --text "$RESULTAT isn't a directory" --result NOTFOUND --color RED
+	fi
+
+else
+	# safe default
+	Display --indent 2 --text "Logwatch reports are not saved" --result INFO --color BLUE --advice LOGWATCH_DEFAULT_SETTING
+fi
+
+
+###
+# test Detail directive
+###
+FindValueOf $CONFIG_FILE detail JUSTTEST INSENSITIVE
+RESULTAT=`echo $RESULTAT | tr -d " ="`
+if [ ! -z "$RESULTAT" ]; then
+	RESULTAT=`echo $RESULTAT | tr '[:upper:]' '[:lower:]'`
+	case $RESULTAT in
+	0|low)
+		Display --indent 2 --text "Detail = $RESULTAT, this is the lowest setting!" --result WARNING --color RED --advice LOGWATCH_LOW_DETAIL_SETTING
+		;;
+	1|2|3|4)
+		Display --indent 2 --text "Detail = $RESULTAT, are you sure this is enough?" --result WARNING --color ORANGE --advice LOGWATCH_LOW_DETAIL_SETTING
+		;;
+	5|6|7|8|9|10|med|high)
+		Display --indent 2 --text "Detail = $RESULTAT" --result OK --color GREEN
+		;;
+	*)
+		Display --indent 2 --text "Detail = $RESULTAT, invalid setting" --result INVALID --color RED
+		;;
+	esac
+else 	
+	Display --indent 2 --text "Detail not found, default setting used" --result NOTFOUND --color RED --advice LOGWATCH_LOW_DETAIL_SETTING
+fi
+
+
+###
+# test Range directive
+###
+FindValueOf $CONFIG_FILE range JUSTTEST INSENSITIVE
+RESULTAT=`echo $RESULTAT | tr -d " ="`
+if [ ! -z "$RESULTAT" ]; then
+	RESULTAT=`echo $RESULTAT | tr '[:upper:]' '[:lower:]'`
+	case $RESULTAT in
+	all)
+		Display --indent 2 --text "Range = $RESULTAT, might be too much when run on a regual basis" --result WARNING --color RED --advice LOGWATCH_PROBLEMATIC_RANGE_ALL
+		;;
+	today)
+		Display --indent 2 --text "Range = $RESULTAT, can lead to loss of information" --result WARNING --color ORANGE --advice LOGWATCH_PROBLEMATIC_RANGE_TODAY
+		;;
+	yesterday)
+		Display --indent 2 --text "Range = $RESULTAT" --result OK --color GREEN
+		;;
+	*)
+		Display --indent 2 --text "Range = $RESULTAT, invalid/unknown setting" --result INVALID --color RED
+		;;
+	esac
+else
+	# safe default setting
+	Display --indent 2 --text "Range not found, default setting used" --result INFO --color BLUE --advice LOGWATCH_DEFAULT_SETTING
+fi
+
+
+###
+# test Service directive
+###
+ALL_SERVICES_FLAG=''	# used to test for service level in LogFile test
+NO_SERVICES_FLAG=''	# used to check if any Service directives have been found
+DISABLED_SERVICES_COUNT='0'
+
+LINES=`grep -i '^service' $CONFIG_FILE | sed 's/#.*//'`
+
+for line in $LINES; do
+	line=`echo "$line" | tr '[:upper:]' '[:lower:]' | sed 's/service//' | tr -d " =\""`
+	
+	if [ "$line" = "all" ]; then
+		ALL_SERVICES_FLAG='1' # set it so that it can be checked for in the LogFile test
+	else
+		echo $line | grep '^-' > /dev/null
+		if [ $? -eq 0 ]; then
+			DISABLED_SERVICES_COUNT=$(( $DISABLED_SERVICES_COUNT + 1 ))
+		else
+			NO_SERVICES_FLAG='1' # set the flag because a Service directive has been found
+		fi
+	fi
+done
+
+if [ ! -z "$ALL_SERVICES_FLAG" ]; then
+	Display --indent 2 --text "Service = All" --result OK --color GREEN
+	
+	# Check if there are checks that are disabled
+	if [ $DISABLED_SERVICES_COUNT -ne 0 ]; then
+		Display --indent 2 --text "$DISABLED_SERVICES_COUNT service checks are disabled" --result INFO --color BLUE --advice LOGWATCH_DISABLED_SERVICE_CHECK
+	else
+		Display --indent 2 --text "No service checks are disabled" --result OK --color GREEN
+	fi
+else
+	if [ -z $NO_SERVICES_FLAG ]; then
+		# TODO check what happens when logwatch is run with no Service directive
+		Display --indent 2 --text "No Service directives found" --result WARNING --color RED --advice LOGWATCH_NO_SERVICES_FOUND
+	fi
+fi
+
+
+###
+# test LogDir directive
+###
+LOGDIR=''	# is also used in LogFile test
+FindValueOf $CONFIG_FILE logdir JUSTTEST INSENSITIVE
+if [ ! -z "$RESULTAT"  ]; then
+	LOGDIR=`echo $RESULTAT | tr -d " ="`
+	if [ ! -d $LOGDIR ]; then
+		Display --indent 2 --text "LogDir wasn't found" --result WARNING --color RED  --advice LOGWATCH_NO_LOGDIR
+	else
+		Display --indent 2 --text "LogDir = $LOGDIR" --result OK --color GREEN
+
+		OCTAL_RIGHTS=`stat -c %a $LOGDIR`
+		compare_right $OCTAL_RIGHTS 755 YES
+		if [ $? -ne 0 ]; then
+			Display --indent 2 --text "LogDir permissions" --result WARNING --color RED --advice LOGWATCH_LOGDIR_OTHER_WRITABLE
+		else
+			Display --indent 2 --text "LogDir permissions" --result OK --color GREEN
+		fi
+	fi
+else
+	Display --indent 2 --text "LogDir wasn't found" --result WARNING --color RED  --advice LOGWATCH_NO_LOGDIR
+fi
+
+
+###
+# test LogFile directive
+###
+if [ -z "$ALL_SERVICES_FLAG" ]; then
+	FindValueOf $CONFIG_FILE logfile JUSTTEST INSENSITIVE
+	if [ ! -z "$RESULTAT" ]; then
+		RESULTAT=`echo $RESULTAT | tr -d ' ='`
+		LOGFILE=`echo ${LOGDIR}/${RESULTAT} | sed 's/\/\//\//'`
+		Display --indent 2 --text "Only $LOGFILE is checked." --result WARNING --color ORANGE --advice LOGWATCH_ONLY_ONE_LOGFILE
+	else
+		Display --indent 2 --text "No logfiles are checked!" --result WARNING --color RED --advice LOGWATCH_NO_LOGS_CHECKED
+	fi
+fi
+
+
+###
+# test Archives directive
+###
+FindValueOf $CONFIG_FILE archives JUSTTEST INSENSITIVE
+if [ ! -z "$RESULTAT" ]; then
+	RESULTAT=`echo $RESULTAT | tr -d ' ='`
+	case $RESULTAT in
+	yes|true|on|1)
+		Display --indent 2 --text "Archives = $RESULTAT" --result OK --color GREEN
+		;;
+	no|false|off|0)
+		Display --indent 2 --text "Archives = $RESULTAT" --result WARNING --color ORANGE --advice LOGWATCH_ARCHIVES_NOT_CHECKED	
+		;;
+	*)
+		Display --indent 2 --text "Archives = $RESULTAT, invalid/unkown setting" --result WARNING --color RED
+		;;
+	esac
+else
+	# safe default
+	Display --indent 2 --text "Archives not found, default setting used" --result INFO --color BLUE --advice LOGWATCH_DEFAULT_SETTING
+fi
+
+
+###
+# test HostLimit directive
+###
+FindValueOf $CONFIG_FILE hostlimit JUSTTEST INSENSITIVE
+if [ ! -z "$RESULTAT" ]; then
+	RESULTAT=`echo $RESULTAT | tr -d ' ='`
+	
+	case $RESULTAT in
+	yes|true|on|1)
+		Display --indent 2 --text "HostLimit = $RESULTAT" --result INFO --color BLUE
+		
+		;;
+	no|false|off|0)
+		Display --indent 2 --text "HostLimit = $RESULTAT" --result INFO --color BLUE --advice LOGWATCH_HOSTLIMIT_NO
+		;;
+	esac
+fi

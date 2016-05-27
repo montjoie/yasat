@@ -1,0 +1,48 @@
+#installed by default on debian / ubuntu and not always necessary on server
+DEBIAN,cyrus-sasl2-doc
+DEBIAN,portmap
+DEBIAN,dbus
+DEBIAN,dbus-x11
+DEBIAN,consolekit
+DEBIAN,dhcp3-client
+DEBIAN,dhcp3-common
+DEBIAN,ntfs-3g
+DEBIAN,dosfstools
+DEBIAN,laptop-detect
+DEBIAN,wireless-tools
+DEBIAN,wpasupplicant
+DEBIAN,ufw
+DEBIAN,libntfs-3g28
+DEBIAN,libiw29
+DEBIAN,landscape-common
+DEBIAN,pppoeconf
+
+#not on server libc6-dev gcc build-essential
+
+#Installed by default on red hat
+#amtu alchemist
+REDHAT,bluez-utils
+REDHAT,bluez-gnome
+REDHAT,bluez-libs
+REDHAT,alacarte
+REDHAT,dhcpv6-client
+#REDHAT,dhclient network manager need it
+REDHAT,emacspeak
+REDHAT,emacs
+REDHAT,emacs-common
+REDHAT,emacs-leim
+REDHAT,linuxwacom
+REDHAT,rsh
+REDHAT,samba-common
+REDHAT,php
+REDHAT,squid
+REDHAT,pcmciautils
+REDHAT,pcsc-lite
+REDHAT,pcsc-lite-libs
+REDHAT,vino
+REDHAT,wdaemon
+REDHAT,pirut
+REDHAT,orca
+REDHAT,evince
+REDHAT,eog
+

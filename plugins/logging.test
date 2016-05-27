@@ -1,0 +1,134 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check logging"
+
+#TODO check sysstat http://pagesperso-orange.fr/sebastien.godard/
+
+FOUND_SYSTEM_LOGGER=0
+ACTUAL_SYSTEM_LOGGER=''
+#found in portage
+POSSIBLE_SYSLOG_BINARIES="syslog-ng syslogd newsyslog rsyslogd metalog"
+
+for LOGGER_TO_TEST in $POSSIBLE_SYSLOG_BINARIES
+do
+	RESULTAT="`ps aux |grep -i [^[:alpha:]]$LOGGER_TO_TEST |grep -v grep |grep -v supervising`"
+	if [ ! -z "$RESULTAT" ]
+	then
+		Display --indent 2 --text "$LOGGER_TO_TEST" --result FOUND --color GREEN
+		if [ $FOUND_SYSTEM_LOGGER -eq 1 ]
+		then
+			Display --indent 4 --text "Two system loggers" --result FOUND --color ORANGE --advice SYSTEM_LOG_TWO_LOGGERS
+		fi
+		FOUND_SYSTEM_LOGGER=1
+		ACTUAL_SYSTEM_LOGGER="$LOGGER_TO_TEST"
+	fi
+done
+
+if [ $FOUND_SYSTEM_LOGGER -eq 0 ]
+then
+		Display --indent 2 --text "System logger" --result NOTFOUND --color RED --advice SYSTEM_LOG_NO_LOGGERS
+else
+		Display --indent 2 --text "System logger is $ACTUAL_SYSTEM_LOGGER" --result FOUND --color GREEN
+fi
+
+#syslog-ng /etc/syslog-ng/syslog-ng.conf destination name { tcp( "somehost" port(514)) ; } ;
+#syslog-ng /etc/syslog-ng/syslog-ng.conf destination name { udp( "somehost" port(514)) ; } ;
+if [ "$ACTUAL_SYSTEM_LOGGER" = 'syslog-ng' ] ; then
+	SYSLOGNG_CONF="/etc/syslog-ng/syslog-ng.conf"
+	if [ -e $SYSLOGNG_CONF ] ; then
+		#TODO found real place for conf
+		TMP_RESULT="${TEMPYASATDIR}/loghost.tmp"
+		LOGHOST_FOUND=0
+		grep '^[[:space:]]*destination.*[tu][cd]p(' $SYSLOGNG_CONF | sed 's/[[:space:]][[:space:]]*/ /g'> $TMP_RESULT
+		while read line
+		do
+			LOGHOST_FOUND=1
+#			echo $line
+#			RULENAME="`echo $line | cut -d\  -f2`"
+#			REMOTEHOST="`echo $line | cut -d\  -f4`"
+		done < $TMP_RESULT
+		if [ $LOGHOST_FOUND -eq 0 ] ; then
+			Display --indent 2 --text "Logging to a remote host" --result NOTFOUND --color RED --advice SYSLOGNG_NOLOGHOST
+		else
+			Display --indent 2 --text "Logging to a remote host" --result FOUND --color GREEN
+		fi
+		rm $TMP_RESULT
+	else
+		Display --indent 2 --text "Config file" --result NOTFOUND --color RED
+	fi
+fi
+
+#syslog /etc/syslog.conf *.*	@somehost
+if [ "$ACTUAL_SYSTEM_LOGGER" = 'syslogd' ] ; then
+	SYSLOG_CONF="/etc/syslog.conf"
+	if [ -e $SYSLOG_CONF ] ; then
+		#TODO found real place for conf
+		TMP_RESULT="${TEMPYASATDIR}/loghost.tmp"
+		LOGHOST_FOUND=0
+		#TODO regex could be better
+		grep '^[[:space:]]*\.*@[a-zA-Z0-9]' $SYSLOG_CONF | sed 's/[[:space:]][[:space:]]*/ /g'> $TMP_RESULT
+		while read line
+		do
+			LOGHOST_FOUND=1
+#			echo $line
+#			RULENAME="`echo $line | cut -d\  -f2`"
+#			REMOTEHOST="`echo $line | cut -d\  -f4`"
+		done < $TMP_RESULT
+		if [ $LOGHOST_FOUND -eq 0 ] ; then
+			Display --indent 2 --text "Logging to a remote host" --result NOTFOUND --color RED --advice SYSLOG_NOLOGHOST
+		else
+			Display --indent 2 --text "Logging to a remote host" --result FOUND --color GREEN
+		fi
+		rm $TMP_RESULT
+	else
+		Display --indent 2 --text "Config file" --result NOTFOUND --color RED
+	fi
+fi
+#rsyslog /etc/rsyslog.conf *.* @@somehost:514
+if [ "$ACTUAL_SYSTEM_LOGGER" = 'rsyslogd' ] ; then
+	RSYSLOG_CONF="/etc/rsyslog.conf"
+	if [ -e $RSYSLOG_CONF ] ; then
+		#TODO found real place for conf
+		TMP_RESULT="${TEMPYASATDIR}/loghost.tmp"
+		LOGHOST_FOUND=0
+		#TODO regex could be better
+		grep '^[[:space:]]*\.*@[a-zA-Z0-9]' $RSYSLOG_CONF | sed 's/[[:space:]][[:space:]]*/ /g'> $TMP_RESULT
+		while read line
+		do
+			LOGHOST_FOUND=1
+#			echo $line
+#			RULENAME="`echo $line | cut -d\  -f2`"
+#			REMOTEHOST="`echo $line | cut -d\  -f4`"
+		done < $TMP_RESULT
+		if [ $LOGHOST_FOUND -eq 0 ] ; then
+			Display --indent 2 --text "Logging to a remote host" --result NOTFOUND --color RED --advice RSYSLOG_NOLOGHOST
+		else
+			Display --indent 2 --text "Logging to a remote host" --result FOUND --color GREEN
+		fi
+		rm $TMP_RESULT
+	else
+		Display --indent 2 --text "Config file" --result NOTFOUND --color RED
+	fi
+fi
+#TODO remote logging for other syslog daemon
+
+return 0;

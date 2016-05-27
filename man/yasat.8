@@ -1,0 +1,118 @@
+.TH YASAT 8 "15 April 2015" "839" "YASAT 839"
+
+
+.SH "NAME"
+\fB
+\fB
+\fB
+YASAT \fP\- simple stupid audit tool
+\fB
+.SH "SYNOPSIS"
+
+\fByasat
+.RB [\-\-standard(\-s)]
+.RB [\-\-list(\-l)]
+.RB [\-\-debug(\-d)]
+.RB [\-\-help(\-h)]
+.RB [\-\-html(\-H)]
+.RB [\-\-html-output
+.IR PATH ]
+.RB [\-\-advice-lang
+.IR LANG ]
+.RB [\-\-full-scan(\-f)]
+.RB [\-\-plugins-dir(\-P)
+.IR PATH ]
+.RB [\-\-nopause(\-a)]
+.RB [\-\-plugin(\-1)
+.IR PATH]
+.RB [\-\-scanroot(\-r) 
+.IR PATH]
+.RB [\-\-Plugin(\-p) 
+.IR NAME]
+.RB [\-\-print-level
+.IR X]
+.RB [\-\-check-update]
+
+.SH "DESCRIPTION"
+
+\fBYASAT\fP (Yet Another Stupid Audit Tool) is a simple stupid audit tool.
+Its goal is to be as simple as possible with minimum binary dependencies (only sed, grep and cut)
+Second goal is to document each test with maximum information and links to official documentation.
+It do many tests for checking security configuration issue or others good practice.
+.PP
+It checks many software configurations like: 
+Apache, Bind DNS, CUPS, PHP, kernel configuration, MySQL, network configuration, openvpn, Packages update, samba, snmpd, squid, tomcat, user accounting, vsftpd, xinetd,
+
+.SH "OPTIONS"
+
+.TP
+.B \-\-standard (or \-a)
+YASAT will performs a standard check of the system, printing out the results of
+each test to stdout.
+A log is also created in ~/.yasat/yasat.result by default
+
+.TP
+.B \-\-list (or \-l)
+List all plugins available
+
+.TP
+.B \-\-html (or \-H)
+YASAT will export results in html (default to ~/yasat/yasat.html)
+
+.TP
+.B \-\-html-output PATH
+With -H, this option permit to change the file where to store html output.
+
+.TP
+.B \-\-advice-lang LANG
+By default, YASAT print message in english (EN), you can change the displayed lang with this option.
+LANG is the 2letter digit of the lang you want. For the moment only EN is supported.
+
+.TP
+.B \-\-full-scan (or \-f)
+YASAT will do extra (long) tests (lots of find).
+
+.TP
+.B \-\-plugins-dir PATH (or \-P)
+Set the path where YASAT can find plugins to use. (default is ./plugins )
+
+.TP
+.B \-\-nopause (or \-a)
+By default, YASAT made a pause after each plugin. For automatize tests you can use this.
+
+.TP
+.B \-\-plugin PATH (or \-1)
+YASAT will just use the plugin pointed by PATH (ex: yasat -1 kernel)
+
+.TP
+.B \-\-scanroot PATH (or \-r)
+YASAT will scan PATH instead of / (ex: yasat -r /mnt/centos6)
+
+.TP
+.B \-\-compliance TYPE
+YASAT will check for a specific compliance (nsa, cce, or all) and will print the compliance results.
+
+.TP
+.B \-\-print-level x (or \-1)
+YASAT will print infos equal or above the level X (All = 0 (default), infos = 1 warnings(orange) = 2, errors(red) = 3
+
+.TP
+.B \-\-skip TEST
+A comma separated list of tests to skip without the .test (ex: --skip nfs,ntp). See yasat --list for all tests.
+
+.TP
+.B \-\-check\-update
+Check if an update of YASAT exists
+
+.TP
+.B \-\-send\-support
+Like \-\-check\-update, but it will send also as parameter your OS version for statistics.
+In the future, perhaps also a sort of send_bugs.
+
+.SH "LICENSING"
+YASAT is licensed under the GPL v3 license and under development by LABBE Corentin.
+
+.SH "CONTACT INFORMATION"
+
+All contacts informations could be found at http://yasat.sourceforge.net/
+

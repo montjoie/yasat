@@ -1,0 +1,53 @@
+EN,LOGWATCH_TMPDIR_OTHER_READABLE=The TmpDir used by logwatch should not be readble by others.
+  Letting others read the temporary directory logwatch uses leads to unnecessary information leakage.
+  If /tmp is used, consider moving the TmpDir to another folder with no others permission.
+ADVICEEND
+EN,LOGWATCH_SAVE_OTHER_READABLE=The Save directory used by logwatch should no be readable by others.
+  Letting others read the logwatch reports leads to unnecessary information leakage.
+ADVICEEND
+EN,LOGWATCH_LOW_DETAIL_SETTING=Low detail setting can lead to loss of important information.
+EN,LOGWATCH_PROBLEMATIC_RANGE_TODAY=Using the log from today can lead to loss of infornation.
+  Because the day is not over when logwatch is executed there is no way to ensure
+  that all of todays logs are parsed.
+ADVICEEND
+EN,LOGWATCH_PROBLEMATIC_RANGE_ALL=Using all logs can be too much.
+  Parsing all logs can yeild too much information, make the logwatch report less 
+  useful because the timeline is too long and it can take a very long time depending 
+  on how often the logs are rotated.
+ADVICEEND
+EN,LOGWATCH_CHECK_ALL_SERVICES=You could be missing important information
+  Because all services are not checked, messages from some services doesn't get included 
+  in the logwatch report.
+ADVICEEND
+EN,LOGWATCH_DISABLED_SERVICE_CHECK=You should check whether the disabled checks are needed.
+EN,LOGWATCH_TMPDIR_DEFAULT=The default setting is /var/cache/logwatch.
+EN,LOGWATCH_NO_SERVICES_FOUND=No Services are checked!
+  There is little use for logwatch if no services are checked. Make sure that at 
+  least the most important services are checked.
+ADVICEEND
+EN,LOGWATCH_NO_LOGDIR=The LogDir is either a file or doesn't exist.
+  The LogDir directive should point to where your system logs are. There is little 
+  use for logwatch if it doesn't parse your logs.
+ADVICEEND
+EN,LOGWATCH_LOGDIR_OTHER_WRITABLE=LogDir should not be writable by anyone other than the owner.
+EN,LOGWATCH_ONLY_ONE_LOGFILE=Checking only one logfile can lead to loss of information. 
+  Because not all services log to the system logger and there might be some filters 
+  on the file that is checked. At least make sure that all logmessages from the 
+  system logger are logged to the checked logfile.
+ADVICEEND
+EN,LOGWATCH_NO_LOGS_CHECKED=Could not find any logfiles that are to be checked.
+  There is little use for logwatch if no logs are parsed.
+ADVICEEND
+EN,LOGWATCH_DEFAULT_SETTING=Consider setting this directive in the config.
+EN,LOGWATCH_NO_LOGS_CHECKED=Could not find any logfiles that are to be checked.
+  There is little use for logwatch if no logs are parsed.
+ADVICEEND
+EN,LOGWATCH_TMPDIR_NOT_FOUND=Isn't a directory.
+  If you want to save logreports you should either edit the TmpDir directive or 
+  make the directory the directive is set to use.
+ADVICEEND
+EN,LOGWATCH_ARCHIVES_NOT_CHECKED=Log archives are not parsed. This should be enabled.
+  There is no guarantee that all the logs from a given day are parsed by logwatch, 
+  because of logrotation.
+ADVICEEND
+EN,LOGWATCH_HOSTLIMIT_NO=Unless this is logserver, HostLimit should be enabled.

@@ -1,0 +1,6 @@
+EN,APACHE_MODULE_ERROR_CODE=Check your apache configuration
+  Try apache2 -t
+ADVICEEND
+EN,APACHE_MODULE_DISABLE_UNNECESSARY_MODULES=Disable unnecessary modules
+  Check if you really needs theses modules.
+ADVICEEND

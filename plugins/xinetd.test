@@ -1,0 +1,200 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#TODO check user
+#TODO check group
+#TODO check disable
+#TODO check server (existence suid etc...)
+#TODO check for log type in activatd services
+#TODO check for umask
+#TODO per_source instances
+#TODO check cps max_load
+#TODO includedir
+
+POSSIBLE_XINETD_CONF="/etc/xinetd.conf /usr/local/etc/xinetd.conf"
+XINETD_CONF="/etc/xinetd.conf"
+
+POSSIBLE_XINETD_REP="/etc/xinetd.d /usr/local/etc/xinetd.d"
+XINETD_REP="/etc/xinetd.d"
+
+POSSIBLE_INETD_CONF="/etc/inetd.conf /usr/local/etc/inetd.conf"
+INETD_CONF="/etc/inetd.conf"
+
+for LOCATION in ${POSSIBLE_XINETD_CONF}
+do
+	if [ -e "${LOCATION}/" ]
+	then
+		XINETD_CONF="${LOCATION}"
+	fi
+done
+
+for LOCATION in ${POSSIBLE_INETD_CONF}
+do
+	if [ -e "${LOCATION}/" ]
+	then
+		INETD_CONF="${LOCATION}"
+	fi
+done
+
+for LOCATION in ${POSSIBLE_XINETD_REP}
+do
+	if [ -e "${LOCATION}/" ]
+	then
+		XINETD_REP="${LOCATION}"
+	fi
+done
+
+#does log_type is set by default on xinetd.conf ?
+XINETD_LOG_TYPE_DEFAULT=0
+
+#TODO check if inetd and xinetd is launched by default
+Title "Check inetd"
+if [ -e "$INETD_CONF" ]
+then
+	Display --indent 2 --text "$INETD_CONF" --result FOUND --color BLUE
+	grep -v '^#' $INETD_CONF | sed 's/[[:space:]].*//g' | sed 's/^.*://g' | sort | uniq |
+	while read INETD_SERVICE
+	do
+		RESULTAT=`grep "^${INETD_SERVICE}|" $PLUGINS_REP/xinetd.data`
+		if [ -z "$RESULTAT" ]
+		then
+			Display --indent 4 --text "Service $INETD_SERVICE unknown" --result FOUND --color BLUE
+		else
+			INETD_OPT_SERVICES_TEST="`echo "$RESULTAT" | cut -f2 -d\|`"
+			INETD_OPT_SERVICES_ADVICE="`echo "$RESULTAT" | cut -f3 -d\|`"
+			case $INETD_OPT_SERVICES_TEST in
+				O)
+					Display --indent 4 --text "$INETD_SERVICE" --result FOUND --color ORANGE --advice $INETD_OPT_SERVICES_ADVICE
+				;;
+				R)
+					Display --indent 4 --text "$INETD_SERVICE" --result FOUND --color GREEN --advice $INETD_OPT_SERVICES_ADVICE
+					#TODO check only_from etc...
+				;;
+				*)
+					Display --indent 4 --text "$INETD_SERVICE" --result FOUND --color RED --advice $INETD_OPT_SERVICES_ADVICE
+				;;
+			esac
+		fi
+	done
+#else
+#	Display --indent 2 --text "No $INETD_CONF" --result NOTFOUND --color BLUE
+fi
+
+Title "Check xinetd"
+
+if [ -e "$XINETD_CONF" ]
+then
+	Display --indent 2 --text "$XINETD_CONF" --result FOUND --color BLUE
+	FindValueOf $XINETD_CONF 'includedir' JUSTCHECK
+	if [ -z "$RESULTAT" ]
+	then
+		Display --indent 4 --text "includedir" --result NOTFOUND --color ORANGE
+	else
+		Display --indent 4 --text "includedir" --result "$RESULTAT" --color GREEN
+	fi
+	FindValueOf $XINETD_CONF 'log_type' JUSTCHECK
+	if [ -z "$RESULTAT" ]
+	then
+		Display --indent 4 --text "log_type" --result NOTFOUND --color ORANGE --advice XINETD_SERVICES_NO_LOG_TYPE
+	else
+		Display --indent 4 --text "log_type" --result "$RESULTAT" --color GREEN
+		XINETD_LOG_TYPE_DEFAULT=1
+	fi
+fi
+if [ -d "$XINETD_REP" ]
+then
+	Display --indent 2 --text "$XINETD_REP" --result FOUND --color GREEN
+	ls $XINETD_REP |
+	while read XINETD_SERVICE
+	do
+		RESULTAT=`grep "^${XINETD_SERVICE}|" $PLUGINS_REP/xinetd.data`
+		if [ -z "$RESULTAT" ]
+		then
+			Display --indent 4 --text "Service $XINETD_SERVICE unknown" --result FOUND --color BLUE
+			XINETD_LOG_ON_FAILURE=0
+			XINETD_ONLY_FROM=0
+			XINETD_LOG_TYPE=0
+			grep -v '^$' ${XINETD_REP}/${XINETD_SERVICE} | grep -v '^#' | sed 's/^[[:space:]]*//g' |
+			while read XINETD_SERVICE_LINE
+			do
+				if [ ! -z "`echo $XINETD_SERVICE_LINE | grep -i '^[[:space:]]*service'`" ]
+				then
+					NAME_OF_SERVICE=`echo "$XINETD_SERVICE_LINE" | sed 's/^[[:space:]]*service[[:space:]]*//g'`
+					Display --indent 6 --text "Service $NAME_OF_SERVICE" --result FOUND --color BLUE
+				fi
+				if [ ! -z "`echo "$XINETD_SERVICE_LINE" |grep 'log_on_failure'`" ]
+				then
+					Display --indent 6 --text "log_on_failure" --result FOUND --color GREEN
+					XINETD_LOG_ON_FAILURE=1
+				fi
+				if [ ! -z "`echo "$XINETD_SERVICE_LINE" |grep 'only_from'`" ]
+				then
+					Display --indent 6 --text "only_from" --result FOUND --color GREEN
+					XINETD_ONLY_FROM=1
+				fi
+				if [ ! -z "`echo "$XINETD_SERVICE_LINE" |grep 'log_type'`" ]
+				then
+					Display --indent 6 --text "log_type" --result FOUND --color GREEN
+					XINETD_LOG_TYPE=1
+				fi
+				if [ ! -z "`echo "$XINETD_SERVICE_LINE" |grep '}'`" ]
+				then
+					Display --indent 6 --text "End of service" --result FOUND --color BLUE
+					if [ ${XINETD_LOG_ON_FAILURE} -eq 0 ]
+					then
+						Display --indent 8 --text "No log_on_failure for $NAME_OF_SERVICE" --result NOTFOUND --color ORANGE --advice XINETD_SERVICES_NO_LOG_FAILURE
+					fi
+					if [ ${XINETD_ONLY_FROM} -eq 0 ]
+					then
+						Display --indent 8 --text "No only_from for $NAME_OF_SERVICE" --result NOTFOUND --color ORANGE --advice XINETD_SERVICES_NO_ONLY_FROM
+					fi
+					if [ ${XINETD_LOG_TYPE} -eq 0 -a ${XINETD_LOG_TYPE_DEFAULT} -eq 0 ]
+					then
+							Display --indent 8 --text "No log_type for $NAME_OF_SERVICE" --result NOTFOUND --color ORANGE --advice XINETD_SERVICES_NO_LOG_TYPE
+					fi
+					XINETD_ONLY_FROM=0
+					XINETD_LOG_ON_FAILURE=0
+					XINETD_LOG_TYPE=0
+				fi
+
+			done
+		else
+			XINETD_OPT_SERVICES_TEST="`echo "$RESULTAT" | cut -f2 -d\|`"
+			XINETD_OPT_SERVICES_ADVICE="`echo "$RESULTAT" | cut -f3 -d\|`"
+			case $XINETD_OPT_SERVICES_TEST in
+				O)
+					Display --indent 4 --text "$XINETD_SERVICE" --result FOUND --color ORANGE --advice $XINETD_OPT_SERVICES_ADVICE
+				;;
+				R)
+					Display --indent 4 --text "$XINETD_SERVICE" --result FOUND --color GREEN --advice $XINETD_OPT_SERVICES_ADVICE
+					#TODO check only_from etc...
+				;;
+				*)
+					Display --indent 4 --text "$XINETD_SERVICE" --result FOUND --color RED --advice $XINETD_OPT_SERVICES_ADVICE
+				;;
+			esac
+		fi
+	done
+else
+	Display --indent 2 --text "$XINETD_REP" --result NOTFOUND --color BLUE
+fi
+
+return 0
+

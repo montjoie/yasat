@@ -1,0 +1,93 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check HDD monitoring"
+
+for hdd_base in hd sd md
+do
+	SUFIX='a b c d e f g'
+	if [ $hdd_base = 'md' ] ; then
+		if [ '1' = '0' ];then
+			SUFIX=`seq 0 10`
+		else
+			SUFIX='0 1 2 3 4 5 6 7 8 9 10'
+		fi
+	fi
+	for i in $SUFIX
+	do
+		if [ -e /sys/block/${hdd_base}${i} ] ;then
+			Display --indent 2 --text "Device /dev/${hdd_base}${i}" --result FOUND --color BLUE
+			if [ -e sys/block/${hdd_base}${i}/queue/read_ahead_kb ] ;then
+				READ_AHEAD="`cat /sys/block/${hdd_base}${i}/queue/read_ahead_kb`"
+				#on some server I saw a read_ahead of 4096 that is too high
+				if [ $READ_AHEAD -ge 1025 ] ;then
+					Display --indent 4 --text "Read_ahead of /dev/${hdd_base}${i}" --result "$READ_AHEAD" --color ORANGE --advice HDD_READ_AHEAD_HIGH
+				else
+					Display --indent 4 --text "Read_ahead of /dev/${hdd_base}${i}" --result "$READ_AHEAD" --color GREEN
+				fi
+			fi
+			#http://mirror.linux.org.au/pub/linux.conf.au/2008/slides/130-lca2008-nfs-tuning-secrets-d7.odp
+			#1 is bad
+			if [ -e /sys/block/${hdd_base}${i}/device/queue_depth ] ;then
+				QUEUE_DEPTH="`cat /sys/block/${hdd_base}${i}/device/queue_depth`"
+				Display --indent 4 --text "queue_depth of /dev/${hdd_base}${i}" --result "$QUEUE_DEPTH" --color BLUE
+			fi
+			MAX_SECTOR="`cat /sys/block/${hdd_base}${i}/queue/max_sectors_kb`"
+			Display --indent 4 --text "max_sector_kb of /dev/${hdd_base}${i}" --result "$MAX_SECTOR" --color BLUE
+			if [ -e /sys/block/${hdd_base}${i}/queue/scheduler ] ;then
+				SCHEDULER="`cat /sys/block/${hdd_base}${i}/queue/scheduler`"
+				Display --indent 4 --text "scheduler of /dev/${hdd_base}${i}" --result "$SCHEDULER" --color BLUE
+			fi
+
+			#TODO https://ata.wiki.kernel.org/index.php/ATA_4_KiB_sector_issues
+			#check physical_block_size and logical_block_size
+		fi
+	done
+done
+
+#TODO use check_tool
+smartctl --version > /dev/null 2>> ${ERROR_OUTPUT_FILE}
+if [ $? -eq 127 ]
+then
+	Display --indent 2 --text "No smartctl binary" --result WARNING --color RED --advice HDD_SMARTCTL
+	return 1;
+fi
+Display --indent 2 --text "smartctl binary" --result FOUND --color GREEN
+
+#TODO check smartd and raid utils??
+#RAID hw can be found with a lspci |grep RAID bus controller
+#lspci is a prerequis
+
+#TODO use checktool
+lspci > /dev/null 2>> $ERROR_OUTPUT_FILE
+if [ $? -eq 127 ] ;then
+	Display --indent 2 --text "lspci" --result NOTFOUND --color BLUE --advice TODO
+else
+	RAIDHW="`lspci | grep 'RAID bus controller'`"
+	if [ -z "$RAIDHW" ]
+	then
+		Display --indent 2 --text "RAID bus controller" --result NOTFOUND --color BLUE --advice TODO
+	else
+		Display --indent 2 --text "RAID bus controller" --result FOUND --color BLUE --advice TODO
+	fi
+fi
+
+return 0;

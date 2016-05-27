@@ -1,0 +1,327 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Packages"
+
+if [ "${LIST_PKG}x" = "x" ]
+then
+	echo "Unknown packaging , i'll try autodetect"
+	#for the moment no autodetect :)
+	return 0;
+fi
+
+TESTNAME='NSAG=3.2.2.1 Remove Telnet Clients'
+Compliance --result NOTIMPL --plugin packages --nsag 3.2.2.1
+
+TESTNAME='NSAG=3.2.3.1 CCEID=3974-3,4141-8,3537-8,4308-3 Remove rlogin rsh rcp'
+Compliance --result NOTIMPL --plugin packages --nsag 3.2.2.1 --cce 3974-3 --cce 4141-8 --cce 3537-8 --cce 4308-3
+
+TESTNAME='Remove the Rsh Client Commands from the System'
+Compliance --result NOTIMPL --plugin packages --nsag 3.2.3.3
+
+TESTNAME='YASAT_TEST_PROCESS_TFTPD NSAG=3.2.5 CCEID=4273-9,3916-4 Check if tftp-server is installed'
+Is_installed_via_package_manager tftp-server
+if [ "$RESULTAT" = 'yes' ] ;then
+        Display --indent 2 --text "tftp-server package" --result PRESENT --color RED
+        Compliance --result NOK --plugin process --nsag 3.2.2 --cce 3705-1 --cce 4348-9
+else
+        Display --indent 2 --text "tftp-server package" --result ABSENT --color GREEN
+        Compliance --result OK --plugin process --nsag 3.2.2 --cce 3705-1 --cce 4348-9
+fi
+
+TESTNAME='YASAT_TEST_PROCESS_TALKD NSAG=3.2.6.1 Check if talk-server is installed'
+Is_installed_via_package_manager talk-server
+if [ "$RESULTAT" = 'yes' ] ;then
+        Display --indent 2 --text "talk-server package" --result PRESENT --color RED
+        Compliance --result NOK --plugin process --nsag 3.2.6.1
+else
+        Display --indent 2 --text "talk-server package" --result ABSENT --color GREEN
+        Compliance --result OK --plugin process --nsag 3.2.6.1
+fi
+TESTNAME='YASAT_TEST_PACKAGES_TALK NSAG=3.2.6.2 Check if the talk package is installed'
+Is_installed_via_package_manager talk
+if [ "$RESULTAT" = 'yes' ] ;then
+        Display --indent 2 --text "talk package" --result PRESENT --color RED
+        Compliance --result NOK --plugin process --nsag 3.2.6.2
+else
+        Display --indent 2 --text "talk package" --result ABSENT --color GREEN
+        Compliance --result OK --plugin process --nsag 3.2.6.2
+fi
+
+TESTNAME='Disable the Automounter if Possible'
+Compliance --result 'NOTIMPL' --plugin 'process' --nsag '2.2.2.3' --cce '4072-5'
+
+TESTNAME='YASAT_TEST_PROCESS_INETD NSAG=3.2.1 CCEID=4234-1,4023-8 Check if inetd is installed and activated'
+Is_installed_via_package_manager inetd
+if [ "$RESULTAT" = 'yes' ] ;then
+        Check_auto_start inetd
+        Display --indent 2 --text "inetd package" --result PRESENT --color RED
+        Compliance --result NOK --plugin process --nsag 3.2.1 --cce 4234-1 --cce 4023-8
+else
+        Display --indent 2 --text "inetd package" --result ABSENT --color GREEN
+        Compliance --result OK --plugin process --nsag 3.2.1 --cce 4234-1 --cce 4023-8
+fi
+
+TESTNAME='YASAT_TEST_PROCESS_XINETD NSAG=3.2.1 CCEID=4252-3,4164-0 Check if xinetd is installed and activated'
+Is_installed_via_package_manager xinetd packages no 3.2.1 4164-0
+Check_auto_start xinetd packages no 3.2.1 4252-3
+
+#Gentoo package net-misc/telnetd
+TESTNAME='YASAT_TEST_PROCESS_TELNETD NSAG=3.2.2 CCEID=3390-2,4330-7 Check if telnetd is installed and activated'
+Is_installed_via_package_manager telnet-server packages no 3.2.2 4330-7
+Check_auto_start telnetd packages no 3.2.2 3390-2
+
+TESTNAME='YASAT_TEST_PROCESS_YPSERV NSAG=3.2.4 CCEID=3705-1,4348-9 Check if ypserv is installed and activated'
+Is_installed_via_package_manager ypserv packages no 3.2.4 4348-9
+Check_auto_start ypbind packages no 3.2.4 3705-1
+
+TESTNAME='YASAT_TEST_SERVICE_FIRSTBOOT NSAG=3.3.1 CCEID=3412-4 Check if the firstboot service is disabled'
+Check_auto_start firstboot packages no 3.3.1 3412-4
+
+TESTNAME='YASAT_TEST_SERVICE_GPM NSAG=3.3.2 CCEID=4229-1 Check if the gpm service is disabled'
+Check_auto_start gpm packages no 3.3.2 4229-1
+
+TESTNAME='YASAT_TEST_SERVICE_IRQBALANCE NSAG=3.3.3 CCEID=4123-6 Check if the irqbalance service is disabled'
+if [ -e /proc/cpuinfo ];then
+	NBPROCESSOR="`grep processor /proc/cpuinfo | wc -l`"
+else
+	NBPROCESSOR=1
+fi
+if [ $NBPROCESSOR -ge 2 ] ;then
+	Check_auto_start irqbalance packages yes 3.3.3 4123-6
+else
+	Check_auto_start irqbalance packages no 3.3.3 4123-6
+fi
+
+TESTNAME='YASAT_TEST_SERVICE_ISDN NSAG=3.3.4 CCEID=14825-4 Check if the ISDN service is disabled'
+Check_auto_start isdn packages no 3.3.4 14825-4
+
+TESTNAME='YASAT_TEST_PACKAGES_ISDN4K-UTILS NSAG=3.3.4.1 Check if the isdn4k-utils packages is installed'
+Is_installed_via_package_manager isdn4k-utils packages no 3.3.4.1
+
+TESTNAME='YASAT_TEST_SERVICE_KDUMP NSAG=3.3.5 CCEID=3425-6 Check if the kdump service is disabled'
+Check_auto_start kdump packages no 3.3.5 3425-6
+
+TESTNAME='YASAT_TEST_SERVICE_KUDZU NSAG=3.3.6 CCEID=4211-9 Check if the kudzu service is disabled'
+Check_auto_start kudzu packages no 3.3.6 4211-9
+
+TESTNAME='YASAT_TEST_SERVICE_MDMONITOR NSAG=3.3.7 CCEID=3854-7'
+if [ -e /proc/mdstat ] ;then
+	if [ "`cat /proc/mdstat | wc -l`" -ge 3 ] ;then
+		Check_auto_start mdmonitor packages any 3.3.7 3854-7
+	else
+		Check_auto_start mdmonitor packages no 3.3.7 3854-7
+	fi
+else
+	Check_auto_start mdmonitor packages no 3.3.7 3854-7
+fi
+
+TESTNAME='Check if the microcode service is enabled'
+Compliance --result 'NOTIMPL' --plugin packages --nsag 3.3.8 --cce 4356-2
+
+TESTNAME='Check if the network service is enabled'
+Compliance --result 'NOTIMPL' --plugin packages --nsag 3.3.9.1
+
+TESTNAME='Check if the Zeroconf Networking is disabled'
+Compliance --result 'NOTIMPL' --plugin packages --nsag 3.3.9.3 --cce 14054-1
+
+
+TESTNAME='YASAT_TEST_SERVICE_KUDZU NSAG=3.3.10 CCEID=4100-4 Check if the pcscd service is disabled'
+Check_auto_start pcscd packages no 3.3.10 4100-4
+
+TESTNAME='Check if the smartd service is disabled'
+Compliance --result 'NOTIMPL' --plugin packages --nsag 3.3.11 --cce 3455-3
+
+TESTNAME='YASAT_TEST_SERVICE_READAHEAD_EARLY NSAG=3.3.12 CCEID=4421-4 Check if the readahead early service is disabled'
+Check_auto_start readahead_early packages no 3.3.12 4421-4
+
+TESTNAME='YASAT_TEST_SERVICE_READAHEAD_LATER NSAG=3.3.12 CCEID=4302-6 Check if the readahead later service is disabled'
+Check_auto_start readahead_later packages no 3.3.12 4302-6
+
+TESTNAME='YASAT_TEST_SERVICE_DBUS NSAG=3.3.13.1 CCEID=3822-4 Check if the dbus service is disabled'
+if [ "$SCAN_PROFILE" = 'server' ];then
+	SVCNAME='dbus'
+	if [ "$LINUX_VERSION" = 'Red Hat' -o "$LINUX_VERSION" = 'CentOS' ];then
+		SVCNAME='messagebus'
+	fi
+	Check_auto_start $SVCNAME packages no 3.3.13.1 3822-4
+else
+	Compliance --result 'NOTAPPLICABLE' --plugin packages --nsag 3.3.13.1 --cce 3822-4
+fi
+
+TESTNAME='YASAT_TEST_SERVICE_HALDAEMON NSAG=3.3.13.2.1 CCEID=4364-6 Check if the haldaemon service is disabled'
+Check_auto_start haldaemon packages no 3.3.13.2.1 4364-6
+
+TESTNAME='Configure haldaemon NSAG=3.3.13.2.2'
+Compliance --result 'NOTIMPL' --plugin packages --nsag 3.3.13.2.2
+
+TESTNAME='YASAT_TEST_SERVICE_BLUETOOTH NSAG=3.3.14.1 CCEID=4355-4 Check if the bluetooth service is disabled'
+Check_auto_start bluetooth packages no 3.3.14.1 4355-4
+
+TESTNAME='YASAT_TEST_SERVICE_HIDD NSAG=3.3.14.2 CCEID=4377-8 Check if the hidd service is disabled'
+Check_auto_start hidd packages no 3.3.14.2 4377-8
+
+TESTNAME='YASAT_TEST_SERVICE_APMD NSAG=3.3.15.1 CCEID=4289-5 Check if the apmd service is disabled'
+Check_auto_start apmd packages no 3.3.15.1 4289-5
+
+TESTNAME='YASAT_TEST_SERVICE_ACPID NSAG=3.3.15.2 CCEID=4298-6 Check if the acpid service is enabled'
+Check_auto_start acpid packages yes 3.3.15.2 4298-6
+
+if [ -e "$SCAN_ROOT/etc/init.d/cpuspeed" ];then
+	TESTNAME='YASAT_TEST_SERVICE_CPUSPEED NSAG=3.3.15.3 CCEID=4051-9 Check if the cpuspeed service is enabled'
+	Check_auto_start cpuspeed packages yes 3.3.15.3 4051-9
+fi
+
+TESTNAME='YASAT_TEST_SERVICE_IRDA NSAG=3.3.16.1 Check if the irda service is disabled'
+Check_auto_start irda packages no 3.3.16.1
+TESTNAME='YASAT_TEST_PACKAGES_IRDA-UTILS NSAG=3.3.16.2 Check if the irda-utils packages is installed'
+Is_installed_via_package_manager irda-utils packages no 3.3.16.2
+
+TESTNAME='YASAT_TEST_SERVICE_RAWDEVICES NSAG=3.3.17.1 Check if the rawdevices service is disabled'
+Check_auto_start rawdevices packages no 3.3.17.1
+
+TESTNAME='YASAT_TEST_SERVICE_ANACRON NSAG=3.4.1 CCEID=4406-5 Check if the anacron service is disabled'
+Check_auto_start anacron packages no 3.4.1 4406-5
+TESTNAME='YASAT_TEST_PACKAGE_ANACRON NSAG=3.4.1 Check if the anacron package is absent'
+Is_installed_via_package_manager anacron packages no 3.4.1 4428-9
+
+TESTNAME='YASAT_TEST_SERVICE_ATD NSAG=3.4.3 CCEID=14466-7 Check if the atd service is disabled'
+Check_auto_start atd packages no 3.4.3 14466-7
+
+TESTNAME='YASAT_TEST_SERVICE_XFS NSAG=3.6.1.3.1 CCEID=4448-7 Check if the xfs service is disabled'
+Check_auto_start xfs packages no 3.6.1.3.1 4448-7
+
+TESTNAME='YASAT_TEST_SERVICE_HPLIP NSAG=3.8.4.1 CCEID=4425-5 Check if the hplip service is disabled'
+Check_auto_start hplip packages no 3.8.4.1 4425-5
+
+
+
+#debian apt-get
+
+if [ "$LIST_PKG" = "apt-get" ]
+then
+	echo "Check packages with apt-get"
+	#TODO check if we are stable/release specified in source.list
+	#TODO check if we use official debian/ubuntu or other external mirror (usefull)??? (check gpg signature) 
+
+	NB_MAJ_SECU=`apt-get -s upgrade | grep '^Inst' |grep -i security | wc -l`
+	if [ $NB_MAJ_SECU -ge 1 ]
+	then
+		Display --indent 2 --text "Some security upgrade ar not done" --result WARNING --color RED
+	else
+		Display --indent 2 --text "No security upgrade" --result OK --color GREEN
+	fi
+
+	#Check for useless packages
+	if [ -e "${PLUGINS_REP}/packages.data" ]
+	then
+		echo "Check useless packages"
+		LISTE_PKG_INSTALLED="`dpkg -l | grep '^ii' | sed 's/^ii[[:space:]]*//g' | cut -d\  -f1`"
+		grep '^DEBIAN' $PLUGINS_REP/packages.data |
+		while read line
+		do
+		if [ ! -z "`echo $LISTE_PKG_INSTALLED | grep ^${line}`" ]
+		then
+			Display --indent 2 --text "Possible useless packages ${line}" --result WARNING --color ORANGE --advice PACKAGES_USELESS
+		fi
+		done
+	fi
+	return 0;
+fi
+
+#BSD pkg_info + portaudit
+
+#only freebsd have portaudit
+if [ "$OS_TYPE" = 'BSD'  ] ;then
+	Check_tool_presence portaudit
+	PORTAUDIT="$RESULTAT"
+	if [ $? -ne 0 ] ;then
+		Display --indent 2 --text "portaudit not found" --result NOTFOUND --color RED --advice PACKAGES_NO_PORTAUDIT
+		return 1
+	fi
+	if [ -x $PORTAUDIT ];then
+		Display --indent 2 --text "Check PKG with portaudit" --result FOUND --color GREEN
+		portaudit
+		if [ $? -eq 2 ];then
+			Display --indent 2 --text "Portaudit" --result TOOOLD --color ORANGE --advice PACKAGES_PORTAUDIT_TOOOLD
+		fi
+	else
+		Display --indent 2 --text "portaudit not found" --result NOTFOUND --color RED --advice PACKAGES_NO_PORTAUDIT
+		return 1
+	fi
+fi
+if [ "$OS" = 'OpenBSD' ] ;then
+	pkg_add -unx
+fi
+
+
+#Gentoo glsa-check + emerge
+if [ "$LIST_PKG" = "emerge" ] ;then
+	#glsa-check app-portage/gentoolkit
+	Check_tool_presence glsa-check
+	if [ $? -eq 0 ];then
+		Display --indent 2 --text 'glsa-check' --result FOUND --color GREEN
+		Display --indent 2 --text "Check PKG with glsa" --result INFO --color BLUE
+		glsa-check -v -t all
+		if [ $? -eq 0 ];then
+			Display --indent 2 --text "No security upgrade" --result GOOD --color GREEN
+		else
+			Display --indent 2 --text "Some security upgrade are not done" --result WARNING --color RED
+		fi
+		return 0;
+	else
+		Display --indent 2 --text 'glsa-check' --result NOTFOUND --color yellow
+	fi
+fi
+
+#Red Hat
+if [ "$LINUX_VERSION" = 'Red Hat'  ] ;then
+	TESTNAME='YASAT_TEST_SERVICE_RHNSD NSAG=2.1.22 CCEID=3416-5 Check if the rhnsd service is disabled'
+	Check_auto_start rhnsd packages no 2.1.22 3416-5
+#	chkconfig rhnsd
+#	if [ $? = 0 ];then
+#		Display --indent 2 --text "rhnsd" --result ENABLED --color GREEN
+#	else
+#		Display --indent 2 --text "rhnsd" --result DISABLED --color RED --advice PACKAGE_REDHAT_RHNSD_DISABLED
+#	fi
+	#TODO check yum-updatesd.conf
+fi
+
+
+#RedHat rpm -qa
+if [ "$LIST_PKG" = "rpm" ]
+then
+	echo "Check PKG with rpm"
+	LISTE_PKG_INSTALLED="`rpm -qa`"
+	#TODO check packages with rpm
+	grep '^REDHAT' $PLUGINS_REP/packages.data | cut -d\, -f2 |
+	while read line
+	do
+		if [ ! -z "`echo $LISTE_PKG_INSTALLED | grep -i [[:space:]]${line}`" ]
+		then
+			Display --indent 2 --text "Possible useless packages ${line}" --result WARNING --color ORANGE --advice PACKAGES_USELESS
+		fi
+	done
+	return 0;
+fi
+
+#solaris pkgadm?
+
+return 0;

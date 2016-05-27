@@ -1,0 +1,122 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check snmpd configuration"
+
+for LOCATION in ${POSSIBLE_SNMP_DAEMON_CONFIG_LOCATION}
+do
+	if [ -e "${LOCATION}/snmpd.conf" ] ; then
+		SNMPD_CONF_REP="${LOCATION}"
+	fi
+done
+
+if [ ! -d $SNMPD_CONF_REP ] ; then
+	Display --indent 2 --text "$SNMPD_CONF_REP" --result NOTFOUND --color BLUE
+	return 1;
+fi
+Display --indent 2 --text "find $SNMPD_CONF_REP/snmpd.conf" --result FOUND --color GREEN
+
+#find com2sec for finding password le 3eme champ doit etre != default
+grep -v '^#' "${SNMPD_CONF_REP}/snmpd.conf" | grep 'com2sec' |
+while read line
+do
+#	echo "  $line" | sed 's/[[:space:]]/\ /g'
+	SECNAME=`echo $line | cut -d\  -f2`
+	SOURCE=`echo $line | cut -d\  -f3`
+	COMMUNITY="`echo $line | cut -d\  -f4`"
+	if [ -z "`echo $COMMUNITY | grep -iE 'public|private|snmp'`" ] ; then
+		Display --indent 4 --text "COMMUNITY" --result "$COMMUNITY" --color GREEN
+	else
+		Display --indent 4 --text "COMMUNITY" --result "$COMMUNITY" --color RED --advice SNMPD_DEFAULT_COMMUNITY
+	fi
+	if [ "$SOURCE" != "default" ] ;	then
+		Display --indent 4 --text "SOURCE" --result "$SOURCE" --color GREEN
+	else
+		Display --indent 4 --text "SOURCE" --result "$SOURCE" --color RED
+	fi
+done
+
+grep -v '^#' "${SNMPD_CONF_REP}/snmpd.conf" | grep '^[[:space:]]*group' |
+while read line
+do
+	echo "  $line" | sed 's/[[:space:]]/\ /g'
+	SECMODEL=`echo $line | cut -d\  -f3`
+	if [ "$SECMODEL" != "v1" ]
+	then
+		Display --indent 4 --text "SECMODEL" --result "$SECMODEL" --color GREEN
+	else
+		Display --indent 4 --text "SECMODEL" --result "$SECMODEL" --color RED --advice SNMPD_SECMODEL_V1
+	fi
+done
+
+grep -v '^#' "${SNMPD_CONF_REP}/snmpd.conf" | grep 'access' |
+while read line
+do
+	echo "  $line" | sed 's/[[:space:]]/\ /g'
+	LEVEL=`echo $line | cut -d\  -f4`
+	WRITE=`echo $line | cut -d\  -f8`
+	if [ "$LEVEL" != "any" -a $LEVEL != "v1" ]
+	then
+		Display --indent 4 --text "LEVEL" --result "$LEVEL" --color GREEN
+	else
+		Display --indent 4 --text "LEVEL" --result "$LEVEL" --color RED
+	fi
+	if [ "$WRITE" != "all" ]
+	then
+		Display --indent 4 --text "WRITE" --result "$WRITE" --color GREEN
+	else
+		Display --indent 4 --text "WRITE" --result "$WRITE" --color RED
+	fi
+done
+
+#TODO check binding of snmpd
+
+#TODO Check include of others files
+
+
+Check_auto_start $SNMPD_PACKAGE_NAME
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ]
+then
+	Display --indent 2 --text "$SNMPD_PACKAGE_NAME is started at boot" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "$SNMPD_PACKAGE_NAME is started at boot" --result YES --color BLUE
+	else
+		Display --indent 2 --text "$SNMPD_PACKAGE_NAME is started at boot" --result NO --color GREEN
+	fi
+fi
+
+Is_installed_via_package_manager $SNMPD_PACKAGE_NAME
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ]
+then
+	Display --indent 2 --text "$SNMPD_PACKAGE_NAME installation" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "$SNMPD_PACKAGE_NAME is installed by package" --result GOOD --color GREEN
+	else
+		Display --indent 2 --text "$SNMPD_PACKAGE_NAME is installed at hand" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND
+	fi
+fi
+
+
+return 0;

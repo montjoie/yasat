@@ -1,0 +1,29 @@
+EN,BINARIES_UNKNOWN=This binary is not in yasat's SetUID db
+  It is probably a legitimate binary that I do not know of.
+  Please send it's name to me.
+ADVICEEND
+EN,BINARIES_BAD_RIGHT=THIS CHECK IS IN DEVELOPMENT
+EN,BINARIES_NO_AIDE=Install AIDE integrity checker
+  AIDE is a file integrity checker, it makes a database of checksums of your files for later comparison.
+  See <a href="http://aide.sourceforge.net">http://aide.sourceforge.net</a>
+ADVICEEND
+EN,BINARIES_NO_TRIPWIRE=Install TRIPWIRE integrity checker
+ADVICEEND
+EN,BINARIES_NO_CHKROOTKIT=Install chkrootkit
+  See <a href="http://www.chkrootkit.org/">http://www.chkrootkit.org/</a>
+ADVICEEND
+EN,BINARIES_REMOVE_SETUID=Limit the number of set-uid binary
+  Some set-uid binaries might be unnecessary. If your system is used only by root for example, you can remove set-uid from ping, mount, and umount
+ADVICEEND
+EN,BINARIES_NO_POSIXCAPSTOOLS=I cannot test POSIX CAPS for your setuid binaries
+  Install either libcap or libcap-ng for testing the usuability of POSIX CAPS for your setuid binaries
+ADVICEEND
+EN,BINARIES_CAN_HAVE_POSIX_CAPS=You can set POSIX CAPS
+  You can set POSIX CAPS with setcap (or filecap)
+  <i>setcap cap_net_raw+ep /bin/ping</i>
+  See <a href="https://wiki.archlinux.org/index.php/Using_File_Capabilities_Instead_Of_Setuid">https://wiki.archlinux.org/index.php/Using_File_Capabilities_Instead_Of_Setuid</a>
+  See <a href="http://www.friedhoff.org/posixfilecaps.html">http://www.friedhoff.org/posixfilecaps.html</a>
+ADVICEEND
+EN,BINARIES_NO_SAMHAIN=Install SamHain
+  See <a href="http://la-samhna.de/samhain/index.html">http://la-samhna.de/samhain/index.html</a>
+ADVICEEND

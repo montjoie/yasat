@@ -1,0 +1,224 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_SQUID_CONF="/etc/squid/squid.conf /usr/local/etc/squid/squid.conf"
+SQUID_CONF="/etc/squid/squid.conf"
+
+for LOCATION in ${POSSIBLE_SQUID_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		SQUID_CONF="${LOCATION}"
+	fi
+done
+
+SQUID_CONF="`dirname $SQUID_CONF`/squid.conf"
+
+Title "Check Squid"
+
+if [ ! -e "$SQUID_CONF" ]
+then
+	return 1;
+fi
+
+SQUIDUSER='squid'
+SQUID_SHELL="`getent passwd $SQUIDUSER |  cut -d\: -f7`"
+if [ ! -z "`echo $SQUID_SHELL |grep 'sh'`" ]
+then
+	Display --indent 2 --text "Shell de squid $SQUID_SHELL Incorrect " --result WARNING --color RED --advice SQUID_USER_BAD_SHELL
+else
+	Display --indent 2 --text "Shell de squid $SQUID_SHELL Correct " --result OK --color GREEN
+fi
+
+
+Display --indent 2 --text "$SQUID_CONF" --result FOUND --color GREEN
+get_simple_right "$SQUID_CONF"
+if [ "$RESULTAT" = '640' ]
+then
+	Display --indent 4 --text "Right of $SQUID_CONF" --result OK --color GREEN
+else
+	Display --indent 4 --text "Right of $SQUID_CONF" --result "$RESULTAT" --color RED --advice GLOBAL_FILE_CHMOD640
+fi
+
+FindValueOf "$SQUID_CONF" request_header_max_size JUSTTEST
+if [ -z "$RESULTAT" ]
+then
+	RESULTAT=20
+fi
+if [ "$RESULTAT" -le 20 ]
+then
+	Display --indent 4 --text "request_header_max_size <= 20kb" --result GOOD --color GREEN
+else
+	Display --indent 4 --text "request_header_max_size > 20kb" --result BAD --color ORANGE
+fi
+FindValueOf "$SQUID_CONF" reply_header_max_size JUSTTEST
+if [ -z "$RESULTAT" ]
+then
+	RESULTAT=20
+fi
+if [ "$RESULTAT" -le 20 ]
+then
+	Display --indent 4 --text "reply_header_max_size <= 20kb" --result GOOD --color GREEN
+else
+	Display --indent 4 --text "reply_header_max_size > 20kb" --result BAD --color ORANGE
+fi
+
+FindValueOf "$SQUID_CONF" check_hostnames JUSTTEST
+if [ -z "$RESULTAT" ]
+then
+	RESULTAT='off'
+fi
+if [ "$RESULTAT" = 'on' ]
+then
+	Display --indent 4 --text "check_hostnames on" --result GOOD --color GREEN
+else
+	Display --indent 4 --text "check_hostnames off" --result BAD --color RED --advice SQUID_CHECK_HOSTNAMES
+fi
+
+FindValueOf "$SQUID_CONF" ignore_unknown_nameservers JUSTTEST
+if [ -z "$RESULTAT" ]
+then
+	RESULTAT='on'
+fi
+if [ "$RESULTAT" = 'on' ]
+then
+	Display --indent 4 --text "ignore_unknown_nameservers on" --result GOOD --color GREEN
+else
+	Display --indent 4 --text "ignore_unknown_nameservers off" --result BAD --color RED --advice SQUID_UNKNOWN_NAMESERVER
+fi
+
+FindValueOf "$SQUID_CONF" ftp_sanitycheck JUSTTEST
+if [ -z "$RESULTAT" ]
+then
+	RESULTAT='on'
+fi
+if [ "$RESULTAT" = 'on' ]
+then
+	Display --indent 4 --text "ftp_sanitycheck on" --result GOOD --color GREEN
+else
+	Display --indent 4 --text "ftp_sanitycheck off" --result BAD --color RED --advice SQUID_FTP_SANITYCHECK
+fi
+
+FindValueOf "$SQUID_CONF" allow_underscore JUSTTEST
+if [ -z "$RESULTAT" ]
+then
+	RESULTAT='on'
+fi
+if [ "$RESULTAT" = 'on' ]
+then
+	Display --indent 4 --text "allow_underscore on" --result BAD --color RED --advice SQUID_ALLOW_UNDERSCORE
+else
+	Display --indent 4 --text "allow_underscore off" --result GOOD --color GREEN
+fi
+
+FindValueOf "$SQUID_CONF" httpd_suppress_version_string JUSTTEST
+if [ -z "$RESULTAT" ]
+then
+	RESULTAT='off'
+fi
+if [ "$RESULTAT" = 'on' ]
+then
+	Display --indent 4 --text "httpd_suppress_version_string on" --result GOOD --color GREEN
+else
+	Display --indent 4 --text "httpd_suppress_version_string off" --result BAD --color RED --advice SQUID_HIDE_VERSION
+fi
+
+#check for allowed ports
+grep -v '^#' "$SQUID_CONF" | grep '^http_access' | sed 's/^http_access[[:space:]]*//g' | sed 's/[[:space:]][[:space:]]*/ /g'|
+while read line
+do
+#	echo ""
+#	echo "$line"
+	KEY="`echo $line | cut -d\  -f1`"
+#	if [ "$KEY" = 'allow' -o "$KEY" = 'deny' ]
+#	then
+	ACLNAME="`echo $line | cut -d\  -f2`"
+	NEGATION=0
+	if [ ! -z "`echo $ACLNAME |grep '^!'`" ]
+	then
+		ACLNAME="`echo $line | cut -d\!  -f2`"
+		NEGATION=1
+	fi
+	if [ $NEGATION -eq 1 ]
+	then
+		NEGATION=0
+		if [ "$KEY" = 'allow' ]
+		then
+			KEY='deny'
+		else
+			KEY='allow'
+		fi
+	fi
+#	echo "Check $KEY for acl=$ACLNAME"
+	grep -i '^acl[[:space:]]' "$SQUID_CONF" | grep -i "${ACLNAME}" | sed 's/^acl[[:space:]]*//g' | sed 's/[[:space:]][[:space:]]*/ /g'|
+	while read lineacl
+	do
+#		echo " FOUND acl=$lineacl"
+		ACL_TYPE="`echo $lineacl | cut -d\  -f2`"
+#		echo "  TYPE=$ACL_TYPE" 
+		if [ "$ACL_TYPE" = "port" ]
+		then
+			PORT="`echo $lineacl | cut -d\  -f3`"
+#			echo "        $lineacl port=$PORT"
+			#we dont want allow for port 280
+			if [ ! -z "`grep ^$PORT,$KEY ${PLUGINS_REP}/squid.ports`" ]
+			then
+				Display --indent 4 --text "Found allowed port $PORT in $ACLNAME" --result BAD --color RED
+			else
+				Display --indent 4 --text "Found allowed port $PORT in $ACLNAME" --result OK --color GREEN
+			fi
+		fi
+#		if [ "$ACL_TYPE" = "dst" ]
+#		then
+		#we dont want that localhost is accessible
+#			DEST="`echo $lineacl | cut -d\  -f3`"
+#			echo "        $lineacl dest=$DEST"
+#		fi
+	done
+#	fi
+done
+
+Check_auto_start squid squid any
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ]
+then
+	Display --indent 2 --text "squid is started at boot" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "squid is started at boot" --result YES --color BLUE
+	else
+		Display --indent 2 --text "squid is started at boot" --result NO --color GREEN
+	fi
+fi
+
+Is_installed_via_package_manager squid
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ]
+then
+	Display --indent 2 --text "squid installation" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "squid is installed by package" --result GOOD --color GREEN
+	else
+		Display --indent 2 --text "squid is installed at hand" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND
+	fi
+fi
+return 0;

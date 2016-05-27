@@ -1,0 +1,14 @@
+EN,PACKAGES_USELESS=On a server, if this packages is not used, remove it
+  On a server this packages may not be needed, double check that it is of use.
+  Consider removing the package if it is not needed.
+ADVICEEND
+EN,PACKAGES_NO_PORTAUDIT=Install portaudit
+  Install portaudit to check your installed ports for known security issues.
+ADVICEEND
+EN,PACKAGES_PORTAUDIT_TOOOLD=Refresh portaudit database
+  Type "portaudit -F" to refresh portaudit database
+ADVICEEND
+EN,PACKAGE_REDHAT_RHNSD_DISABLED=Enable rhnsd
+  Rhnsd is the RedHat network daemon.
+  If you have a RedHat, you might also have an account on the RedHat Network, use it.
+ADVICEEND

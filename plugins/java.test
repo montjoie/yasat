@@ -1,0 +1,54 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check Java"
+
+return 0;
+
+POSSIBLE_JAVA_DIR=""
+KEYSTORE_PASSWORD='changeit'
+TMP_RESULT="${TEMPYASATDIR}/java.out"
+KEYSTORE='/usr/lib/jvm/sun-jdk-1.6/jre/lib/security/cacerts'
+
+TMP_LIST="${TEMPYASATDIR}/list.out"
+TMP_CERT="${TEMPYASATDIR}/tmp_cert.out"
+
+STAT_NB=0
+STAT_TOTAL=0
+
+CERT_INVALID_LIST="${TEMPYASATDIR}/clist.out"
+
+echo "$KEYSTORE_PASSWORD" | keytool -keystore $KEYSTORE -list 2> /dev/null | grep trustedCertEntry |cut -d\, -f1 > $TMP_LIST
+#TODO check return code of keytool
+while read calias
+do
+	Display --indent 2 --text "Cert $calias" --result FOUND --color BLUE
+        echo "$KEYSTORE_PASSWORD" | keytool -keystore $KEYSTORE -exportcert -alias $calias -rfc > $TMP_RESULT 2> /dev/null
+	check_certificate $TMP_RESULT 4
+	if [ $RESULTAT = 'BAD' ] ; then
+		STAT_NB=$(($STAT_NB+1))
+	fi
+	STAT_TOTAL=$(($STAT_TOTAL+1))
+        rm $TMP_RESULT
+done < $TMP_LIST
+echo $STAT_NB $STAT_TOTAL
+
+
+return 0;

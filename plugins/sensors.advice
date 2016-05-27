@@ -1,0 +1,20 @@
+EN,TEMP_SENSORS=Install lm_sensors to monitor temperature.
+  See <a href="http://www.lm-sensors.org">www.lm-sensors.org</a>
+ADVICEEND
+EN,IPMI_NO_BINARY=Install freeipmi/openipmi/ipmitool on a server
+  If this machine is a server install freeipmi/openipmi/ipmitool for monitoring.
+  See <a href="http://www.gnu.org/software/freeipmi/">http://www.gnu.org/software/freeipmi/</a>
+  See <a href="http://openipmi.sourceforge.net/">http://openipmi.sourceforge.net/</a>
+  See <a href="http://ipmitool.sourceforge.net/">http://ipmitool.sourceforge.net/</a>
+ADVICEEND
+EN,IPMI_BAD_SNMP_COMM=Change this community string
+  Your community string is a default one, consider changing it.
+ADVICEEND
+EN,TEMP_SENSOR_PROGRAM_UNK=I don't know the temperature monitoring program for your OS
+  I know only lm_sensors for Linux, on your OS I do not know any temperature monitoring program.
+  If you know another, please tell me so I can add it to the tests.
+  Thanks.
+ADVICEEND
+EN,MCELOG_TOOL=Install mcetool
+  For decoding MCE events you will need the mcelog tool
+ADVICEEND

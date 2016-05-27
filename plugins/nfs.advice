@@ -1,0 +1,16 @@
+EN,NFS_EXPORT_SUBTREE_CHECK=TODO
+  See <a href="http://nfs.sourceforge.net/">http://nfs.sourceforge.net/</a> Section C7
+ADVICEEND
+EN,NFS_EXPORT_NO_ROOT_SQUASH=If you can, unset no_root_squash
+  Map requests from uid/gid 0 to the anonymous uid/gid. This is the default.
+  See <a href="http://nfs.sourceforge.net/">http://nfs.sourceforge.net/</a> Section C7
+ADVICEEND
+EN,NFS_EXPORT_NO_INTR=Set intr option
+  See <a href="http://nfs.sourceforge.net/">http://nfs.sourceforge.net/</a> Section D12
+ADVICEEND
+EN,NFS_EXPORT_UDP=Prefer TCP over UDP
+  See <a href="http://nfs.sourceforge.net/nfs-howto/ar01s05.html">http://nfs.sourceforge.net/nfs-howto/ar01s05.html</a> Section 5.4
+ADVICEEND
+EN,NFS_CLIENT_NOAC=For performance, unset noac
+  See <a href="http://nfs.sourceforge.net/">http://nfs.sourceforge.net/</a> Section B9
+ADVICEND

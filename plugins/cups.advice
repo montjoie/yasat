@@ -1,0 +1,3 @@
+EN,CUPS_LISTEN=If possible, restrict CUPS to listen only on localhost
+  If you don't share printers, restrict the possibility to other users to access cupsd.
+ADVICEEND

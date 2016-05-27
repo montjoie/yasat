@@ -1,0 +1,611 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+
+Title "Check apache Vhosts"
+
+#TODO 404 personalized pages /usr/share/apache2/error/HTTP_NOT_FOUND.html.var
+#TODO check passwd files within vhosts docroot security notes at http://httpd.apache.org/docs/2.0/mod/mod_auth.html#authuserfile
+#TODO Dav on/svn
+#TODO SVNPath
+#TODO MOD JK jkmount
+#TODO checks docroot for Thumbs.db, 'copy of filename', etc... files that dont have to be present
+#.CVS
+#TODO replace/add *:80 by servername when printing infos
+#TODO mod_gzip mod_deflate http://httpd.apache.org/docs/2.0/mod/mod_deflate.html
+# SetOutputFilter DEFLATE or AddOutputFilterByType DEFLATE text/html text/plain text/xml SetInputFilter 
+
+#TODO find for php.old
+#php_admin_value php_value php_admin_flag
+#open_basedir http://www.php.net/manual/en/ini.core.php#ini.open-basedir
+
+#TODO mod_expire
+
+#TODO check mod itk
+#TODO for known location phpmyadmin check config/install rights
+
+Find_apache_conf_location
+
+if [ ! -d $APACHE_CONF_REP ] ;then
+	Display --indent 2 --text "No apache found" --result NOTFOUND --color BLUE
+	return 1;
+fi
+
+prepare_apache_conf $APACHE_CONF_REP
+APACHE_CONF_LOCATION_TO_TEST="${TEMPYASATDIR}/apache.conf"
+if [ ! -e "$APACHE_CONF_LOCATION_TO_TEST" ]
+then
+	echo "Error no $APACHE_CONF_LOCATION_TO_TEST"
+	return 1;
+fi
+
+#starting here, we have a full apache configuration file
+
+FindValueOf $APACHE_CONF_LOCATION_TO_TEST "User"
+Check_apache_user $APACHE_CONF_REP $RESULTAT
+APACHE_USER="$RESULTAT"
+FindValueOf $APACHE_CONF_LOCATION_TO_TEST "Group"
+Check_apache_group $APACHE_CONF_REP $RESULTAT
+APACHE_GROUP="$RESULTAT"
+#sanity check, if it is empty then it is www-data
+#it happen when check_apache_user found multiple declaration of user
+#TODO correct the found of multiple declaration
+if [ -z "$APACHE_USER" ];then
+	Display --indent 2 --text "Strange I dont found apache user, fall back to www-data" --result INFO --color BLUE
+	APACHE_USER='www-data'
+fi
+if [ -z "$APACHE_GROUP" ];then
+	Display --indent 2 --text "Strange I dont found apache group, fall back to www-data" --result INFO --color BLUE
+	APACHE_GROUP='www-data'
+fi
+
+
+#check apache binary
+if [ -z "$POSSIBLE_APACHE_BIN" ] ; then
+	POSSIBLE_APACHE_BIN="/usr/sbin/apache2 /usr/local/sbin/httpd /usr/local/sbin/apache2 /usr/sbin/httpd"
+fi
+APACHE_BIN=""
+
+for APABIN_LOCATION in ${POSSIBLE_APACHE_BIN}
+do
+	if [ -x "$SCAN_ROOT/${APABIN_LOCATION}" ] ;then
+		APACHE_BIN="`echo $SCAN_ROOT/${APABIN_LOCATION} | sed 's,//*,/,g'`"
+	fi
+done
+
+if [ -z "${APACHE_BIN}" ] ; then
+	Display --indent 2 --text "No apache binary found" --result NOTFOUND --color BLUE
+else
+	if [ ! -x "$APACHE_BIN" ] ; then
+		Display --indent 2 --text "$APACHE_BIN is not executable" --result ERROR --color RED
+	else
+		Display --indent 2 --text "$APACHE_BIN" --result FOUND --color GREEN
+		check_file "$APACHE_BIN" 2 BINARY
+
+		if [ "$LINUX_VERSION" = "Gentoo" ] ;then
+			. /etc/conf.d/apache2
+			APACHE_BIN="$APACHE_BIN $APACHE2_OPTS"
+		fi
+		if [ "$LINUX_VERSION" = "Debian" ] ;then
+			if [ -e "$SCAN_ROOT/etc/apache2/envvars" ];then
+				. "$SCAN_ROOT/etc/apache2/envvars"
+			else
+				Display --indent 2 --text "Missing /etc/apache2/envvars" --result WARN --color ORANGE
+			fi
+		fi
+	fi
+fi
+
+#end of check apache binary
+
+
+OUTPUT_RESULT="${TEMPYASATDIR}/apache.result"
+TMP_RESULT="${TEMPYASATDIR}/apache.tmpresult"
+echo '' > $OUTPUT_RESULT
+
+DIRECTORY=''
+LOCATION=''
+CONF_PROXY=''
+VIRTUALHOST=''
+ACCESSLOG=''
+ERRORLOG=''
+ORDER=0
+DENY_IN_FIRST=0
+DENY_FROM_ALL=0
+REQUIRE_VALID_USER=0
+OPTION_INDEX=0
+OPTION_CGI=0
+LIST_ALIAS=''
+VHOST_SERVER_NAME=''
+JKMOUNT_SRC=''
+DOCROOT=''
+SSLEngine=0
+SSLProtocol=0 #0 not found, 1=good 2=bad
+
+while read line
+do
+	KEYWORD="`echo $line | cut -d\  -f1`"
+#	echo "Check $KEYWORD"
+#	BASIC_CONF_MATCH=`grep ^${KEYWORD}\| ${PLUGINS_REP}/apache_conf.data`
+	if [ ! -z "`echo $KEYWORD |grep -i 'LoadModule'`" ];then
+		#check if this module is our list
+		MODULE_NAME="`echo $line | sed 's,[[:space:]][[:space:]]*, ,g' | cut -d\  -f2`"
+#		echo "  check module $MODULE_NAME"
+		if [ ! -z "`grep $MODULE_NAME ${PLUGINS_REP}/apache_modules.data`" ];then
+			Display --indent 2 --text "Module $MODULE_NAME necessary ?" --result WARNING --color ORANGE --advice APACHE_MODULE_DISABLE_UNNECESSARY_MODULES
+		fi
+#http://httpd.apache.org/docs/2.2/mod/mod_ssl.html#sslsessioncache
+#TODO SSLSessionCache if is dbm, check right and owning
+################################################################################
+######################################## SSLCertificateFile
+################################################################################
+	elif [ ! -z "`echo $KEYWORD |grep -i 'SSLCertificateFile'`" ];then
+		key="`echo $line | cut -d\  -f2-`"
+		check_certificate $key 2 'apache'
+################################################################################
+######################################## SSLCertificateKeyFile
+################################################################################
+	elif [ ! -z "`echo $KEYWORD |grep -i 'SSLCertificateKeyFile'`" ];then
+		key="`echo $line | cut -d\  -f2-`"
+		check_private_key $key 2 'apache'
+################################################################################
+######################################## SSLCipherSuite
+################################################################################
+#TODO SSLCipherSuite check for !LOW !NULL !SSLv2 !EXP http://httpd.apache.org/docs/2.0/mod/mod_ssl.html#sslciphersuite
+#http://httpd.apache.org/docs/2.3/en/ssl/ssl_howto.html
+#http://lwn.net/Articles/441551/
+	elif [ ! -z "`echo $KEYWORD |grep -i 'SSLCipherSuite'`" ];then
+		RESULTAT="`echo $line | cut -d\  -f2-`"
+		for ciphers in $RESULTAT
+		do
+			Display --indent 2 --text "SSLCipherSuite $ciphers" --result FOUND --color BLUE
+			check_cipher_list 4 "$ciphers"
+		done
+################################################################################
+######################################## SSLProtocol
+################################################################################
+	elif [ ! -z "`echo $KEYWORD |grep -i 'SSLProtocol'`" ];then
+		SSL_PROTOCOL_LIST="`echo $line | cut -d\  -f2-`"
+		check_ssl_protocol_openssl 2 "$SSL_PROTOCOL_LIST"
+		SSLProtocol=$?
+################################################################################
+######################################## SSLEngine
+################################################################################
+	elif [ ! -z "`echo $KEYWORD |grep -i 'SSLEngine'`" ];then
+		Display --indent 2 --text "SSLEngine enabled " --result FOUND --color GREEN
+		#TODO check we are in virtualhost
+		SSLEngine=1
+		echo 'SSL=1' >> $OUTPUT_RESULT
+#	elif [ ! -z "$BASIC_CONF_MATCH" ];then
+#		echo "  We got something $BASIC_CONF_MATCH"
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*<Proxy'`" ] ; then
+		get_path_from_apache_directives "$line"
+		CONF_PROXY="$RESULTAT"
+		echo "  Found Proxy $CONF_PROXY"
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*<Directory'`" ] ; then
+		get_path_from_apache_directives "$line"
+		DIRECTORY="$RESULTAT"
+		AUTH_FILE=''
+		echo "  Found Directory $DIRECTORY"
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*<Location'`" ] ; then
+		get_path_from_apache_directives "$line"
+		LOCATION="$RESULTAT"
+		echo "  Found Location $LOCATION"
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*<VirtualHost'`" ] ; then
+		get_path_from_apache_directives "$line"
+		VIRTUALHOST="$RESULTAT"
+		echo "  Found VirtualHost $VIRTUALHOST"
+		echo "VHOST=$VIRTUALHOST" >> $OUTPUT_RESULT
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*</Directory'`" ] ; then
+	##### /Directory =======================
+		GOOD=''
+		BAD=''
+		echo "    Found End of Directory $DIRECTORY"
+		if [ "$ORDER" -eq 0 ] ; then
+			Display --indent 4 --text "No order clause" --result NOTFOUND --color RED --advice APACHE_VHOSTS_NO_ORDER_CLAUSE
+			BAD="$BAD NOORDER"
+		else
+			if [ $DENY_IN_FIRST -eq 0 ] ; then
+				Display --indent 4 --text "Order clause with allow in first" --result FOUND --color GREEN
+				GOOD="$GOOD ALLOW FIRST"
+				if [ $DENY_FROM_ALL -eq 1 ] ; then
+					Display --indent 4 --text "Order clause with deny from all" --result FOUND --color GREEN
+					GOOD="$GOOD DENYALL"
+				fi
+
+			else
+				if [ $DENY_FROM_ALL -eq 1 ] ; then
+				Display --indent 4 --text "Order clause with deny from all" --result FOUND --color GREEN
+				GOOD="$GOOD DENYALL"
+				else
+				Display --indent 4 --text "Order clause with deny in first" --result WARNING --color RED
+				BAD="$BAD denyfirst"
+				fi
+			fi
+		fi
+		if [ $OPTION_INDEX -eq 1 ] ; then
+			BAD="$BAD INDEX"
+		fi
+		if [ $OPTION_CGI -eq 1 ] ; then
+			BAD="$BAD CGI"
+		fi
+		if [ $REQUIRE_VALID_USER -eq 1 ] ; then
+			Display --indent 4 --text "Protected by password" --result FOUND --color GREEN
+			GOOD="$GOOD PASSWORD"
+		fi
+
+		echo "DIRECTORY=$DIRECTORY ${GREEN}$GOOD ${RED}$BAD${NORMAL}" >> $OUTPUT_RESULT
+		if [ ! -z $AUTH_FILE ] ; then
+			echo "AUTHFILE=$AUTH_FILE" >> $OUTPUT_RESULT
+		fi
+		identify_web_tech_in_dir "$DIRECTORY" recursive
+		if [ "$WEBTECH" = 'PHP' ] ; then
+			Display --indent 2 --text "PHP technology" --result FOUND --color BLUE
+		fi
+		DIRECTORY=''
+		ORDER=0
+		DENY_IN_FIRST=0
+		DENY_FROM_ALL=0
+		REQUIRE_VALID_USER=0
+		AUTH_FILE=''
+		OPTION_INDEX=0
+		OPTION_CGI=0
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*</Location'`" ] ; then
+	##### /Location =======================
+		GOOD=''
+		BAD=''
+		echo "    Found End of Location $LOCATION"
+		if [ $ORDER -eq 0 ] ; then
+			Display --indent 4 --text "No order clause" --result NOTFOUND --color RED --advice APACHE_VHOSTS_NO_ORDER_CLAUSE
+			BAD="$BAD NOORDER"
+		else
+			if [ $DENY_IN_FIRST -eq 0 ] ; then
+				Display --indent 4 --text "Order clause with allow in first" --result FOUND --color GREEN
+				GOOD="$GOOD ALLOW FIRST"
+				if [ $DENY_FROM_ALL -eq 1 ] ; then
+					Display --indent 4 --text "Order clause with deny from all" --result FOUND --color GREEN
+					GOOD="$GOOD DENYALL"
+				fi
+			else
+				if [ $DENY_FROM_ALL -eq 1 ] ; then
+				Display --indent 4 --text "Order clause with deny from all" --result FOUND --color GREEN
+				GOOD="$GOOD DENYALL"
+				else
+				Display --indent 4 --text "Order clause with deny in first" --result WARNING --color RED
+				BAD="$BAD denyfirst"
+				fi
+			fi
+		fi
+		if [ $OPTION_INDEX -eq 1 ] ; then
+			BAD="$BAD INDEX"
+		fi
+		if [ $OPTION_CGI -eq 1 ] ; then
+			BAD="$BAD CGI"
+		fi
+		if [ $REQUIRE_VALID_USER -eq 1 ] ; then
+			Display --indent 4 --text "Protected by password" --result FOUND --color GREEN
+			GOOD="$GOOD PASS"
+		fi
+		echo "LOCATION=$LOCATION ${GREEN}$GOOD ${RED}$BAD${NORMAL}" >> $OUTPUT_RESULT
+		if [ ! -z "$AUTH_FILE" ] ; then
+			echo "AUTHFILE=$AUTH_FILE" >> $OUTPUT_RESULT
+		fi
+		if [ -z "$DOCROOT" ] ; then
+			Display --indent 4 --text "Strange no docroot yet" --result NOTFOUND --color ORANGE
+			identify_web_tech_in_dir "${DEFAULT_APACHE_DOCROOT}/${LOCATION}"
+		else
+			identify_web_tech_in_dir "${DOCROOT}/${LOCATION}"
+		fi
+		if [ "$WEBTECH" = 'PHP' ] ; then
+			Display --indent 2 --text "PHP technology" --result FOUND --color BLUE
+		fi
+
+		LOCATION=''
+		ORDER=0
+		DENY_IN_FIRST=0
+		DENY_FROM_ALL=0
+		REQUIRE_VALID_USER=0
+		AUTH_FILE=''
+		OPTION_INDEX=0
+		OPTION_CGI=0
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*</VirtualHost'`" ] ; then
+	##### /Virtualhost =======================
+		echo "    Found End of Virtualhost $VIRTUALHOST"
+		if [ -z "$ACCESSLOG" ] ; then
+			Display --indent 4 --text "$VIRTUALHOST has no accesslog " --result NOTFOUND --color RED --advice APACHE_VHOSTS_NO_ACCESSLOG
+		else
+			Display --indent 4 --text "Accesslog $ACCESSLOG" --result FOUND --color GREEN
+		fi
+		if [ -z "$ERRORLOG" ] ; then
+			Display --indent 4 --text "$VIRTUALHOST has no ErrorLog " --result NOTFOUND --color RED --advice APACHE_VHOSTS_NO_ERRORLOG
+		else
+			Display --indent 4 --text "ErrorLog $ERRORLOG" --result FOUND --color GREEN
+		fi
+		if [ ! -z "$LIST_ALIAS" ] ; then
+			echo "ALIAS=$LIST_ALIAS" >> $OUTPUT_RESULT
+		fi
+		if [ -z "$DOCROOT" ] ; then
+			Display --indent 4 --text "No DocumentRoot in this vhost" --result NOTFOUND --color RED --advice APACHE_VHOSTS_NO_DOCROOT
+		fi
+		#TODO check if we have found SSLProtocol
+		echo "ENDHOST=$VIRTUALHOST" >> $OUTPUT_RESULT
+		VIRTUALHOST=''
+		ACCESSLOG=''
+		ERRORLOG=''
+		LIST_ALIAS=''
+		JKMOUNT_SRC=''
+		DOCROOT=''
+		SSLEngine=0
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*ServerName'`" ];then
+	##### ServerName ===========================================
+		VHOST_SERVER_NAME="`echo $line | sed 's/^[[:space:]]*[a-zA-Z0-9][a-zA-Z0-9]*[[:space:]]*//g' | cut -d\  -f1`"
+		Display --indent 4 --text "$VIRTUALHOST has ServerName $VHOST_SERVER_NAME" --result FOUND --color GREEN
+		echo "SERVERNAME=$VHOST_SERVER_NAME" >> $OUTPUT_RESULT
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*</Proxy'`" ] ;then
+	##### /Proxy =======================
+		GOOD=''
+		BAD=''
+		if [ $ORDER -eq 0 ] ;then
+			Display --indent 4 --text "No order clause" --result NOTFOUND --color RED --advice APACHE_VHOSTS_NO_ORDER_CLAUSE
+			BAD="$BAD NOORDER"
+		else
+			if [ $DENY_IN_FIRST -eq 0 ]
+			then
+				Display --indent 4 --text "Order clause with allow in first" --result FOUND --color GREEN
+				GOOD="$GOOD ALLOW FIRST"
+			else
+				if [ $DENY_FROM_ALL -eq 1 ]
+				then
+				Display --indent 4 --text "Order clause with deny from all" --result FOUND --color GREEN
+				GOOD="$GOOD DENYALL"
+				else
+				Display --indent 4 --text "Order clause with deny in first" --result WARNING --color RED
+				BAD="$BAD denyfirst"
+				fi
+			fi
+		fi
+		echo "    Found End of Proxy $CONF_PROXY"
+		echo "PROXY=$CONF_PROXY ${GREEN}$GOOD ${RED}$BAD${NORMAL}" >> $OUTPUT_RESULT
+		CONF_PROXY=''
+		ORDER=0
+		DENY_IN_FIRST=0
+		DENY_FROM_ALL=0
+		REQUIRE_VALID_USER=0
+		AUTH_FILE=''
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*configLog'`" ];then
+	##### Logs =======================
+		ACCESSLOG=`echo $line | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]//g' | cut -d\  -f1`
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*CustomLog'`" ];then
+		ACCESSLOG=`echo $line | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]*//g' | cut -d\  -f1`
+
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*ErrorLog'`" ];then
+		ERRORLOG=`echo $line | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]*//g' | cut -d\  -f1`
+
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*order'`" ] ;then
+	##### /Order ======================================
+	# Allow,Deny = good:)
+	# Deny,Allow = bad
+		ORDER=1
+		if [ ! -z "`echo $line | grep -i '^[[:space:]]*order deny,allow'`" ]
+		then
+			DENY_IN_FIRST=1
+		fi
+
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*deny from all'`" ];then
+		DENY_FROM_ALL=1
+
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*require valid-user'`" ];then
+		REQUIRE_VALID_USER=1
+
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*require group'`" ];then
+		REQUIRE_VALID_USER=1
+
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*require user'`" ];then
+		REQUIRE_VALID_USER=1
+
+	#TODO Dav on
+
+	##### docroot ===========================================
+	elif [ ! -z "`echo $line | grep -i '^[[:space:]]*documentroot'`" ] ; then
+		DOCROOT=`echo $line  | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]*//g' | sed 's/^\"//g' | sed 's/\"[[:space:]]*$//g'`
+		Display --indent 4 --text "Docroot $DOCROOT" --result FOUND --color GREEN
+
+		if [ "$DOCROOT" = '/var/www' -o "$DOCROOT" = '/var/www/' ] ; then
+			Display --indent 4 --text "Docroot $DOCROOT" --result FOUND --color ORANGE --advice APACHE_VHOSTS_VAR_WWW
+		fi
+
+		check_directory_group "$DOCROOT" $APACHE_GROUP $TMP_RESULT 6 APACHE_VHOSTS_DOCROOT_BADGROUP
+		check_directory_others "$DOCROOT" $TMP_RESULT 6 APACHE_VHOSTS_DOCROOT_OTHERRIGHTS
+		check_directory_writable_by_group "$DOCROOT" $APACHE_GROUP $TMP_RESULT 6 APACHE_VHOSTS_DOCROOT_GROUPW
+
+		if [ -e "${DOCROOT}/robots.txt" ] ; then
+			Display --indent 6 --text "Found robots.txt" --result FOUND --color BLUE
+		else
+			Display --indent 6 --text "No robots.txt" --result NOTFOUND --color ORANGE --advice APACHE_VHOSTS_NO_ROBOTS_TXT
+		fi
+
+		#check for known location
+		if [ -e "$PLUGINS_REP/apache_vhosts.data" ] ; then
+			grep -v '^#' "$PLUGINS_REP/apache_vhosts.data" |
+			while read LOC_LINE
+			do
+#				echo "      $LOC_LINE"
+				LOC_LOC=`echo $LOC_LINE | cut -f1 -d\|`
+				LOC_ADVICE=`echo $LOC_LINE | cut -f3 -d\|`
+				if [ -e "${DOCROOT}${LOC_LOC}" ] ; then
+					Display --indent 2 --text "=> ${DOCROOT}${LOC_LOC}" --result FOUND --color RED --advice $LOC_ADVICE
+					echo "HLOC=${LOC_LOC}" >> $OUTPUT_RESULT
+				fi
+			done
+		else
+			Display --indent 2 --text "No apache_vhosts.data" --result NOTFOUND --color RED
+		fi
+		identify_web_tech_in_dir "$DOCROOT" recursive
+		if [ "$WEBTECH" = 'PHP' ] ; then
+			Display --indent 2 --text "PHP technology" --result FOUND --color BLUE
+		fi
+
+	fi
+	#TODO better alias printing in apache tree (list_alias)
+	##### alias ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*Alias[[:space:]]'`" ];then
+		ALIAS="`echo $line | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]*//g' | cut -d\  -f1`"
+		DEST_ALIAS="`echo $line | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]*//g' | cut -d\  -f2 | sed 's/^"//' | sed 's/"$//'`"
+		Display --indent 4 --text "$ALIAS -> $DEST_ALIAS" --result FOUND --color BLUE
+		if [ -z "$VIRTUALHOST" ];then
+			echo "ALIAS=$ALIAS" >> $OUTPUT_RESULT
+		else
+			if [ -z "$LIST_ALIAS" ];then
+				LIST_ALIAS="$ALIAS"
+			else
+				LIST_ALIAS="$LIST_ALIAS $ALIAS"
+			fi
+		fi
+	fi
+
+	##### override ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*AllowOverride'`" ] ; then
+		OVERRIDE=`echo $line | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]*//g' | cut -d\  -f1`
+		if [ "$OVERRIDE" != "None" ];then
+			Display --indent 4 --text "$VIRTUALHOST has override $OVERRIDE" --result WARNING --color ORANGE
+		fi
+	fi
+	##### php_admin_value ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*php_admin_value'`" ] ; then
+		PHP_ADMIN_VALUE=`echo $line | sed 's/^[[:space:]]*php_admin_value[[:space:]]*//g'`
+		Display --indent 4 --text "$VIRTUALHOST has php_admin_value $PHP_ADMIN_VALUE" --result WARNING --color BLUE
+		echo "PHP_ADMIN_VALUE=$PHP_ADMIN_VALUE" >> $OUTPUT_RESULT
+	fi
+	##### php_admin_flag ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*php_admin_flag'`" ] ; then
+		PHP_ADMIN_FLAG=`echo $line | sed 's/^[[:space:]]*php_admin_flag[[:space:]]*//g'`
+		Display --indent 4 --text "$VIRTUALHOST has php_admin_flag $PHP_ADMIN_FLAG" --result WARNING --color BLUE
+		#temp use same variable for flag and value
+		echo "PHP_ADMIN_VALUE=$PHP_ADMIN_FLAG" >> $OUTPUT_RESULT
+	fi
+
+
+	##### authfile ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*AuthUserFile'`" ];then
+		AUTH_FILE="`echo $line | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]]*//g' | sed 's/^"//' | sed 's/"$//'`"
+		if [ -e "$AUTH_FILE" ];then
+			Display --indent 2 --text "Authfile $AUTH_FILE" --result FOUND --color GREEN
+			if [ "`stat  $STAT_GROUP $AUTH_FILE`" !=  $APACHE_GROUP ];then
+				Display --indent 2 --text "debug Authfile $AUTH_FILE incorrect permission" --result "`stat  $STAT_GROUP $AUTH_FILE`" --color RED
+			fi
+			if [ "`stat  $STAT_USER $AUTH_FILE`" =  $APACHE_USER ];then
+				Display --indent 2 --text "debug Authfile $AUTH_FILE incorrect owner" --result "`stat $STAT_USER $AUTH_FILE`" --color RED
+			fi
+		else
+			Display --indent 2 --text "Authfile $AUTH_FILE" --result NOTFOUND --color RED --advice APACHE_VHOSTS_AUTHFILE_NOTFOUND
+		fi
+	fi
+
+
+	##### options ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*options'`" ];then
+		TOPRINT=''
+		if [ ! -z "$VIRTUALHOST" ];then
+			TOPRINT=$VIRTUALHOST
+		fi
+		if [ ! -z "$LOCATION" ];then
+			TOPRINT=$LOCATION
+		fi
+		if [ ! -z "$DIRECTORY" ];then
+			TOPRINT=$DIRECTORY
+		fi
+		#[[:space:]] is here for be sure that there not a - sign
+		if [ ! -z "`echo $line | grep -i '[[:space:]]indexes'`" ];then
+			Display --indent 4 --text "$TOPRINT has option indexes" --result FOUND --color ORANGE --advice APACHE_VHOSTS_OPTIONS_INDEXES
+			OPTION_INDEX=1
+		fi
+		if [ ! -z "`echo $line | grep -i '[[:space:]]ExecCGI'`" ];then
+			Display --indent 4 --text "$TOPRINT has option ExecCGI" --result FOUND --color ORANGE --advice APACHE_VHOSTS_OPTIONS_EXECCGI
+			OPTION_CGI=1
+		fi
+	fi
+
+	##### jkmount ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*JKmount'`" ] ; then
+		JKMOUNT_SRC="`echo \"$line\" | sed 's/^[[:space:]]*JKmount[[:space:]]*//gI' | cut -d\  -f1`"
+		Display --indent 4 --text "$VIRTUALHOST has JKmount $JKMOUNT_SRC" --result FOUND --color BLUE
+		echo "JKMOUNT=$JKMOUNT_SRC" >> $OUTPUT_RESULT
+	fi
+	##### ProxyPASS ===========================================
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*ProxyPASS'`" ]
+	then
+#		ProxyPASS_SRC="`echo \"$line\" | sed 's/^[[:space:]]*ProxyPASS[[:space:]]*//gI' | cut -d\  -f1`"
+		get_value_in_string ProxyPASS "$line"
+		ProxyPASS_SRC="$RESULTAT"
+		Display --indent 4 --text "$VIRTUALHOST has ProxyPASS_SRC $ProxyPASS_SRC" --result FOUND --color BLUE
+	fi
+	##### mod_deflate ===========================================
+	#AddOutputFilterByType
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*SetOutputFilter'`" ]
+	then
+		OUTPUT_FILTER_TYPE="`echo \"$line\" | sed 's/^[[:space:]]*SetOutputFilter[[:space:]]*//gI' | cut -d\  -f1`"
+		Display --indent 4 --text "$VIRTUALHOST has SetOutputFilter" --result FOUND --color BLUE
+		echo "DEFLATE=$OUTPUT_FILTER_TYPE" >> $OUTPUT_RESULT
+	fi
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*AddOutputFilterByType'`" ]
+	then
+		TMP_GZIP_RESULT="${TEMPYASATDIR}/apache_gzip.tmpresult"
+		if [ -e "${TMP_GZIP_RESULT}" ] ; then
+			rm "${TMP_GZIP_RESULT}"
+		fi
+		OUTPUT_FILTER_TYPE="`echo \"$line\" | sed 's/^[[:space:]]*AddOutputFilterByType[[:space:]]*//gI' | cut -d\  -f1`"
+		OUTPUT_FILTER_AFFECTED="`echo \"$line\" | sed 's/^[[:space:]]*AddOutputFilterByType[[:space:]]*//gI' | cut -d\  -f2-`"
+		Display --indent 4 --text "$VIRTUALHOST has AddOutputFilterByType $OUTPUT_FILTER_TYPE" --result FOUND --color BLUE
+		for mimetype in $OUTPUT_FILTER_AFFECTED
+		do
+			echo $mimetype >> ${TMP_GZIP_RESULT}
+		done
+		grep -iv -f ${TMP_GZIP_RESULT} $PLUGINS_REP/apache_mod_deflate.data |
+		while read missing
+		do
+			Display --indent 6 --text "You can add also $missing" --result NOTFOUND --color BLUE
+		done
+
+		echo "DEFLATE=$OUTPUT_FILTER_TYPE $OUTPUT_FILTER_AFFECTED" >> $OUTPUT_RESULT
+	fi
+	##### SSL options =========================================== http://httpd.apache.org/docs/2.2/ssl/ssl_faq.html
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*SSLCertificateKeyFile'`" ] ; then
+#		SSLCertKeyFile="`echo \"$line\" | sed 's/^[[:space:]]*SSLCertificateKeyFile[[:space:]]*//gI' | cut -d\  -f1`"
+		get_value_in_string SSLCertificateKeyFile "$line"
+		SSLCertKeyFile="$RESULTAT"
+		Display --indent 4 --text "$VIRTUALHOST has SSL Key $SSLCertKeyFile" --result FOUND --color BLUE
+		check_file $SSLCertKeyFile 6 PRIVKEY
+	fi
+	if [ ! -z "`echo $line | grep -i '^[[:space:]]*SSLCertificateFile'`" ] ; then
+#		SSLCertFile="`echo \"$line\" | sed 's/^[[:space:]]*SSLCertificateFile[[:space:]]*//gI' | cut -d\  -f1`"
+		get_value_in_string SSLCertificateFile "$line"
+		SSLCertFile="$RESULTAT"
+		Display --indent 4 --text "$VIRTUALHOST has SSL Cert $SSLCertFile" --result FOUND --color BLUE
+		check_file $SSLCertFile 6 CERT
+	fi
+	#TODO SSLInsecureRenegotiation http://httpd.apache.org/docs/2.0/mod/mod_ssl.html#sslinsecurerenegotiation
+
+done < $APACHE_CONF_LOCATION_TO_TEST
+
+draw_apache_tree $OUTPUT_RESULT
+
+
+return 1;

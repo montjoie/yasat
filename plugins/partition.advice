@@ -1,0 +1,4 @@
+EN,PARTITION_NODEV=Add a nodev options in /etc/fstab
+EN,PARTITION_NOEXEC=Add a noexec options in /etc/fstab
+EN,PARTITION_NOSUID=Add a nosuid options in /etc/fstab
+EN,PARTITION_SEPARATE_PART=With a separate partition, you can put options like nodev,noexec,nosuid

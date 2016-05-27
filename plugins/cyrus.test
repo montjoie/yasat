@@ -1,0 +1,146 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_IMAPD_CONF="/etc/imapd.conf /usr/local/etc/imapd.conf"
+IMAPD_CONF=""
+POSSIBLE_CYRUS_CONF="/etc/cyrus.conf /usr/local/etc/cyrus.conf"
+CYRUS_CONF=""
+
+POSSIBLE_SASLAUTHD_CONF="/etc/saslauthd.conf /usr/local/etc/saslauthd.conf"
+SASLAUTHD_CONF=""
+
+for LOCATION in ${POSSIBLE_CYRUS_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		CYRUS_CONF="${LOCATION}"
+	fi
+done
+for LOCATION in ${POSSIBLE_IMAPD_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		IMAPD_CONF="${LOCATION}"
+	fi
+done
+for LOCATION in ${POSSIBLE_SASLAUTHD_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		SASLAUTHD_CONF="${LOCATION}"
+	fi
+done
+
+Title "Check cyrus imapd"
+
+if [ -z "${CYRUS_CONF}" ]
+then
+	Display --indent 2 --text "cyrus imapd" --result NOTFOUND --color BLUE
+	return 1;
+fi
+
+if [ ! -e "$CYRUS_CONF" ]
+then
+	Display --indent 2 --text "No $CYRUS_CONF" --result NOTFOUND --color BLUE
+	return 1;
+fi
+
+Display --indent 2 --text "$CYRUS_CONF" --result FOUND --color GREEN
+if [ ! -e "$IMAPD_CONF" ]
+then
+	Display --indent 2 --text "No $IMAPD_CONF" --result NOTFOUND --color BLUE
+	return 1;
+fi
+Display --indent 2 --text "$IMAPD_CONF" --result FOUND --color GREEN
+
+#check for TLS in cyrus.conf and certificate
+if [ -z "`grep '[[:space:]]*imaps' $CYRUS_CONF`" ]
+then
+	Display --indent 2 --text "IMAPDS" --result DISABLED --color BLUE
+else
+	Display --indent 2 --text "IMAPDS" --result ENABLED --color GREEN
+fi
+
+
+#check /etc/imapd.conf 640 root:mail
+
+#hint for replication
+
+# check sasl_mech_list:
+
+# if allowplaintext: check allowplainwithouttls: no
+# client_timeout:
+
+# serverinfo: ?
+
+#TODO timeout: 30min by default
+
+#tls_cert_file: and other tls_ for finding certificat
+FindValueOfDDot $IMAPD_CONF tls_cert_file
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "TLS $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 CERT
+else
+	Display --indent 2 --text "No TLS cert" --result ADVICE --color ORANGE
+fi
+
+FindValueOfDDot $IMAPD_CONF tls_key_file
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "TLS $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 PRIVKEY
+else
+	Display --indent 2 --text "No TLS key" --result ADVICE --color ORANGE
+fi
+
+FindValueOfDDot $IMAPD_CONF tls_cipher_list
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "tls_cipher_list $RESULTAT" --result OK --color GREEN
+	check_cipher_list 2 "$RESULTAT"
+else
+	Display --indent 2 --text "no tls_cipher_list" --result ADVICE --color ORANGE
+fi
+
+
+if [ -z "${SASLAUTHD_CONF}" ]
+then
+	return 1;
+fi
+
+if [ ! -e "$SASLAUTHD_CONF" ]
+then
+	return 1;
+fi
+
+Display --indent 2 --text "$SASLAUTHD_CONF" --result FOUND --color GREEN
+
+#check rights and saslauthd under non root account
+SASL_USER="`ps aux |grep saslauthd | grep -v grep | cut -d\  -f1 | head -n 1`"
+if [ "$SASL_USER" = 'root' ]
+then
+	Display --indent 2 --text "saslauth run as $SASL_USER" --result BAD --color RED
+else
+	Display --indent 2 --text "saslauth run as $SASL_USER" --result GOOD --color BLUE
+fi
+
+return 0;

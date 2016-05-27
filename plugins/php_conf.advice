@@ -1,0 +1,42 @@
+EN,PHP_CONF_SAFEMODE=If possible use safe_mode
+  See <a href="http://php.net/manual/en/features.safe-mode.php">http://php.net/manual/en/features.safe-mode.php</a>
+ADVICEEND
+EN,PHP_CONF_REGISTER_GLOBALS=Don't use register-globals!!
+  See <a href="http://www.php.net/manual/en/ini.core.php#ini.register-globals">http://www.php.net/manual/en/ini.core.php#ini.register-globals</a>
+ADVICEEND
+EN,PHP_CONF_ALLOW_URL_INCLUDE=Don't use allow_url_include
+  See <a href="http://php.net/manual/en/filesystem.configuration.php">http://php.net/manual/en/filesystem.configuration.php</a>
+  See also <a href="http://blog.php-security.org/archives/45-PHP-5.2.0-and-allow_url_include.html">http://blog.php-security.org/archives/45-PHP-5.2.0-and-allow_url_include.html</a>
+ADVICEEND
+EN,PHP_CONF_SORT_OPEN_TAG=Don't use short_open_tag
+  See <a href="http://php.net/manual/en/ini.core.php">http://php.net/manual/en/ini.core.php</a>
+ADVICEEND
+
+
+EN,PHP_CONF_DISPLAY_ERRORS=Don't display php errors, log them
+  On a production site, errors can give away information to malicious people.
+  See <a href="http://www.php.net/manual/en/errorfunc.configuration.php#ini.display-errors">http://www.php.net/manual/en/errorfunc.configuration.php#ini.display-errors</a>
+ADVICEEND
+EN,PHP_CONF_ENABLE_DL=Set enable_dl to off
+  See <a href="http://php.net/manual/en/function.dl.php">http://php.net/manual/en/function.dl.php</a>
+ADVICEEND
+EN,PHP_CONF_EXPOSE_PHP=Set expose_php to off
+  See <a href="http://phpsec.org/projects/phpsecinfo/tests/expose_php.html">http://phpsec.org/projects/phpsecinfo/tests/expose_php.html</a>
+ADVICEEND
+EN,PHP_CONF_FILE_UPLOADS=Set file_uploads to off if possible
+  If your site doesn't need to upload files, disable this functionality.
+  See <a href="http://phpsec.org/projects/phpsecinfo/tests/file_uploads.html">http://phpsec.org/projects/phpsecinfo/tests/file_uploads.html</a>
+ADVICEEND
+EN,PHP_CONF_REGISTER_LONG_ARRAYS=Set it to off, it's deprecated
+  This feature has been DEPRECATED as of PHP 5.3.0 and REMOVED as of PHP 6.0.0. Relying on this feature is highly discouraged.
+  See <a href="http://www.php.net/manual/en/ini.core.php#ini.register-long-arrays">http://www.php.net/manual/en/ini.core.php#ini.register-long-arrays</a>
+ADVICEEND
+EN,PHP_CONF_REGISTER_ARGC_ARGV=Set it to off
+  TODO, why must it be set to off ?
+  See <a href="http://www.php.net/manual/en/ini.core.php#ini.register-argc-argv">http://www.php.net/manual/en/ini.core.php#ini.register-argc-argv</a>
+ADVICEEND
+
+
+EN,PHP_CONF_EXECCOMM=This function can launch dangerous commands
+EN,PHP_CONF_INFODISCLOSURE=This function can display confidential information
+EN,PHP_CONF_PHPSESSID=Change the default PHPSESSID name

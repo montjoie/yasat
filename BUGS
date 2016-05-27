@@ -1,0 +1,11 @@
+BUG1 on OpenBSD makefile dont work (SOLVED)
+BUG2 on OpenBSD sed 's///gI' dont work (SOLVED)
+BUG3 testing sslprotocol result in export 209 bad variable name
+  reported in 700
+  since 0
+  solved in 710
+BUG4 infinite loop in test
+  solved in ??
+BUG5 cant shift that many
+  reported in 526/700
+  solved in 744

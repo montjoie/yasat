@@ -1,0 +1,97 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check partition configurations"
+
+if [ ! -e "${SCAN_ROOT}/etc/fstab" ] ;then
+	Display --indent 2 --text "Strange, no /etc/fstab" --result NOTFOUND --color ORANGE
+	return 1;
+fi
+
+#TODO in /etc/fstab users is same as noexec, nosuid, nodev
+
+#TODO check swap for encryption
+TESTNAME='YASAT_TEST_PARTITION_BSD_SWAP Check if the swap is encrypted'
+if [ "${OS}" = 'OpenBSD' ] ;then
+	SWAP_ENCRYPT="`$BSD_SYSCTL vm.swapencrypt.enable | cut -d\= -f2`"
+	if [ $SWAP_ENCRYPT -eq 1 ] ;then
+		Display --indent 2 --text "SWAP is encrypted" --result ENCRYPTED  --color GREEN
+	else
+		Display --indent 2 --text "SWAP is not encrypted" --result CLEAR  --color ORANGE
+	fi
+fi
+#TODO under freebsd http://www.freebsd.org/doc/en/books/handbook/swap-encrypting.html
+
+#For detecting encrypted swap under linux, I see it in 2 steps
+#detect LV where swap is
+#check for /etc/crypttab
+
+
+#TODO nfs nfs4 smbs cifs and other network FS must have nodev noexec nosuid
+
+TESTNAME='YASAT_TEST_PARTITION_HOME1 CCEID=14559-9 NSAG=2.1.1.1.5 Check if /home is on a separate partition'
+TESTNAME='YASAT_TEST_PARTITION_HOME2 CCEID=4249-9 NASG=2.2.1.1 Check if /home have the nodev flag'
+TESTNAME='YASAT_TEST_PARTITION_HOME3 Check if /home have the nosuid flag'
+check_partition '/home' SEPARATE nodev nosuid
+#TODO noexec for /home with mode paranoiac
+
+TESTNAME='YASAT_TEST_PARTITION_VAR1 CCEID=14777-7 NSAG=2.1.1.1.2 Check if /var is on a separate partition'
+TESTNAME='YASAT_TEST_PARTITION_VAR2 CCEID=4249-9 NASG=2.2.1.1 Check if /var have the nodev flag'
+TESTNAME='YASAT_TEST_PARTITION_VAR3 Check if /var have the nosuid flag'
+check_partition '/var' SEPARATE nodev nosuid
+# noexec on /var breaks debian
+
+# /usr nodev, I disabled this test because of http://freedesktop.org/wiki/Software/systemd/separate-usr-is-broken
+#check_partition '/usr'
+#	if [ -z "`echo $RESULTAT | grep -i nodev`" ]
+#	then
+#		Display --indent 4 --text "/usr dont have nodev" --result NOTFOUND --color ORANGE --advice PARTITION_NODEV
+#	else
+#		Display --indent 4 --text "/usr have nodev" --result FOUND --color GREEN
+#	fi
+
+
+# /tmp nodev noexec
+TESTNAME='YASAT_TEST_PARTITION_TMP1 CCEID=14161-4 NSAG=2.1.1.1.1 Check if /tmp is on a separate partition'
+TESTNAME='YASAT_TEST_PARTITION_TMP2 CCEID=4249-9 NASG=2.2.1.1 Check if /tmp have the nodev flag'
+TESTNAME='YASAT_TEST_PARTITION_TMP3 CCEID=14412-1,14940-1,14927-8 NSAG=2.2.1.3.1 Check if /tmp have the nosuid flag'
+check_partition '/tmp' SEPARATE nodev nosuid
+
+TESTNAME='YASAT_TEST_PARTITION_VAR_LOG1 CCEID=14011-1 NSAG=2.1.1.1.3 Check if /var/log is on a separate partition'
+TESTNAME='YASAT_TEST_PARTITION_VAR_LOG2 CCEID=4249-9 NASG=2.2.1.1 Check if /var/log have the nodev flag'
+TESTNAME='YASAT_TEST_PARTITION_VAR_LOG3 Check if /var/log have the nosuid flag'
+TESTNAME='YASAT_TEST_PARTITION_VAR_LOG4 Check if /var/log have the noexec flag'
+check_partition '/var/log' SEPARATE nodev nosuid noexec
+
+TESTNAME='YASAT_TEST_PARTITION_DEV_CDROM1 Check if /dev/cdrom is on a separate partition'
+TESTNAME='YASAT_TEST_PARTITION_DEV_CDROM2 CCEID=3522-0,4275-4,4042-8 NASG=2.2.1.2 Check if /dev/cdrom have the nodev flag'
+TESTNAME='YASAT_TEST_PARTITION_DEV_CDROM3 CCEID=3522-0,4275-4,4042-8 NASG=2.2.1.2 Check if /dev/cdrom have the nosuid flag'
+TESTNAME='YASAT_TEST_PARTITION_DEV_CDROM4 CCEID=3522-0,4275-4,4042-8 NASG=2.2.1.2 Check if /dev/cdrom have the noexec flag'
+check_partition '/mnt/cdrom' SEPARATE nodev nosuid noexec
+
+TESTNAME='YASAT_TEST_PARTITION_DEV_SHM1 Check if /dev/shm is on a separate partition'
+TESTNAME='YASAT_TEST_PARTITION_DEV_SHM2 CCEID=15007-8,14306-5,14703-3 NASG=2.2.1.3.2 Check if /dev/shm have the nodev flag'
+TESTNAME='YASAT_TEST_PARTITION_DEV_SHM3 CCEID=15007-8,14306-5,14703-3 NASG=2.2.1.3.2 Check if /dev/shm have the nosuid flag'
+TESTNAME='YASAT_TEST_PARTITION_DEV_SHM4 CCEID=15007-8,14306-5,14703-3 NASG=2.2.1.3.2 Check if /dev/shm have the noexec flag'
+check_partition '/dev/shm' SEPARATE nodev nosuid noexec
+
+TESTNAME='YASAT_TEST_PARTITION Bind-mount /var/tmp to /tmp'
+Compliance --result 'NOTIMPL' --plugin 'partition' --nsag 2.2.1.4 --cce 14584-7
+

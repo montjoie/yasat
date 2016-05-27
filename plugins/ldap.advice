@@ -1,0 +1,17 @@
+EN,LDAP_NO_TLS=Enable TLS for slapd
+  Its preferable to do LDAP request via a TLS secured connection.
+  Obsolete <a href="http://www.openldap.org/pub/ksoper/OpenLDAP_TLS.html">http://www.openldap.org/pub/ksoper/OpenLDAP_TLS.html</a>
+ADVICEEND
+EN,LDAP_PASSWD_CLEAR=Use a secure storage for passwd
+  Don't store passwords in cleartext, use a hash algorithm instead
+ADVICEEND
+EN,LDAP_BINDV2=Disable bindv2
+  If possible disable the use of the LDAPv2 protocol.
+ADVICEEND
+EN,LDAP_BIND_ANON=Disable anonymous bind
+  According to man slapd.conf, disable bind_anon disables acceptance of anonymous bind requests.
+  Note that this setting does not prohibit anonymous directory access (See "require  authc")
+ADVICEEND
+EN,LDAP_REQUIRE_AUTHC=Set require authc
+  According to man slapd.conf, authc requires authentication prior to directory operations
+ADVICEEND

@@ -1,0 +1,24 @@
+#PATH | value | comparator | advice | NSAG | CCEID
+net.ipv4.icmp_echo_ignore_broadcasts|1|=|NETWORK_ICMP_ECHO_IGNORE_BROADCASTS|2.5.1.2|3644-2
+net.ipv4.tcp_fin_timeout|60|<|NETWORK_FIN_TIMEOUT
+net.ipv4.icmp_ignore_bogus_error_responses|1|=|NETWORK_IGNORE_BOGUS_ERROR_RESPONSES|2.5.1.2|4133-5
+net.ipv4.conf.all.accept_redirects|0|=|NETWORK_CONF_ALL_ACCEPT_REDIRECTS|2.5.1.2|4217-6
+net.ipv4.conf.default.accept_redirects|0|=|NETWORK_CONF_DEFAULT_ACCEPT_REDIRECTS|2.5.1.2|4186-3
+net.ipv4.tcp_syncookies|1|=|NETWORK_TCP_SYNCOOKIES|2.5.1.2|4265-5
+net.ipv4.conf.all.accept_source_route|0|=|NETWORK_CONF_ALL_ACCEPT_SOURCE_ROUTE|2.5.1.2|4236-6
+net.ipv4.conf.default.accept_source_route|0|=|NETWORK_CONF_DEFAULT_ACCEPT_SOURCE_ROUTE|2.5.1.2|4091-5
+net.ipv4.conf.all.rp_filter|1|=|NETWORK_CONF_ENABLE_IP_SPOOFING_PROTECTION|2.5.1.2|4080-8
+net.ipv4.conf.default.rp_filter|1|=|NETWORK_CONF_ENABLE_IP_SPOOFING_PROTECTION|2.5.1.2|3840-6
+net.ipv4.conf.default.send_redirects|0|=|NETWORK_CONF_TODO|2.5.1.1|4155-8
+net.ipv4.conf.all.send_redirects|0|=|NETWORK_CONF_TODO|2.5.1.1|4151-7
+net.ipv4.ip_forward|0|=|NETWORK_CONF_TODO|2.5.1.1|3561-8
+net.ipv4.conf.all.secure_redirects|0|=|TODO|2.5.1.2|3472-8
+net.ipv4.conf.default.secure_redirects|0|=|TODO|2.5.1.2|3339-9
+net.ipv4.conf.all.log_martians|1|=|TODO|2.5.1.2|4320-8
+#net.ipv6.conf.default.router_solicitations|0|=
+#net.ipv6.conf.default.accept_ra_rtr_pref|0|=
+#net.ipv6.conf.default.accept_ra_pinfo|0|=
+#net.ipv6.conf.default.accept_ra_defrtr|0|=
+#net.ipv6.conf.default.autoconf|0|=
+#net.ipv6.conf.default.dad_transmits|0|=
+#net.ipv6.conf.default.max_addresses|0|=

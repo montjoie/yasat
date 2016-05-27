@@ -1,0 +1,186 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#    * The setuid bit adds 4 to the total,
+#    * The setgid bit adds 2 to the total
+#    * The sticky bit adds 1 to the total.
+
+PLUGINDESC="Check system binaries and integrity tools"
+
+Title "Check system binaries and integrity tools"
+
+#TODO check for AIDE and tripwire they better do this job than me
+#TODO check for rkhunter
+TESTNAME='YASAT_TEST_AIDE CCEID=4209-3 NSAG=2.1.3.1.1 Check if AIDE file integrity tester is present'
+Check_tool_presence aide
+if [ $? -eq 1 ];then
+	Display --indent 2 --text "AIDE file integrity tester" --result NOTFOUND --color ORANGE --advice BINARIES_NO_AIDE
+	Compliance --result 'NOK' --plugin 'binaries' --type 'CCE' --cid '4209-3' --type 'NSAG' --cid '2.1.3.1.1' --color 'orange' --yasatresult 'NOTFOUND'
+else
+	Display --indent 2 --text "AIDE file integrity tester" --result FOUND --color GREEN
+	Compliance --result 'OK' --plugin 'binaries' --type 'CCE' --cid '4209-3' --type 'NSAG' --cid '2.1.3.1.1' --color 'green' --yasatresult 'FOUND'
+	#TODO check good usage of AIDE like if aideinit was used or not
+	#AIDE installed is not sufficient
+fi
+
+TESTNAME='YASAT_TEST_TRIPWIRE Check if Tripwire file integrity tester is present'
+Check_tool_presence tripwire
+if [ $? -eq 1 ] ;then
+	Display --indent 2 --text "TRIPWIRE file integrity tester" --result NOTFOUND --color ORANGE --advice BINARIES_NO_TRIPWIRE --comp 'OK' 'binaries'
+else
+	Display --indent 2 --text "TRIPWIRE file integrity tester" --result FOUND --color GREEN --comp 'NOK' 'binaries'
+	#TODO check good usage of TRIPWIRE
+	#TRIPWIRE installed is not sufficient
+fi
+TESTNAME='YASAT_TEST_TRIPWIRE Check if chkrootkit is present'
+Check_tool_presence chkrootkit
+if [ $? -eq 1 ] ;then
+	Display --indent 2 --text "chkrootkit" --result NOTFOUND --color ORANGE --advice BINARIES_NO_CHKROOTKIT --comp 'OK' 'binaries'
+else
+	Display --indent 2 --text "chkrootkit" --result FOUND --color GREEN --comp 'NOK' 'binaries'
+fi
+
+TESTNAME='YASAT_TEST_SAMHAIN Check if samhain is present'
+Check_tool_presence samhain
+if [ "$RESULTAT" = 'notfound' ];then
+	Display --indent 2 --text "samhain" --result NOTFOUND --color ORANGE --advice BINARIES_NO_SAMHAIN --comp 'OK' 'binaries'
+else
+	Display --indent 2 --text "samhain" --result FOUND --color GREEN --comp 'NOK' 'binaries'
+fi
+
+BINARY_POSSIBLE_PATH='/sbin /bin /usr/sbin /usr/bin /usr/local/bin /usr/local/sbin /usr/local/usr/bin /usr/local/usr/sbin /lib /usr/lib /usr/libexec /usr/local/lib /lib64 /lib32 /usr/lib64'
+
+#echo "DEBUG This check is in development"
+
+if [ "$SCANTYPE" = "FULL" ] ; then
+	Display --indent 2 --text "Full setuid-scan of filesystem" --result INFO --color BLUE
+	BINARY_POSSIBLE_PATH='/'
+fi
+
+HAVE_POSIX_CAPS_TOOLS=0
+#POSIX CAPS only exists under Linux
+if [ "$OS_TYPE" = 'Linux' ] ;then
+	which getcap 2>> $ERROR_OUTPUT_FILE >/dev/null
+	if [ $? -eq 0 ] ;then
+		Display --indent 2 --text "POSIX CAPS tools" --result FOUND --color GREEN
+		HAVE_POSIX_CAPS_TOOLS=1
+	fi
+	if [ $HAVE_POSIX_CAPS_TOOLS -eq 0 ] ; then
+		which filecap 2>> $ERROR_OUTPUT_FILE >/dev/null
+		if [ $? -eq 0 ] ;then
+			Display --indent 2 --text "libcap-ng tools" --result FOUND --color GREEN
+			HAVE_POSIX_CAPS_TOOLS=2
+		fi
+	fi
+	if [ $HAVE_POSIX_CAPS_TOOLS -eq 0 ] ; then
+		Display --indent 2 --text "POSIX CAPS tools" --result NOTFOUND --color ORANGE --advice BINARIES_NO_POSIXCAPSTOOLS
+	fi
+fi
+
+#TODO check whole filesystem for setuid ?
+#TODO propose better rights
+for BIN_PATH in $BINARY_POSSIBLE_PATH
+do
+	if [ -e "$BIN_PATH" ] ;then
+		Display --indent 2 --text "Checking file with set UID in $BIN_PATH" --result INFO --color BLUE
+		find $BIN_PATH -perm $FIND_SETUID -type f |
+		while read BIN_TO_TEST
+		do
+			RIGHT_ACTUAL="`stat $STAT_FULL_RIGHT $BIN_TO_TEST`"
+			OSTOTEST="${OS}"
+			if [ ! -z "$LINUX_VERSION" ] ;then
+				OSTOTEST="$LINUX_VERSION"
+			fi
+			if [ "$LINUX_VERSION" = 'Debian' ] ;then
+				OSTOTEST="$OS_NICKNAME"
+			fi
+			BIN_TO_TEST2="`echo $BIN_TO_TEST | sed 's/lib64\//lib\//'`"
+			RESULTAT=`grep -v '^#' $PLUGINS_REP/binaries.data | grep "$OSTOTEST" | grep "${BIN_TO_TEST2}|"`
+			if [ -z "$RESULTAT" -a "$LINUX_VERSION" = 'CentOS' ] ;then
+				RESULTAT=`grep -v '^#' $PLUGINS_REP/binaries.data | grep "Red Hat" | grep "${BIN_TO_TEST2}|"`
+			fi
+			if [ -z "$RESULTAT" ] ;then
+				Display --indent 2 --text "$BIN_TO_TEST with $RIGHT_ACTUAL" --result UNKNOWN --color RED --advice BINARIES_UNKNOWN
+			else
+				GOOD_RIGHT=`echo $RESULTAT | cut -d\| -f2`
+				if [ "$RIGHT_ACTUAL" = "$GOOD_RIGHT" ] ;then
+					Display --indent 2 --text "$BIN_TO_TEST with right=$RIGHT_ACTUAL" --result FOUND --color GREEN
+				else
+					Display --indent 2 --text "$BIN_TO_TEST with bad rights $RIGHT_ACTUAL != $GOOD_RIGHT" --result FOUND --color RED --advice BINARIES_BAD_RIGHT
+				fi
+				#a Set-UID binary must be owned by root
+				#TODO On Debian Lenny at is daemon:daemon
+				BINARY_FS_OWNER="`stat $STAT_USER $BIN_TO_TEST`"
+				WANT_USER=`echo $RESULTAT | cut -d\| -f4`
+				if [ -z "$WANT_USER" ];then
+					WANT_USER=root
+				fi
+				if [ "$BINARY_FS_OWNER" != 'root' -a "$BINARY_FS_OWNER" != "$WANT_USER" ] ;then
+					Display --indent 2 --text "$BIN_TO_TEST is not owned by $WANT_USER on the FS" --result WARNING --color RED
+				fi
+#MD5 for common archs (obsolete, aide/tripwire do that better than me)
+#				GOOD_MD5=`echo $RESULTAT | cut -d\| -f4`
+#				if [ ! -z "$GOOD_MD5" ]
+#				then
+#					MD5_ACTUAL="`md5sum $BIN_TO_TEST | cut -d\  -f1`"
+#					if [ "$MD5_ACTUAL" !=  "$GOOD_MD5" ]
+#					then
+#						echo $MD5_ACTUAL $GOOD_MD5
+#						Display --indent 2 --text "$BIN_TO_TEST has incorrect MD5" --result WARNING --color RED
+#					fi
+#				fi
+
+			fi
+			#TODO some set-uid are not necessary like mount, netstat, ifconfig, traceroute, route and ping (and equivalent for ipv6 ping6 etc..)
+			if [ ! -z "`grep $BIN_TO_TEST ${PLUGINS_REP}/binaries.suid`" ] ; then
+				Display --indent 4 --text "You can remove PERHAPS setuid from $BIN_TO_TEST" --result WARNING --color BLUE --advice BINARIES_REMOVE_SETUID
+			fi
+			#TODO POSIX CAPS (check for XATTR)
+			#getcap /bin/ping6
+			#/bin/ping6 = cap_net_raw+ep
+			#filecap /bin/ping6
+			#file                 capabilities
+			#/bin/ping6     net_raw
+			if [ $HAVE_POSIX_CAPS_TOOLS -ge 1 ] ;then
+				BIN_TO_TEST_NAME="`basename $BIN_TO_TEST`"
+				POSIX_CAPS="`grep ^${BIN_TO_TEST_NAME}= ${PLUGINS_REP}/binaries.caps`"
+				if [ $HAVE_POSIX_CAPS_TOOLS -eq 1 ] ;then
+					ACTUAL_CAPS="`getcap $BIN_TO_TEST | sed 's/.*= //'`"
+				else
+					ACTUAL_CAPS="`filecap $BIN_TO_TEST | grep ^$BIN_TO_TEST | sed 's/.*[[:space:]]//g'`"
+				fi
+				if [ ! -z "$POSIX_CAPS" ] ; then
+					if [ -z "$ACTUAL_CAPS" ] ; then
+						ACTUAL_CAPS="no POSIX CAPS"
+					fi
+					Display --indent 4 --text "${BIN_TO_TEST_NAME} can use POSIX CAPS" --result INFO --color BLUE --advice BINARIES_CAN_HAVE_POSIX_CAPS
+					Display --indent 4 --text "${BIN_TO_TEST_NAME} actual POSIX CAPS" --result "$ACTUAL_CAPS" --color BLUE
+					Display --indent 4 --text "${BIN_TO_TEST_NAME} need POSIX CAPS $POSIX_CAPS" --result INFO --color BLUE
+					add_correction "#setcap $POSIX_CAPS+ep $BIN_TO_TEST"
+				fi
+			fi
+
+		done
+#	else
+#		echo "DEBUG $BIN_PATH dont exists"
+	fi
+done
+
+#TODO store scan result for comparing later results

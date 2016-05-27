@@ -1,0 +1,42 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check avahi"
+
+TESTNAME='YASAT_TEST_SERVICE_AVAHI NSAG=3.7.1.1 CCEID=4365-3 Check if the avahi-daemon service is disabled'
+Check_auto_start avahi-daemon packages no 3.7.1.1 4365-3
+
+TESTNAME='YASAT_TEST_AVAHI_REMOVE_IPTABLES NSAG=3.7.1.2 Remove Avahi Server iptables Firewall Exception'
+Compliance --result 'NOTIMPL' --plugin avahi --nsag 3.7.1.2
+
+TESTNAME='YASAT_TEST_AVAHI_1 Serve Only via Required Protocol'
+Compliance --result 'NOTIMPL' --plugin avahi --nsag 3.7.2.1 --cce 4136-8 --cce 4409-9
+TESTNAME='YASAT_TEST_AVAHI_2 Check Responses TTL Field'
+Compliance --result 'NOTIMPL' --plugin avahi --nsag 3.7.2.2 --cce 4426-3
+TESTNAME='YASAT_TEST_AVAHI_3 Prevent Other Programs from Using Avahi s Port'
+Compliance --result 'NOTIMPL' --plugin avahi --nsag 3.7.2.3 --cce 4193-9
+TESTNAME='YASAT_TEST_AVAHI_DISABLE_PUBLISHING Disable Publishing if Possible'
+Compliance --result 'NOTIMPL' --plugin avahi --nsag 3.7.2.4 --cce 4444-6
+TESTNAME='YASAT_TEST_AVAHI_RESTRICT_PUBLISHED_INFOS Restrict Published Information'
+Compliance --result 'NOTIMPL' --plugin avahi --nsag 3.7.2.5 --cce 4352-1 --cce 4433-9 --cce 445
+
+
+return 0;

@@ -1,0 +1,232 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+VSFTPD_CONF="/etc/vsftpd/vsftpd.conf"
+POSSIBLE_VSFTPD_CONF="/etc/vsftpd/vsftpd.conf /etc/vsftpd.conf /usr/local/etc/vsftpd/vsftpd.conf"
+for LOCATION in ${POSSIBLE_VSFTPD_CONF}
+do
+	if [ -e "$SCAN_ROOT/${LOCATION}/" ] ;then
+		VSFTPD_CONF="$SCAN_ROOT/${LOCATION}"
+	fi
+done
+
+Title "Check vsftpd"
+
+if [ ! -e "$VSFTPD_CONF" ] ;then
+	TESTNAME='YASAT_TEST_VSFTPD NSAG=3.15.1 CCEID=3919-8,14881-7 Disable vsftpd if Possible'
+	Compliance --result OK --plugin vsftpd --nsag 3.15.1 --cce 3919-8 --cce 14881-7
+	return 1;
+fi
+TESTNAME='YASAT_TEST_VSFTPD_TODO NSAG=3.15.1 CCEID=3919-8,14881-7 Disable vsftpd if Possible'
+Compliance --result NOTTESTED --plugin vsftpd --nsag 3.15.1 --cce 3919-8 --cce 14881-7
+TESTNAME='YASAT_TEST_VSFTPD_TODO NSAG=3.15.3.1 CCEID=4549-2 Enable Logging of All FTP Transactions'
+Compliance --result NOTTESTED --plugin vsftpd --nsag 3.15.1 --cce 3919-8 --cce 14881-7
+TESTNAME='YASAT_TEST_VSFTPD_TODO NSAG=3.15.3.2 CCEID=4554-2 Create Warning Banners for All FTP Users'
+Compliance --result NOTIMPL --plugin vsftpd --nsag 3.15.3.2 --cce 4554-2
+TESTNAME='YASAT_TEST_VSFTPD_TODO NSAG=3.15.3.3.1 CCEID=4443-8 Restrict Access to Anonymous Users if Possible'
+Compliance --result NOTTESTED --plugin vsftpd --nsag 3.15.3.3.1 --cce 4443-8
+TESTNAME='YASAT_TEST_VSFTPD_TODO NSAG=3.15.3.3.2 Limit Users Allowed FTP Access if Necessary'
+Compliance --result NOTIMPL --plugin vsftpd --nsag 3.15.3.3.2
+TESTNAME='YASAT_TEST_VSFTPD_TODO NSAG=3.15.3.4 Disable FTP Uploads if Possible'
+Compliance --result NOTIMPL --plugin vsftpd --nsag 3.15.3.4 --cce 4461-0
+TESTNAME='YASAT_TEST_VSFTPD_TODO NSAG=3.15.3.6 Configure Firewalls to Protect the FTP Server'
+Compliance --result NOTIMPL --plugin vsftpd --nsag 3.15.3.6
+
+
+
+TESTNAME='YASAT_TEST_VSFTP1 Check if anonymous access is enabled'
+FindValueOfEqual $VSFTPD_CONF anonymous_enable JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "anonymous access enabled by default" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_LOGIN
+else
+	echo $RESULTAT | grep -qi 'yes'
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "no anonymous access" --result OK --color GREEN
+	else
+		Display --indent 2 --text "Anonymous access" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_LOGIN
+	fi
+fi
+
+TESTNAME='YASAT_TEST_VSFTP2 Check if anonymous can upload'
+FindValueOfEqual $VSFTPD_CONF anon_upload_enable JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "no anon_upload_enable" --result OK --color GREEN
+else
+	echo $RESULTAT | grep -qi 'yes'
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "no anon_upload_enable" --result OK --color GREEN
+	else
+		Display --indent 2 --text "anon_upload_enable" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_UPLOAD
+	fi
+fi
+
+TESTNAME='YASAT_TEST_VSFTP3 Check if ascii_upload_enable is enabled'
+FindValueOfEqual $VSFTPD_CONF ascii_upload_enable JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "no ascii_upload_enable" --result OK --color GREEN
+else
+	echo $RESULTAT | grep -qi 'yes'
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "no ascii_upload_enable" --result OK --color GREEN
+	else
+		Display --indent 2 --text "ascii_upload_enable" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_ASCII
+	fi
+fi
+
+TESTNAME='YASAT_TEST_VSFTP4 Check if ascii_download_enable is enabled'
+FindValueOfEqual $VSFTPD_CONF ascii_download_enable JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "no ascii_download_enable" --result OK --color GREEN
+else
+	echo $RESULTAT | grep -qi 'yes'
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "no ascii_download_enable" --result OK --color GREEN
+	else
+		Display --indent 2 --text "ascii_download_enable" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_ASCII
+	fi
+fi
+
+
+LOGENABLED='NO'
+TESTNAME='YASAT_TEST_VSFTP5 Check if xferlog is enabled'
+FindValueOfEqual $VSFTPD_CONF xferlog_enable JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "No xferlog_enable" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_NO_XFERLOG
+else
+	if [ "$RESULTAT" = "yes" -o "$RESULTAT" = "YES" ] ;then
+		Display --indent 2 --text "xferlog_enable" --result OK --color GREEN
+		LOGENABLED='YES'
+#	else
+#		Display --indent 2 --text "xferlog_enable not enabled" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_NO_XFERLOG
+	fi
+fi
+
+TESTNAME='YASAT_TEST_VSFTP6 Check if syslog_enable is enabled'
+FindValueOfEqual $VSFTPD_CONF syslog_enable JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+if [ "$RESULTAT" = "yes" -o "$RESULTAT" = "YES" ] ;then
+		Display --indent 2 --text "syslog_enable" --result OK --color GREEN
+		LOGENABLED='YES'
+	fi
+fi
+
+TESTNAME='YASAT_TEST_VSFTP7 Check if any log system is enabled'
+if [ $LOGENABLED = 'NO' ] ;then
+	Display --indent 2 --text "No log system" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_NO_XFERLOG
+fi
+
+#FindValueOfEqual $VSFTPD_CONF xferlog_file JUSTTEST
+#if [ -z "$RESULTAT" ]
+#then
+#	Display --indent 2 --text "No xferlog_file" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_NO_XFERLOG
+#else
+#	Display --indent 2 --text "xferlog_file" --result "$RESULTAT" --color GREEN
+#fi
+
+#FindValueOfEqual $VSFTPD_CONF vsftpd_log_file JUSTTEST
+#if [ -z "$RESULTAT" ]
+#then
+#	Display --indent 2 --text "No vsftpd_log_file" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_NO_XFERLOG
+#else
+#	Display --indent 2 --text "vsftpd_log_file" --result "$RESULTAT" --color GREEN
+#fi
+
+TESTNAME='YASAT_TEST_VSFTP8 Check if local user are chrooted'
+FindValueOfEqual $VSFTPD_CONF chroot_local_user JUSTTEST
+if [ -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "no chroot_local_user" --result WARNING --color ORANGE --advice VSFTPD_ANONYMOUS_NOCHROOTLOCAL
+else
+	if [ "$RESULTAT" = "yes" -o "$RESULTAT" = "YES" ] ;then
+		Display --indent 2 --text "chroot_local_user" --result OK --color GREEN
+	else
+		Display --indent 2 --text "No chroot_local_user" --result WARNING --color RED --advice VSFTPD_ANONYMOUS_NOCHROOTLOCAL
+	fi
+fi
+
+TESTNAME='YASAT_TEST_VSFTP9 Check if a banner_file is present'
+FindValueOfEqual $VSFTPD_CONF banner_file JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "banner_file" --result FOUND	 --color GREEN
+	check_file "$RESULTAT" 4 'NORMAL'
+fi
+
+TESTNAME='YASAT_TEST_VSFTP10 Check if a DSA certificate is used'
+FindValueOfEqual $VSFTPD_CONF dsa_cert_file JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "SSL $RESULTAT" --result FOUND --color GREEN
+	check_certificate $RESULTAT 4
+fi
+
+TESTNAME='YASAT_TEST_VSFTP11 Check if a DSA private key is used'
+FindValueOfEqual $VSFTPD_CONF dsa_private_key_file JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "SSL $RESULTAT" --result FOUND --color GREEN
+	check_file $RESULTAT 4 PRIVKEY
+fi
+
+TESTNAME='YASAT_TEST_VSFTP12 Check if a RSA certificate is used'
+FindValueOfEqual $VSFTPD_CONF rsa_cert_file JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "SSL $RESULTAT" --result FOUND --color GREEN
+	check_certificate $RESULTAT 4
+fi
+
+TESTNAME='YASAT_TEST_VSFTP13 Check if a RSA private key is used'
+FindValueOfEqual $VSFTPD_CONF rsa_private_key_file JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "SSL $RESULTAT" --result FOUND --color GREEN
+	check_file "$RESULTAT" 4 PRIVKEY
+fi
+
+TESTNAME='YASAT_TEST_VSFTP14 Check if SSLv2 is enabled'
+FindValueOfEqual $VSFTPD_CONF ssl_sslv2 JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	if [ "$RESULTAT" = 'YES' -o "$RESULTAT" = 'yes' ];then
+		Display --indent 2 --text "SSLv2 is enabled" --result FOUND --color RED --advice SSL_PROTOCOL_SSLV2
+	else
+		Display --indent 2 --text "SSLv2 is disabled" --result NOTFOUND --color GREEN
+	fi
+else
+	 Display --indent 2 --text "SSLv2 is not enabled" --result NOTFOUND --color GREEN
+fi
+
+TESTNAME='YASAT_TEST_VSFTP15 Check if SSLv3 is enabled'
+FindValueOfEqual $VSFTPD_CONF ssl_sslv3 JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	if [ "$RESULTAT" = 'YES' -o "$RESULTAT" = 'yes' ];then
+		Display --indent 2 --text "SSLv3 is enabled" --result FOUND --color RED --advice SSL_PROTOCOL_SSLV3
+	else
+		Display --indent 2 --text "SSLv3 is disabled" --result NOTFOUND --color GREEN
+	fi
+else
+	 Display --indent 2 --text "SSLv3 is not enabled" --result NOTFOUND --color GREEN
+fi
+
+#TODO check all files
+
+#TODO enable_ssl
+#TODO force_local_logins_ssl
+#TODO force_local_data_ssl
+
+#TODO ssl_ciphers default is good
+
+
+return 0;

@@ -1,0 +1,45 @@
+- nagios
+
+- change definition by declaration (Missing declaration of)
+
+- change != by (want value)
+
+- Correct my ugly english
+
+- Do an entry description on each plugin
+
+- Create an option for changing temporary yasat files location (not ~./yasat) (use also yasat_tmp)
+
+- Delete all temporary files after execution
+
+- Add a criticity parameter to display for future filter
+
+- Do a check_directory_owner like check_directory_group
+
+- bashims to correct (. instead of source, echo -e)
+
+- Variable for blacklist some plugins
+
+- Create a log of "bugs/errors" of yasat
+
+- check cron.deny at.deny and their .allow
+
+- check rpmold dpkg-old dpkg-newrpmnew etc...
+
+- Produce a list of commands to correct problems like chmod sed etc..
+
+- All errors must be redirected to ERROR_OUTPUT_FILE (to be finished)
+
+- /etc/security/opasswd
+
+- /etc/malloc.conf 
+
+- mixed lowcase/highcase variable name
+
+- Use $# instead of lots of -z "$x"
+
+- exec script passphrase apache mode test
+
+- php admin dir php_init value
+
+- Poodle SSLv3 http://seenthis.net/messages/302666

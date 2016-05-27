@@ -1,0 +1,290 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+Title "Check accounting and audit configuration"
+
+#http://www.freebsd.org/doc/en/books/handbook/security-accounting.html
+
+
+if [ "$OS_TYPE" = "BSD" ]
+then
+	if [ -e "/var/account/acct" ]
+	then
+		Display --indent 2 --text "/var/account/acct" --result FOUND --color GREEN
+	else
+		Display --indent 2 --text "/var/account/acct" --result NOTFOUND --color ORANGE
+	fi
+	FindValueOfEqual '/etc/rc.conf' 'accounting_enable' JUSTTEST
+	if [ -z "$RESULTAT" ]
+	then
+		Display --indent 2 --text "accounting_enable" --result NOTFOUND --color ORANGE
+	else
+		if [ "$RESULTAT" = "YES" ]
+		then
+			Display --indent 2 --text "accounting_enable" --result FOUND --color GREEN
+		else
+			Display --indent 2 --text "accounting_enable" --result NOTFOUND --color ORANGE --advice ACCOUNTING_BSD_NOT_ENABLED
+		fi
+	fi
+
+fi
+
+TESTNAME='YASAT_TEST_ACCT_WTMP_EXISTENCE Check if /var/log/wtmp exists'
+if [ -e /var/log/wtmp ];then
+	Display --indent 2 --text "/var/log/wtmp" --result FOUND --color GREEN
+	Compliance --result 'OK' --plugin 'accounting' --color 'green' --yasatresult 'FOUND'
+else
+	Display --indent 2 --text "/var/log/wtmp" --result NOTFOUND --color RED --advice ACCOUNTING_MISSING_FILE
+	Compliance --result 'NOK' --plugin 'accounting' --color 'red' --yasatresult 'NOTFOUND'
+fi
+
+if [ ! "$OS" = "FreeBSD" ];then
+	TESTNAME='YASAT_TEST_ACCT_BTMP_EXISTENCE Check if /var/log/btmp exists'
+	if [ -e /var/log/btmp ];	then
+		Display --indent 2 --text "/var/log/btmp" --result FOUND --color GREEN
+		Compliance --result 'OK' --plugin 'accounting' --color 'green' --yasatresult 'FOUND'
+	else
+		Display --indent 2 --text "/var/log/btmp" --result NOTFOUND --color RED --advice ACCOUNTING_BTMP
+		Compliance --result 'NOK' --plugin 'accounting' --color 'red' --yasatresult 'NOTFOUND'
+	fi
+	TESTNAME='YASAT_TEST_ACCT_FAILLOG_EXISTENCE Check if /var/log/faillog exists'
+	if [ -e /var/log/faillog ];	then
+		Display --indent 2 --text "/var/log/faillog" --result FOUND --color GREEN
+		Compliance --result 'OK' --plugin 'accounting' --color 'green' --yasatresult 'FOUND'
+	else
+		Display --indent 2 --text "/var/log/faillog" --result NOTFOUND --color RED --advice ACCOUNTING_FAILLOG
+		Compliance --result 'NOK' --plugin 'accounting' --color 'red' --yasatresult 'NOTFOUND'
+	fi
+fi
+
+TESTNAME='YASAT_TEST_ACCT_LASTLOG_EXISTENCE Check if /var/log/lastlog exists'
+if [ -e /var/log/lastlog ];then
+	Display --indent 2 --text "/var/log/lastlog" --result FOUND --color GREEN
+	Compliance --result 'OK' --plugin 'accounting' --color 'green' --yasatresult 'FOUND'
+else
+	Display --indent 2 --text "/var/log/lastlog" --result NOTFOUND --color RED --advice ACCOUNTING_MISSING_FILE
+	Compliance --result 'NOK' --plugin 'accounting' --color 'red' --yasatresult 'NOTFOUND'
+fi
+
+#TODO /var/run/utmp
+
+#http://www.gnu.org/software/acct/manual/html_mono/accounting.html
+
+TESTNAME='YASAT_TEST_ACCT_ACCT_ENABLED Check if accounting is enabled'
+if [ -e /var/account/pacct ];then
+	Display --indent 2 --text "accounting is enabled" --result OK --color GREEN
+	Compliance --result 'OK' --plugin 'accounting' --color 'green' --yasatresult 'ENABLED'
+else
+	Display --indent 2 --text "accounting is not enabled" --result WARNING --color ORANGE --advice ACCOUNTING_NOT_ENABLED
+	Compliance --result 'OK' --plugin 'accounting' --color 'orange' --yasatresult 'DISABLED'
+fi
+
+
+#TODO check SULOG_FILE in /etc/login.defs (linux only)
+# SYSLOG_SG_ENAB
+#TODO FIND A BETTER PLACE FOR THIS TEST
+#TODO must check for MD5_CRYPT_ENAB in /etc/login.defs
+DEFAULT_CRYPT_METHOD='DES'
+if [ -e "$SCAN_ROOT/etc/pam.d" ] ; then
+	if [ ! -z "`grep -r ^password.*sha512 $SCAN_ROOT/etc/pam.d`" ] ; then
+		DEFAULT_CRYPT_METHOD='sha512'
+		Display --indent 2 --text "Found sha512 in pam.d" --result OK --color BLUE
+	fi
+	if [ ! -z "`grep -r ^password.*md5 $SCAN_ROOT/etc/pam.d`" ] ; then
+		DEFAULT_CRYPT_METHOD='MD5'
+		Display --indent 2 --text "Found MD5 in pam.d" --result OK --color BLUE
+	fi
+	TESTNAME='YASAT_TEST_PAM_CRACKLIB NSAG=2.3.3.1.1 Set Password Quality Requirements, if using pam cracklib'
+	pamtmp="${TEMPYASATDIR}/pam"
+	grep -r 'pam_cracklib.so' $SCAN_ROOT/etc/pam.d |grep -v '^#' > $pamtmp
+	if [ -z "`cat $pamtmp`" ] ; then
+		 Display --indent 2 --text "cracklib" --result NOTFOUND --color BLUE
+	else
+		 Display --indent 2 --text "cracklib" --result FOUND --color BLUE
+	fi
+	rm "$pamtmp"
+	Compliance --result 'NOTIMPL' --plugin 'accounting' --nsag 2.3.3.1.1 --cce 14113-5 --cce 14672-0 --cce 14712-4 --cce 14122-6 --cce 14701-7 --cce 15054-0
+	TESTNAME='YASAT_TEST_PAM_PASSWSQC Set Password Quality Requirements, if using pam passwdqc'
+	Compliance --result 'NOTIMPL' --plugin 'accounting' --nsag 2.3.3.1.2
+	TESTNAME='YASAT_TEST_PAM_LOCKOUTS Set Lockouts for Failed Password Attempts'
+	Compliance --result 'NOTIMPL' --plugin 'accounting' --nsag 2.3.3.2
+	TESTNAME='YASAT_TEST_PAM_LIMIT_PASSWORD_REUSE Limit Password Reuse'
+	Compliance --result 'NOTIMPL' --plugin 'accounting' --nsag 2.3.3.6
+	TESTNAME='YASAT_TEST_PAM_REMOVE_CCREDS Remove the pam ccreds Package if Possible'
+	Compliance --result 'NOTIMPL' --plugin 'accounting' --nsag 2.3.3.7
+	TESTNAME='YASAT_TEST_PAM_REMOVE_RHOSTS Remove .rhosts Support from PAM Configuration Files'
+	Compliance --result 'NOTIMPL' --plugin 'accounting' --nsag 3.2.3.2
+fi
+
+#check also salt type in shadow http://en.wikipedia.org/wiki/Shadow_password (on my system 2 different salt coexists $1 and $6
+#YASAT_TEST_SHADOW_PASSWORD Check the real hash method used in /etc/shadow
+SHADOW_FILE="`echo $SCAN_ROOT/etc/shadow |sed 's,//*,/,g'`"
+if [ "${OS_TYPE}" = "BSD" ] ;then
+        SHADOW_FILE="/etc/master.passwd"
+fi
+if [ ! -e "$SHADOW_FILE" ];then
+	Display --indent 2 --text "$SHADOW_FILE not found, trying /etc/passwd" --result NOSHADOW --color BLUE
+	SHADOW_FILE="`echo $SCAN_ROOT/etc/passwd |sed 's,//*,/,g'`"
+fi
+if [ -e "$SHADOW_FILE" ];then
+	Display --indent 2 --text "$SHADOW_FILE" --result FOUND --color BLUE
+	TMPFILE_ACCT="${TEMPYASATDIR}/shadow.tmp"
+	grep -v '^#' "$SHADOW_FILE" |cut -d\: -f1,2 > $TMPFILE_ACCT
+	while read line
+	do
+		HASH_METHOD="`echo $line |cut -d\: -f2 | cut -c1,2`"
+		USER="`echo $line |cut -d\: -f1`"
+		KNOW_HASH_METHOD=0
+		TESTNAME="YASAT_TEST_ACCT_GENERIC_HASH_METHOD Check pasword hash method for $USER"
+		if [ "$HASH_METHOD" = '$1' ];then
+			Display --indent 2 --text "password hash method for $USER" --result MD5 --color RED --advice DO_NOT_USE_MD5
+			Compliance --result 'NOK' --plugin 'accouting' --color 'red' --yasatresult 'MD5'
+			KNOW_HASH_METHOD=1
+		fi
+		if [ "$HASH_METHOD" = '$2' ];then
+			Display --indent 2 --text "password hash method for $USER" --result BLOWFISH --color GREEN --comp 'OK' 'accouting'
+			KNOW_HASH_METHOD=1
+		fi
+		if [ "$HASH_METHOD" = '$5' ];then
+			Display --indent 2 --text "password hash method for $USER" --result SHA256 --color GREEN --comp 'OK' 'accouting'
+			KNOW_HASH_METHOD=1
+		fi
+		if [ "$HASH_METHOD" = '$6' ];then
+			Display --indent 2 --text "password hash method for $USER" --result SHA512 --color GREEN --comp 'OK' 'accouting'
+			KNOW_HASH_METHOD=1
+		fi
+		if [ "$HASH_METHOD" = 'x' ];then
+			KNOW_HASH_METHOD=1
+		fi
+		if [ "$HASH_METHOD" = '*' ];then
+			KNOW_HASH_METHOD=1
+		fi
+		if [ "$HASH_METHOD" = '!' ];then
+			KNOW_HASH_METHOD=1
+		fi
+		if [ "$HASH_METHOD" = '!!' ];then
+			KNOW_HASH_METHOD=1
+		fi
+		if [ $KNOW_HASH_METHOD -eq 0 ];then
+			Display --indent 2 --text "Unknown password hash method for $USER" --result "$HASH_METHOD" --color RED --comp 'NOK' 'accouting'
+		fi
+		#TODO Blowfish $2a
+	done < $TMPFILE_ACCT
+	rm $TMPFILE_ACCT
+fi
+
+#TODO need more work
+if [ -e /etc/login.defs ] ; then
+	TESTNAME='YASAT_TEST_ACCT_DEFAULT_PASSWORD_ENCRYPTION Check the default password encryption method in /etc/login.defs'
+	FindValueOf /etc/login.defs ENCRYPT_METHOD JUSTTEST
+	if [ "$RESULTAT" = 'SHA512' ] ; then
+		RESULTAT='sha512'
+	fi
+	if [ ! -z "$RESULTAT" ] ; then
+		Display --indent 2 --text "default password encryption" --result $RESULTAT --color BLUE
+		#TODO warn if DEFAULT_CRYPT_METHOD is also modify in pam for a different value
+	else
+		if [ $DEFAULT_CRYPT_METHOD = 'DES' ] ; then
+			Display --indent 2 --text "password encryption" --result $DEFAULT_CRYPT_METHOD --color RED --advice DO_NOT_USE_DES
+			Compliance --result 'NOK' --plugin 'accounting' --color 'red' --yasatresult "$DEFAULT_CRYPT_METHOD"
+		else
+			Display --indent 2 --text "password encryption" --result $DEFAULT_CRYPT_METHOD --color GREEN
+			Compliance --result 'OK' --plugin 'accounting' --color 'green' --yasatresult "$DEFAULT_CRYPT_METHOD"
+		fi
+	fi
+	TESTNAME='YASAT_TEST_PASSWORD_SHA512 NSAG=2.3.3.5 CCEID=14063-2 Check if password hashing is sha512'
+	FindValueOf /etc/login.defs MD5_CRYPT_ENAB JUSTTEST
+	if [ ! -z $RESULTAT ] ; then
+		if [ "$RESULTAT" = 'no' ] ; then
+			Display --indent 2 --text "MD5_CRYPT_ENAB" --result 'NO' --color GREEN
+			if [ $DEFAULT_CRYPT_METHOD = 'sha512' ] ;then
+				Compliance --result 'OK' --plugin accounting --nsag 2.3.3.5 --cce 14063-2 --color 'green' --yasatresult 'YES'
+			else
+				Compliance --result 'NOK' --plugin accounting --nsag 2.3.3.5 --cce 14063-2 --color 'green' --yasatresult 'NO'
+			fi
+		else
+			Display --indent 2 --text "MD5_CRYPT_ENAB" --result 'YES' --color RED --advice DO_NOT_USE_MD5
+			Compliance --result 'NOK' --plugin accounting --nsag 2.3.3.5 --cce 14063-2 --color 'red' --yasatresult 'NO'
+		fi
+	fi
+fi
+
+if [ "$OS_TYPE" != 'Linux' ] ; then
+	return ;
+fi
+#TODO freebsd also have some audit http://www.freebsd.org/doc/fr/books/handbook/audit-config.html
+
+#check for auditd daemon, /sbin/auditd for gentoo and auditd for redhat/centos
+AUDITD_PRESENT=0
+PACKAGE_NAME="audit"
+SERVICE_NAME="auditd"
+PROCESS_NAME="auditd"
+if [ "$LIST_PKG" = "emerge" ] ; then
+	PACKAGE_NAME="sys-process/audit"
+#	SERVICE_NAME="auditd"
+	PROCESS_NAME="/sbin/auditd"
+fi
+
+#TODO do a find_runing_process function
+TESTNAME='YASAT_TEST_AUDITD_1 NSAG=2.6.2 Test for a running auditd daemon'
+if [ "`ps aux |grep [[:space:]]$PROCESS_NAME[[:space:]]*$`" ] ; then
+	AUDITD_PRESENT=1
+	Display --indent 2 --text "$PROCESS_NAME" --result RUNNING --color BLUE --comp 'OK' 'accounting'
+fi
+
+TESTNAME='YASAT_TEST_AUDITD_2 Check if auditd is installed by a package'
+Is_installed_via_package_manager $PACKAGE_NAME
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
+	Display --indent 2 --text "$PACKAGE_NAME installation" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ] ;then
+		Display --indent 2 --text "$PACKAGE_NAME is installed by package" --result GOOD --color GREEN --comp 'OK' 'accounting'
+		AUDITD_PRESENT=1
+	else
+		if [ $AUDITD_PRESENT -eq 1 ] ; then
+			Display --indent 2 --text "$PACKAGE_NAME is manually installed" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND --comp 'NOK' 'accounting'
+		else
+			Display --indent 2 --text "$PACKAGE_NAME is not installed" --result BAD --color RED --comp 'NOK' 'accounting'
+		fi
+	fi
+fi
+
+
+TESTNAME='YASAT_TEST_AUDITD_3 CCEID=4292-9 NSAG=2.6.2.1 Test for a enabled auditd service'
+if [ $AUDITD_PRESENT -eq 1 ] ; then
+	Check_auto_start --nocompliance $SERVICE_NAME accounting any
+	if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
+	        Display --indent 2 --text "$SERVICE_NAME is started at boot" --result UNKNOWN --color BLUE
+		Compliance --result NOK --plugin accounting --nsag 2.6.2.1 --cce 4292-9 --color 'blue' --yasatresult 'UNKNOWN'
+	else
+	        if [ "$RESULTAT" = "yes" ] ;then
+        	        Display --indent 2 --text "$SERVICE_NAME is started at boot" --result YES --color GREEN
+			Compliance --result OK --plugin accounting --nsag 2.6.2.1 --cce 4292-9 --color 'green' --yasatresult 'YES'
+	        else
+        	        Display --indent 2 --text "$SERVICE_NAME is started at boot" --result NO --color RED --color 'red' --yasatresult 'NO'
+			Compliance --result NOK --plugin accounting --nsag 2.6.2.1 --cce 4292-9
+	        fi
+	fi
+else
+	Display --indent 2 --text "auditd presence" --result NO --color RED --advice INSTALL_AUDITD
+	Compliance --result NOK --plugin accounting --nsag 2.6.2.1 --cce 4292-9 --color 'red' --yasatresult 'NO'
+fi
+

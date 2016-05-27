@@ -1,0 +1,292 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+# PLUGINDESC="Check all users present in the auth database(/etc/passwd)"
+# OPT_TOOLS="getent which"
+
+Title "Check system user"
+POSSIBLE_USELESS_USER='games uucp news toor proxy irc gnats gopher'
+
+BASEHOME="/home"
+PASSFILE="/etc/shadow"
+TMP_LEAK_PASSWORD_FILE="$TEMPYASATDIR/yasat.leak"
+if [ "${OS_TYPE}" = "BSD" ] ;then
+	PASSFILE="/etc/master.passwd"
+fi
+
+#Check for readability of PASSFILE (Enforced SELinux deny it for example)
+if [ -e "$PASSFILE" ];then
+	cat $PASSFILE > /dev/null
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "$PASSFILE is unreadable (inexistant or access denied)" --result ERROR --color RED
+		PASSFILE='non-readable'
+	fi
+fi
+
+my_getent
+ALLUSER=`grep -v '^#' ${MY_PASSWD} | cut -d\: -f1`
+for iuser in $ALLUSER
+do
+	#HOMEUSER=`grep "^${iuser}:" /etc/passwd | cut -d\: -f6`
+	HOMEUSER=`grep "^${iuser}:" ${MY_PASSWD} | cut -d\: -f6`
+	#USERSHELL=`grep "^${iuser}:" /etc/passwd | cut -d\: -f7`
+	USERSHELL=`grep "^${iuser}:" ${MY_PASSWD} | cut -d\: -f7`
+	PRIMARYGROUP="`id -gn ${iuser}`"
+	if [ ! -e "${HOMEUSER}" ] ;then
+		Display --indent 2 --text "The home of $iuser, ${HOMEUSER} dont exist" --result NOTFOUND --color ORANGE --advice SYSTEM_USER_NO_HOMEDIR
+		HOMEUSER="$BASEHOME/$iuser/"
+	fi
+
+	if [ -e "${HOMEUSER}" ] ;then
+		Display --indent 2 --text "Check $iuser ${HOMEUSER} " --result FOUND --color GREEN
+		if [ "${HOMEUSER}" = "/" ] ;then
+			Display --indent 4 --text "homedir is /" --result WARNING --color RED --advice SYSTEM_USER_HOMEDIR_ROOT_SLASH
+		fi
+
+	if [ -e "${HOMEUSER}/.bashrc" ] ;then
+		UMASK="`grep 'umask 027' ${HOMEUSER}/.bashrc`"
+		if [ -z "$UMASK" ] ;then
+			Display --indent 4 --text "bad umask in bashrc (not 027)" --result WARNING --color RED --advice SYSTEM_USER_UMASK
+		fi
+	fi
+	#TODO check valid shells for warning about "no pass and shells"
+	#TODO differenciate desactivated account than other
+	if [ -e "$PASSFILE" ] ;	then
+		PASSWORD=`grep ^${iuser}\: $PASSFILE | cut -d\: -f2`
+
+		if  [ "$PASSWORD" = '*' ] ;then
+			if [ ! -z "`echo $USERSHELL | grep -v 'nologin' |grep -v 'bin/false'`" ]
+			then
+			Display --indent 4 --text "No pass and shell, why?" --result WARNING --color ORANGE --advice SYSTEM_USER_NOPASS_AND_SHELL
+			fi
+		fi
+		if  [ "$PASSWORD" = '!' ] ;then
+			if [ ! -z "`echo $USERSHELL | grep -v 'nologin' |grep -v 'bin/false'`" ]
+			then
+			Display --indent 4 --text "No pass and shell, why?" --result WARNING --color ORANGE --advice SYSTEM_USER_NOPASS_AND_SHELL
+			fi
+		fi
+		#Password is empty, bad
+		if  [ "$PASSWORD" = '' ] ;then
+			Display --indent 4 --text "Password is empty" --result ERROR --color RED
+		fi
+	fi
+	#end of if PASSFILE
+
+	if [ -e "${HOMEUSER}/.ssh/" ];then
+	    if [ `stat $STAT_RIGHT ${HOMEUSER}/.ssh/` != '700' ];then
+		Display --indent 4 --text "${HOMEUSER}/.ssh is not 700" --result WARNING --color RED --advice SYSTEM_USER_DOTDIR
+		else
+		Display --indent 4 --text "${HOMEUSER}/.ssh" --result OK --color GREEN
+	    fi
+#	    find ${HOMEUSER}/.ssh/ ! -user $iuser -ls
+		TMP_RESULT="${TEMPYASATDIR}/ssh_others"
+		check_directory_owner "${HOMEUSER}/.ssh/" $iuser $TMP_RESULT 4 'TODO'
+#	    find ${HOMEUSER}/.ssh/ -perm $ORWX -ls
+		check_directory_others "${HOMEUSER}/.ssh/" $TMP_RESULT 4 GLOBAL_FILE_OTHER_READABLE
+	    if [ -e "${HOMEUSER}/.ssh/authorized_keys" -o -e "${HOMEUSER}/.ssh/authorized_keys2" ];then
+		Display --indent 4 --text "authorized_keys" --result FOUND --color GREEN
+		#TODO check this files (content)
+	    fi
+	    #TODO check keysize for < 2048bits (find a good link to explain why)
+	    if [ -e "${HOMEUSER}/.ssh/id_rsa" -o -e "${HOMEUSER}/.ssh/id_rsa.pub" ] ;then
+		KEY_SIZE="`ssh-keygen -l -f ${HOMEUSER}/.ssh/id_rsa | cut -d\  -f1`"
+	    	Display --indent 4 --text "RSA keys found ($KEY_SIZE bits)" --result OK --color GREEN
+		check_private_key "${HOMEUSER}/.ssh/id_rsa" 4 'ssh' "${iuser}" "$PRIMARYGROUP"
+	    fi
+	    if [ -e "${HOMEUSER}/.ssh/id_dsa" -o -e "${HOMEUSER}/.ssh/id_dsa.pub" ] ;then
+	    	#I have read somewhere that DSA is only 1024, so perhaps reading keysize is useless
+		KEY_SIZE="`ssh-keygen -l -f ${HOMEUSER}/.ssh/id_dsa | cut -d\  -f1`"
+	   	Display --indent 4 --text "DSA keys found ($KEY_SIZE bits)" --result OK --color GREEN
+		check_private_key "${HOMEUSER}/.ssh/id_dsa" 4 'ssh' "${iuser}" "$PRIMARYGROUP"
+	    fi
+
+	    if [ `stat $STAT_USER ${HOMEUSER}/.ssh/` != $iuser ];then
+		    Display --indent 4 --text "Error ${HOMEUSER}/.ssh/ is not $iuser owned" --result ERROR --color RED
+	    fi
+
+	fi
+	#end if [ -e "${HOMEUSER}/.ssh/" ]
+
+	if [ -e "${HOMEUSER}/.gnupg/" ];then
+	if [ `stat $STAT_RIGHT ${HOMEUSER}/.gnupg/` != '700' ];then
+		Display --indent 4 --text "$BASEHOME/$iuser/.gnupg is not 700" --result WARNING --color RED --advice SYSTEM_USER_DOTDIR
+		else
+		Display --indent 4 --text "$BASEHOME/$iuser/.gnupg" --result OK --color GREEN
+	    fi
+	fi
+	#TODO check recusivly the content of the directory
+	#end of gnupg
+
+	if [ -e "${HOMEUSER}/.my.cnf" ]
+	then
+	if [ `stat $STAT_RIGHT ${HOMEUSER}/.my.cnf` != '600' ]
+	    then
+		Display --indent 4 --text "$BASEHOME/$iuser/.my.cnf is not 600" --result WARNING --color RED --advice SYSTEM_USER_DOTFILES
+		else
+		Display --indent 4 --text "$BASEHOME/$iuser/.my.cnf" --result OK --color GREEN
+	    fi
+	fi
+	#end of my.cnf
+
+	#check rights of some files
+	LIST_USER_FILE=".bashrc .cshrc .exrc .forward .kshrc .login .profile  .xinitrc .nessusrc .muttrc .cvspass .rhosts .openvasrc .bash_history .history .k5login .mysql_history .pgpass"
+	#TODO finish that
+	for DOT_FILE in $LIST_USER_FILE
+	do
+		if [ -e "${HOMEUSER}/${DOT_FILE}" ]
+		then
+			DOTFILERIGHT="`stat $STAT_RIGHT ${HOMEUSER}/$DOT_FILE`"
+			if [ "${DOTFILERIGHT}" != '600' -a "${DOTFILERIGHT}" != '400' ]
+			then
+				Display --indent 4 --text "${HOMEUSER}/$DOT_FILE is not 600" --result WARNING --color RED --advice SYSTEM_USER_DOTFILES
+			else
+				Display --indent 4 --text "${HOMEUSER}/$DOT_FILE" --result OK --color GREEN
+			fi
+		fi
+	done
+	#check only "normal" users for the moment
+	if [ ! -z "`echo ${HOMEUSER} |grep $BASEHOME`" ]
+	then
+		TMP_RESULT="${TEMPYASATDIR}/${iuser}.homeresult"
+		check_directory_others ${HOMEUSER} $TMP_RESULT 4 SYSTEM_USER_HOMEDIR_READABLE_BY_OTHERS
+	fi
+	#check for information leaking in .bash_history
+	#TODO ipmitool -U root user set password 8 xxx ? and other command with clear text password
+	#TODO list of bad command like ./r00t
+	if [ -e "${HOMEUSER}/.bash_history" ]
+	then
+		cat "${HOMEUSER}/.bash_history" |grep mysql | grep -iE '\-p[^ ]' > "$TMP_LEAK_PASSWORD_FILE"
+		cat "${HOMEUSER}/.bash_history" |grep ldap | grep -E '\-w|\-a|\-s' >> "$TMP_LEAK_PASSWORD_FILE"
+		cat ${HOMEUSER}/.bash_history |grep wget | grep -i ':.*@' >> $TMP_LEAK_PASSWORD_FILE
+		cat ${HOMEUSER}/.bash_history | grep -v '^cd ' |grep -v '^exit[[:space:]]*$' | grep -v '^source[[:space:]]' | grep -v '^export[[:space:]]'|
+		while read line_of_command
+		do
+			COMMAND_TO_CHECK="`echo $line_of_command | sed 's/[[:space:]].*//g'`"
+			which $COMMAND_TO_CHECK > /dev/null 2> /dev/null
+			if [ $? -eq 1 ]
+			then
+				echo "$line_of_command" >> $TMP_LEAK_PASSWORD_FILE
+			fi
+		done
+#	file with password to test for their right
+#		cat $bash_h |grep ldap | grep -E '\-y|\-t|\-T'
+		NBLINE="`cat $TMP_LEAK_PASSWORD_FILE | wc -l`"
+		if [ $NBLINE -eq 0 ]
+		then
+			Display --indent 4 --text ".bash_history" --result GOOD --color GREEN
+		else
+			Display --indent 4 --text ".bash_history" --result BAD --color RED --advice SYSTEM_USER_PASSWORD_LEAKING
+			cat $TMP_LEAK_PASSWORD_FILE | sort | uniq | 
+			while read line_of_command_with_pass
+			do
+				echo "      $line_of_command_with_pass"
+			done
+		fi
+	fi
+	#end of bash_history
+	#Check for PASSWORD() or other line with a password in mysql_history
+	if [ -e "${HOMEUSER}/.mysql_history" ] ; then
+		echo -n "" > $TMP_LEAK_PASSWORD_FILE
+		cat "${HOMEUSER}/.mysql_history" |grep -iE 'identified|PASSWORD' |
+		while read line_of_command
+		do
+			echo "$line_of_command" >> $TMP_LEAK_PASSWORD_FILE
+		done
+		NBLINE="`cat $TMP_LEAK_PASSWORD_FILE | wc -l`"
+		if [ $NBLINE -eq 0 ]
+		then
+			Display --indent 4 --text ".mysql_history" --result GOOD --color GREEN
+		else
+			Display --indent 4 --text ".mysql_history" --result BAD --color RED --advice SYSTEM_USER_MYSQL_HISTORY_PASSWORD_LEAKING
+			cat $TMP_LEAK_PASSWORD_FILE | sort | uniq | 
+			while read line_of_command_with_pass
+			do
+				echo "      $line_of_command_with_pass"
+			done
+		fi
+	fi
+	if [ -e "${HOMEUSER}/.mozilla/firefox/profiles.ini" ] ; then
+		if [ -e "${PLUGINS_REP}/system_user.firefox" ] ; then
+			#get profiles
+			for profile in `grep '^Path=' "${HOMEUSER}/.mozilla/firefox/profiles.ini" | sed 's/^Path=//'`
+			do
+				Display --indent 4 --text "Firefox profile $profile" --result FOUND --color BLUE
+				PATH_TO_PREFJS="${HOMEUSER}/.mozilla/firefox/$profile/prefs.js"
+				if [ -e $PATH_TO_PREFJS ] ; then
+					grep -v ^# "${PLUGINS_REP}/system_user.firefox" | 
+					while read firefox_test
+					do
+						FIREFOX_STRING="`echo $firefox_test | cut -d, -f1`"
+						FIREFOX_ADVICE="`echo $firefox_test | cut -d, -f2`"
+						if [ ! -z "`grep $FIREFOX_STRING $PATH_TO_PREFJS`" ] ; then
+							Display --indent 6 --text "$FIREFOX_STRING" --result FOUND --color BLUE --advice "$FIREFOX_ADVICE"
+						else
+							Display --indent 6 --text "$FIREFOX_STRING" --result NOTFOUND --color GREEN
+						fi
+					done
+				fi
+			done
+		else
+			Display --indent 4 --text "${PLUGINS_REP}/system_user.firefox" --result NOTFOUND --color REd
+		fi
+	fi #end of firefox
+    fi
+    #end of if homeuser
+    for TMP_USELESS in $POSSIBLE_USELESS_USER
+    do
+    	if [ "$TMP_USELESS" = "$iuser" ]
+	then
+		Display --indent 4 --text "is user $iuser useful?" --result WARNING --color ORANGE --advice SYSTEM_USER_USELESS
+	fi
+    done
+
+done
+
+#check UID 0 account
+USER_ONLY_ONE_UID0=0
+cut -d\: -f1,3 ${MY_PASSWD} | grep ':0$' |
+while read line
+do
+	if [ "$line" != "root:0" ]
+	then
+		USER_ONLY_ONE_UID0=1
+		USER_UID0="`echo $line | cut -d\: -f1`"
+		Display --indent 2 --text "Found user $USER_UID0 with UID=0" --result FOUND --color RED --advice SYSTEM_USER_USER_wITH_UID0
+	fi
+done
+
+if [ $USER_ONLY_ONE_UID0 -eq 0 ]
+then
+	Display --indent 2 --text "Only root is UID=0" --result GOOD --color GREEN
+fi
+
+#check that shadow is used
+cut -d\: -f1,2 ${MY_PASSWD} |grep ':$'|
+while read line
+do
+	USER_STRANGE="`echo $line | cut -d\: -f1`"
+	Display --indent 2 --text "Found anormal $USER_STRANGE" --result FOUND --color RED --advice TODO
+done
+
+return 0;
+#TODO check_user_cron
+#TODO check for a .macromedia and give advice of trash "flash cookies"
+
+

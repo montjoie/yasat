@@ -1,0 +1,3431 @@
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+#
+# The display function is originated from lynis Copyright 2007-2009, Michael Boelen (michael@rootkit.nl), The Netherlands
+# Web site: http://www.rootkit.nl
+#
+#################################################################################
+#
+# Common functions for YASAT
+#
+#################################################################################
+#
+
+	NORMAL="[0;39m"
+	WARNING="[1;31m"
+	YELLOW="[1;33m"
+	BLUE="[0;36m"
+	WHITE="[1;37m"
+	GREEN="[0;32m"
+	RED="[1;31m"
+	ORANGE="[0;33m"
+	NOIRGRAS="[1;39m"
+
+#All results in orange/yellow is a optional warning
+#All results in red must be corrected
+
+################################################################################
+################################################################################
+print_color_chart()
+{
+	echo "Color chart"
+	echo "$GREEN GREEN $NORMAL  is for good configuration or information"
+	echo "$RED RED $NORMAL    is for configuration that must be corrected"
+	echo "$ORANGE ORANGE $NORMAL is for optional configuration that can be done"
+#ugly color, do not use:)
+#	echo "$YELLOW YELLOW $NORMAL is for optional configuration that can be done"
+	echo "$BLUE BLUE $NORMAL   is for information"
+}
+
+################################################################################
+################################################################################
+Debug()
+{
+	if [ $DEBUG -eq 1 ] ; then
+		ECHOCMD="echo -e"
+		if [ "`echo -e plop`" = '-e plop' ] ;then
+			#with /bin/sh or zsh no -e
+			ECHOCMD='echo'
+		fi
+		$ECHOCMD "$1"
+	fi
+}
+
+################################################################################
+################################################################################
+# Display an error, by error I mean internal YASAT error
+Display_error() {
+	echo "$1" >&2
+	echo "$1" >> $ERROR_OUTPUT_FILE
+	if [ ! -z "$2" ];then
+		echo "$2" >> $ERROR_OUTPUT_FILE
+	fi
+}
+
+################################################################################
+################################################################################
+# create a tmp file
+create_tmp()
+{
+	local suffix=""
+	if [ $# -ge 1 ];then
+		suffix="$1"
+		Debug "DEBUG: Setting suffix to $suffix"
+	fi
+	#TODO check is suffix is handled on all OS
+	if [ -z "$suffix" ];then
+		TMP_FILE="`mktemp --suffix=$suffix`"
+	else
+		TMP_FILE="`mktemp`"
+	fi
+	if [ $? -ne 0 -o ! -e $TMP_FILE ];then
+		Display_error "ERROR: Cannot create a tmp file"
+		return 1
+	fi
+	Debug "DEBUG: Created tmp $TMP_FILE"
+	TMP_FILE_CREATED="$TMP_FILE_CREATED $TMP_FILE"
+	return 0
+}
+
+################################################################################
+################################################################################
+Display()
+{
+	Debug "DEBUG: Display begin"
+	DEBUG_ARGS="$*"
+	if [ -z "$1" ];then
+		Display_error "ERROR: Display need at least one argument"
+		return 1;
+	fi
+	INDENT=0; TEXT=''; RESULT=''; COLOR=''; ADVICE=''
+	ECHOCMD="echo -e"
+	if [ "`echo -e plop`" = '-e plop' ] ;then
+		#with /bin/sh or zsh no -e
+		ECHOCMD='echo'
+	fi
+        while [ $# -ge 1 ]; do
+	    case $1 in
+	        --color)
+		    shift
+		        case $1 in
+			GREEN)
+			  	COLOR=$GREEN;HTMLCOLOR='GREEN'
+				if [ $PRINT_LEVEL -ge 2 ] ;then
+					return 1;
+				fi
+				YASAT_STAT_GREEN=$(($YASAT_STAT_GREEN+1))
+			;;
+			RED)
+				COLOR=$RED;HTMLCOLOR='RED'
+			  	YASAT_STAT_RED=$(($YASAT_STAT_RED+1))
+			;;
+			WHITE)
+				COLOR=$WHITE
+			;;
+			YELLOW)
+			  	COLOR=$YELLOW;HTMLCOLOR='YELLOW'
+				if [ $PRINT_LEVEL -ge 3 ];then
+					return 1;
+				fi
+			;;
+			ORANGE)
+				COLOR=$ORANGE;HTMLCOLOR='ORANGE'
+				if [ $PRINT_LEVEL -ge 3 ] ;then
+					return 1;
+				fi
+				YASAT_STAT_ORANGE=$(($YASAT_STAT_ORANGE+1))
+			;;
+			BLUE)
+			  	COLOR=$BLUE;HTMLCOLOR='BLUE'
+				if [ $PRINT_LEVEL -ge 1 ];then
+					return 1;
+				fi
+			;;
+			*)
+			  	Display_error "ERROR: unknown color $1 for Display()"
+				return 1;
+			;;
+			esac
+		;;
+	        --indent)
+		    shift
+		    INDENT=$1
+	        ;;
+		--no-break | --nobreak | -nb)
+		    ECHOCMD="echo -en"
+		;;
+		--result)
+			shift
+			if [ -z "$1" ];then
+				Display_error "ERROR : missing parameters to --result"
+				return 1;
+			fi
+			RESULT=$1
+		;;
+		--advice)
+			shift
+			if [ -z "$1" ];then
+				Display_error "ERROR : missing parameters to --advice" "$DEBUG_ARGS"
+				return 1;
+			fi
+			ADVICE=$1
+		;;
+	        --text)
+	            shift
+		    #clean possible double slash
+	            TEXT="`echo $1 | sed 's,//,/,g'`"
+		    if [ $HIDESR -ge 1 ];then
+		    	#I use | because it is the only separator that I will be sure to be not present
+		    	TEXT=`echo $1 | sed "s|$SCAN_ROOT||"`
+		    fi
+	        ;;
+		--comp)
+			shift
+			if [ -z "$1" -o -z "$2" ];then
+				Display_error "ERROR : missing parameters to --comp"
+				return 1;
+			fi
+			Compliance --result "$1" --plugin "$2" --color "$HTMLCOLOR" --yasatresult "$RESULT"
+			shift
+		;;
+		*)
+		    Display_error "INVALID OPTION (Display): $1, it is usually a bug of yasat (shame on me)"
+		    exit 1
+		;;
+	    esac
+	    # Go to next parameter
+	    shift
+	done
+	if [ -z "${ADVICE}" -o "${ADVICE}" = 'NONE' ] ;then
+		ADVICEVALUE=''
+	else
+		ADVICEVALUE="`grep ${ADVICE}= ${YASAT_ROOT}/yasat.advices | cut -d\= -f2-`"
+		if [ -z "$ADVICEVALUE" ] ;then
+			Display --indent 2 --text "BUG ADVICEVALUE is empty for ${ADVICE}" --result WARNING --color RED --advice YASAT_BUG
+		fi
+#		if [ -z "`echo ${RESULT} | grep -vEi 'warning$|found$'`" ] ;then
+#			echo "= ${TEXT}" >> $REPORT_OUTPUT
+#		else
+			echo "= ${TEXT} Result=${RESULT}" >> $REPORT_OUTPUT
+#		fi
+		echo "  $ADVICEVALUE" >> $REPORT_OUTPUT
+		report_add "${ADVICE}" TEXT $REPORT_OUTPUT
+	fi
+
+	if [ ! -z "$HTML_OUTPUT" ] ;then
+		echo "<tr><td><b>${TEXT}</b></td><td> <FONT color=$HTMLCOLOR >${RESULT}</font></td><td>$ADVICEVALUE</td></tr>" >> "$HTML_OUTPUT"
+		if [ ! -z "$ADVICE" ] ;then
+			report_add "${ADVICE}" HTML "$HTML_OUTPUT"
+		fi
+	fi
+
+	if [ -z "${RESULT}" ];then
+		Display_error 'ERROR: No --result'
+		return 1;
+	fi
+
+	RESULTPART=" [ ${COLOR}${RESULT}${NORMAL} ]"
+	#size of result is 5 ( [  ]) + 8 (NOTFOUND/WARNING is the greatest result)
+	MAXLINESIZE=67
+	if [ ! -z "${TEXT}" ] ;then
+        	# Display
+		LINESIZE=`echo "${TEXT}" | wc -c | tr -d ' '`
+		#SPACES=`expr ${MAXLINESIZE} - ${INDENT} - ${LINESIZE}`
+		SPACES=$((${MAXLINESIZE}-${INDENT}-${LINESIZE}))
+		if [ "$SPACES" -le 0 ] ;then
+			TEXT1=`echo ${TEXT} | cut -b -50`
+			LINESIZE=`echo "${TEXT1}" | wc -c | tr -d ' '`
+			#SPACES=`expr ${MAXLINESIZE} - ${INDENT} - ${LINESIZE}`
+			SPACES=$((${MAXLINESIZE}-${INDENT}-${LINESIZE}))
+			${ECHOCMD} "\033[${INDENT}C${TEXT1}\033[${SPACES}C${RESULTPART}\t${ADVICEVALUE}"
+			TEXT2=`echo ${TEXT} | cut -b 51-`
+			${ECHOCMD} "!!\033[${INDENT}C${TEXT2}"
+		else
+			#SPACES=`expr ${MAXLINESIZE} - ${INDENT} - ${LINESIZE}`
+			SPACES=$((${MAXLINESIZE}-${INDENT}-${LINESIZE}))
+			ADVICE_LINE_SIZE=0
+			if [ -z "${ADVICEVALUE}" ] ;then
+				FULLLINESIZE=$LINESIZE
+			else
+				ADVICE_LINE_SIZE=`echo "${ADVICEVALUE}" | wc -c | tr -d ' '`
+				#FULLLINESIZE=`expr ${ADVICE_LINE_SIZE} + 80`
+				FULLLINESIZE=$((${ADVICE_LINE_SIZE}+80))
+			fi
+			Debug "FULL $FULLLINESIZE $LINESIZE $SPACES adv=$ADVICE_LINE_SIZE COL_WIDTH=$COL_WIDTH"
+			if [ $FULLLINESIZE -gt $COL_WIDTH ]
+			then
+				${ECHOCMD} "\033[${INDENT}C${TEXT}\033[${SPACES}C${RESULTPART}"
+				${ECHOCMD} "\033[${INDENT}C\t-> ${ADVICEVALUE}"
+			else
+				${ECHOCMD} "\033[${INDENT}C${TEXT}\033[${SPACES}C${RESULTPART}\t${ADVICEVALUE}"
+			fi
+		fi
+	else
+		echo "ERROR: Display: Missing parameter --text"
+		return 1
+	fi
+}
+################################################################################
+################################################################################
+# does $1 is equal to $2 ?
+# optionnal parameter [-f filter] [-i]
+# -f filter: filter $1 
+# -i case insesitive test but $2 need to be lowercase
+# -2 add a second value accepted
+# return 0 if yes
+# return 1 if no
+is_equal() {
+	local cmp=$1
+	local cmp2=$2
+	local cmp3=''
+	local tmp
+	shift
+	shift
+	if [ $# -ge 1 ];then
+		while [ $# -ge 1 ]
+		do
+			case $1 in
+			-i)
+				tmp=`echo $cmp | tr 'A-Z' 'a-z'`
+				#echo "DEBUG: $cmp to $tmp"
+				cmp=$tmp
+				shift
+			;;
+			-f)
+				shift
+				if [ -z "$1" ];then
+					Display_error "ERROR: is_equal() -f need an argument"
+					return 2
+				fi
+				tmp=`echo $cmp | sed "s,$1,,g"`
+				#echo "DEBUG: $cmp to $tmp"
+				cmp=$tmp
+				shift
+			;;
+			-2)
+				shift
+				if [ -z "$1" ];then
+					Display_error "ERROR: is_equal() -2 need an argument"
+					return 2
+				fi
+				cmp3="$1"
+				shift
+			;;
+			*)
+				Display_error "ERROR: invalid arg $1 for is_equal()"
+				return 2
+			;;
+			esac
+		done
+	fi
+	if [ "$cmp" = "$cmp2" ];then
+		return 0
+	fi
+	if [ ! -z "$cmp3" -a "$cmp" = "$cmp3" ];then
+		return 0
+	fi
+	return 1
+}
+################################################################################
+################################################################################
+report_add()
+{
+	if [ -z "$1" ]
+	then
+		Display --indent 2 --text "Missing argument #1 for report_add" --result WARNING --color RED --advice YASAT_BUG
+		return -1;
+	fi
+	if [ -z "$2" ]
+	then
+		Display --indent 2 --text "Missing argument #2 (type of output) for report_add" --result WARNING --color RED --advice YASAT_BUG
+		return -1;
+	fi
+	if [ -z "$3" ]
+	then
+		Display --indent 2 --text "Missing argument #3 (name of the output file) for report_add" --result WARNING --color RED --advice YASAT_BUG
+		return -1;
+	fi
+
+	Debug "report_add() called with $1 $2 $3"
+	
+#	if [ $2 = "TEXT" ]
+#	then
+#		echo "" >> $3
+#		echo "==  `cat yasat.advices |grep $ADVICE | cut -d\= -f2-` ==" >> $3
+#		echo "" >> $3
+#	fi
+	if [ $2 = "HTML" ]
+	then
+		echo "<tr><td>" >> "$3"
+	fi
+
+	ADVICEFOUND=0
+	LISTE_ADVICE="`ls ${PLUGINS_REP}/*.advice`"
+	cat $LISTE_ADVICE |
+	while read line
+	do
+		if [ "$line" = "ADVICEEND" ]
+		then
+			ADVICEFOUND=0
+		fi
+		#temporary
+		if [ ! -z "`echo $line |grep ^${ADVICELANG},`" ]
+		then
+			ADVICEFOUND=0
+		fi
+
+		if [ $ADVICEFOUND -eq 1 ]
+		then
+			if [ $2 = "TEXT" ]
+			then
+				echo "  $line" | sed 's/<[^>]*>//g'>> "$3"
+			fi
+			if [ $2 = "HTML" ]
+			then
+				echo "  $line" >> "$3"
+				echo "<br>" >> "$3"
+			fi
+		fi
+
+		if [ ! -z "`echo $line |grep ${ADVICELANG},$1`" ]
+		then
+			ADVICEFOUND=1
+		fi
+	done
+	if [ $2 = "HTML" ]
+	then
+		echo "<br></td><td></td><td></td></tr>" >> "$3"
+	fi
+
+
+}
+
+################################################################################
+################################################################################
+#arg 1 is the path to file created by prepare_apache_conf()
+#arg2 is the value found by FindValueOf
+Check_apache_user()
+{
+export RESULTAT=''
+export FINDERROR=''
+if [ -z "$1" ] ; then
+	Display --indent 2 --text "Missing argument #1 for Check_apache_user" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+if [ -z "$2" ] ; then
+	Display --indent 2 --text "Missing argument #2 for Check_apache_user" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+
+if [ "`echo $2 | cut -b1`" = '$' ] ;then
+	Display --indent 2 --text "Apache user is a variable" --result INFO --color BLUE
+	#we ll find the value of this variable (only debian do that, and values can be found in /etc/apache2/envvars)
+	if [ -e /etc/apache2/envvars ] ; then
+		export RESULTAT="`grep APACHE_RUN_USER /etc/apache2/envvars | cut -d\= -f2`"
+		if [ -z "$RESULTAT" ] ; then
+			Display --indent 4 --text "Fallback to www-data" --result INFO --color BLUE
+			export RESULTAT='www-data'
+		fi
+	else
+		#TODO fallback to a common value
+		Display --indent 4 --text "Fallback to www-data" --result INFO --color BLUE
+		export RESULTAT='www-data'
+	fi
+	return 0;
+	Display --indent 2 --text "Apache user is " --result "$RESULTAT" --color BLUE
+fi
+export RESULTAT="$2"
+}
+################################################################################
+################################################################################
+#arg 1 is the path to file created by prepare_apache_conf()
+#arg2 is the value found by FindValueOf
+Check_apache_group()
+{
+export RESULTAT=''
+export FINDERROR=''
+if [ -z "$1" ] ; then
+	Display --indent 2 --text "Missing argument #1 for Check_apache_group" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+if [ -z "$2" ] ; then
+	Display --indent 2 --text "Missing argument #2 for Check_apache_group" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+
+if [ "`echo $2 | cut -b1`" = '$' ] ; then
+	Display --indent 2 --text "Apache group is a variable" --result INFO --color BLUE
+	#we ll find the value of this variable (only debian do that, and values can be found in /etc/apache2/envvars)
+	if [ -e /etc/apache2/envvars ] ; then
+		export RESULTAT="`grep APACHE_RUN_GROUP /etc/apache2/envvars | cut -d\= -f2`"
+		if [ -z "$RESULTAT" ] ; then
+			Display --indent 4 --text "Fallback to www-data" --result INFO --color BLUE
+			export RESULTAT='www-data'
+		fi
+	else
+		#TODO fallback to a common value
+		Display --indent 4 --text "Fallback to www-data" --result INFO --color BLUE
+		export RESULTAT='www-data'
+	fi
+	return 0;
+	Display --indent 2 --text "Apache group is " --result "$RESULTAT" --color BLUE
+fi
+export RESULTAT="$2"
+}
+
+################################################################################
+################################################################################
+#Find value of a directive separated by space "$2 value"
+# #1 is the file to scan
+# #2 is the directive to seek
+# #3 is a sort of error reporting, possible values JUSTTEST(what a bad name choice) and MULTIPLE(allow multiple value)
+# #4 is case sensitivity flag (nothing = sensitive, INSENSITIVE otherwise)
+FindValueOf()
+{
+export RESULTAT=''
+export FINDERROR=''
+if [ -z "$1" ] ; then
+	Display --indent 2 --text "Missing argument FindValueOf() #1 (conf file to scan)" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+
+if [ -z "$2" ] ; then
+	Display --indent 2 --text "Missing argument FindValueOf #2 (directive to seek)" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+TEMP=""
+Debug "Seek value of $2 in $1"
+if [ ! -e "$1" ] ;then
+	echo "Error $1 do not exist"
+	return 1;
+fi
+#End of checks of parameters
+DO_INSENSITIVE=0
+if [ $# -ge 4 ] ; then
+	if [ "$4" = 'INSENSITIVE' ] ; then
+		DO_INSENSITIVE=1
+	fi
+fi
+if [ $DO_INSENSITIVE -ge 1 ] ; then
+	TEMP=`grep -rih "^[[:space:]]*$2[[:space:]]" $1 |grep -v '^[[:space:]]*#' |tr '[:upper:]' '[:lower:]' |sed "s/^[[:space:]]*$2[[:space:]]*//g" |sed 's/#.*//g'|sed 's,[[:space:]]*,,'`
+else
+	TEMP=`grep -rih "^[[:space:]]*$2[[:space:]]" $1 |grep -v '^[[:space:]]*#' |sed "s/^[[:space:]]*$2[[:space:]]*//g" |sed 's/#.*//g'|sed 's,[[:space:]]*,,'`
+fi
+
+if [ -z "$TEMP" ] ;then
+	if [ $# -le 2 ] ; then
+		Display --indent 2 --text "No declaration of $2" --result WARNING --color RED
+	else
+		if [ -z "$3" ] ;then
+			Display --indent 2 --text "No declaration of $2" --result WARNING --color RED
+			return 1;
+		fi
+	fi
+fi
+if [ `echo "$TEMP" | wc -l` -ge 2 ];then
+	if [ "$3" = 'MULTIPLE' ] ; then
+#		export RESULTAT="`echo $TEMP | sed "s/[[:space:]]*$2[[:space:]]*//g"`"
+		export RESULTAT="$TEMP"
+		return 0;
+	fi
+	Display --indent 2 --text "Error multiple declarations of $2" --result WARNING --color RED --advice GLOBAL_MULTIPLE_DECLARATIONS
+	grep -ri "^[[:space:]]*$2[[:space:]]" $1 |grep -v '^[[:space:]]*#' |
+	while read line
+	do
+		echo "  ==> $line"
+	done
+	FINDERROR='MULTIPLE'
+	RESULTAT=`echo "$TEMP" | sort | uniq | head -n 1 |sed "s/^[[:space:]]*$2[[:space:]]*//g" | sed 's/#.*//g'`
+	return 3;
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 0 ] ; then
+	if [ -z "$3" ] ;then
+		Display --indent 2 --text "No declaration of $2" --result WARNING --color RED
+		return 1;
+	fi
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 1 ] ;then
+#	export RESULTAT=`echo "${TEMP}" | sed "s/^[[:space:]]*[a-zA-Z0-9][a-zA-Z0-9]*[[:space:]]*//g" | sed 's/#.*//g'`
+#	export RESULTAT=`echo "${TEMP}" | sed "s/^[[:space:]]*$2[[:space:]]*//g" | sed 's/#.*//g'`
+	export RESULTAT="${TEMP}"
+fi
+return 0;
+
+}
+
+
+#========================================================================================
+#========================================================================================
+#Find value type "$2 = value"
+FindValueOfEqual()
+{
+RESULTAT=''
+if [ "$1x" = "x" ]
+then
+	Display --indent 2 --text "Missing argument #1 (conf file to scan) of FindValueOfEqual" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+
+if [ "$2x" = "x" ]
+then
+	Display --indent 2 --text "Missing argument #2 (directive to scan) of FindValueOfEqual" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+
+TEMP=""
+Debug "cherche la valeur de $2 dans $1"
+TEMP=`grep -rih "^[[:space:]]*$2[[:space:]]*="  $1`
+
+if [ -z "$TEMP" ]
+then
+	if [ "$3x" = "x" ]
+	then
+	Display --indent 2 --text "No declarations of $2 " --result WARNING --color RED
+	return 1;
+	fi
+fi
+if [ `echo "$TEMP" | wc -l` -ge 2 ]
+then
+	Display --indent 2 --text "Error multiple declarations of $2 " --result WARNING --color RED --advice GLOBAL_MULTIPLE_DECLARATIONS
+	return 3;
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 0 ]
+then
+	if [ "$3x" = "x" ]
+	then
+	Display --indent 2 --text "No declarations of $2 " --result WARNING --color RED
+	return 1;
+	fi
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 1 ]
+then
+	export RESULTAT=`echo $TEMP | sed "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*//g"  | sed 's/[#;].*//g'`
+fi
+
+return 0;
+}
+
+
+#========================================================================================
+#========================================================================================
+#Find value type "$2 : value"
+FindValueOfDDot()
+{
+RESULTAT=''
+if [ "$1x" = "x" ]
+then
+	Display --indent 2 --text "Missing argument #1" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+
+if [ "$2x" = "x" ]
+then
+	Display --indent 2 --text "Missing argument #2" --result WARNING --color RED --advice YASAT_BUG
+	return 2;
+fi
+
+TEMP=""
+Debug "cherche la valeur de $2 dans $1"
+TEMP=`grep -rih "^[[:space:]]*$2[[:space:]]*:"  $1`
+
+if [ -z "$TEMP" ]
+then
+	if [ "$3x" = "x" ]
+	then
+	Display --indent 2 --text "No declarations of $2 " --result WARNING --color RED
+	return 1;
+	fi
+fi
+if [ `echo "$TEMP" | wc -l` -ge 2 ]
+then
+	Display --indent 2 --text "Error multiple declarations of $2 " --result WARNING --color RED --advice GLOBAL_MULTIPLE_DECLARATIONS
+	return 3;
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 0 ]
+then
+	if [ "$3x" = "x" ]
+	then
+	Display --indent 2 --text "No declarations of $2 " --result WARNING --color RED
+	return 1;
+	fi
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 1 ]
+then
+	export RESULTAT=`echo $TEMP | sed "s/^[[:space:]]*$2[[:space:]]*:[[:space:]]*//g" | sed 's/#.*//g'`
+fi
+
+return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+################################################################################
+
+CheckPresenceOf()
+{
+if [ "$1x" = "x" ]
+then
+	Display --indent 2 --text "Missing argument #1" --result WARNING --color RED --advice YASAT_BUG
+fi
+
+if [ "$2x" = "x" ]
+then
+	Display --indent 2 --text "Missing argument #1" --result WARNING --color RED --advice YASAT_BUG
+fi
+
+TEMP=""
+Debug "cherche si $2 est dans $1"
+TEMP=`grep -rih "^ *$2"  $1`
+
+if [ -z "$TEMP" ]
+then
+	if [ "$3x" = "x" ]
+	then
+	Display --indent 2 --text "No declarations of $2 " --result WARNING --color RED
+	fi
+fi
+if [ `echo "$TEMP" | wc -l` -ge 2 ]
+then
+	Display --indent 2 --text "Error multiple declarations of $2 " --result WARNING --color RED --advice GLOBAL_MULTIPLE_DECLARATIONS
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 0 ]
+then
+	if [ "$3x" = "x" ]
+	then
+	Display --indent 2 --text "No declarations of $2 " --result WARNING --color RED
+	fi
+fi
+
+if [ `echo "$TEMP" | wc -l` -eq 1 ]
+then
+	export RESULTAT=`echo $TEMP | sed "s/^.*$2\ //g" | cut -d\  -f1`
+##	echo "=>$RESULTAT<="
+fi
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+################################################################################
+
+Title()
+{
+	if [ -z "$1" ]
+	then
+		echo "Error missing parameter for Title()"
+		return 1;
+	fi
+	echo "=== $1 ==="
+	if [ ! -z "$HTML_OUTPUT" ]
+	then
+		echo "</table><h1>$1</h1><br><table border='1'>" >> "$HTML_OUTPUT"
+	fi
+	if [ ! -z "$REPORT_OUTPUT" ]
+	then
+		echo '' >> $REPORT_OUTPUT
+		echo "=== $1 ===" >> $REPORT_OUTPUT
+	fi
+}
+
+################################################################################
+################################################################################
+
+#affiche_rouge()
+#{
+#	echo -e "\033[31m $1 \033[0m "
+#}
+
+################################################################################
+################################################################################
+
+#affiche_vert()
+#{
+#	echo -e "\033[0;32m $1 \033[0m "
+#}
+
+################################################################################
+################################################################################
+
+#affiche_orange()
+#{
+#	echo -e "\033[0;33m $1 \033[0m "
+#}
+
+################################################################################
+################################################################################
+
+print_help()
+{
+	echo "====================================="
+	echo "== YASAT                           =="
+	echo "== Yet Another Stupid Audit Tool   =="
+	echo "==                                 =="
+	echo "== Copyright (C) 2008-2015         =="
+	echo "== LABBE Corentin                  =="
+	echo "============================================================"
+	echo "|Available options                                         |"
+	echo "|                                                          |"
+	echo "|  --standard          (-s) Do standard test               ====="
+	echo "|  --list              (-l) List plugins available             |"
+	echo "|  --debug             (-d) print debug informations           |"
+	echo "|  --help              (-h) show this help                     ====="
+	echo "|  --html              (-H) export YASAT 's results in html        |"
+	echo "|                           default to ~/yasat/yasat.html          |"
+	echo "|  --html-output PATH       PATH is the name of html file to write |"
+	echo "|  --advice-lang LANG       LANG is the 2letter digit of the lang  |"
+	echo "|                           (default is EN )                       |"
+	echo "|  --full-scan         (-f) Do extra (long) tests (lots of find)   |"
+	echo "|  --plugins-dir PATH  (-P) Set the path to the plugins to use     |"
+	echo "|                           (default is ./plugins )                |"
+	echo "|  --nopause           (-a) Do not make a pause after plugin's end |"
+	echo "|  --plugin PATH       (-1) Just use the plugin pointed by PATH    |"
+	echo "|  --Plugin NAME       (-p) Just use the plugin named NAME         |"
+	echo "|  --scanroot PATH     (-r) Scan PATH instead of / (WorkInProgress)|"
+	echo "|  --compliance type        Check for a specific compliance.       |"
+	echo "|                           type could be cce, nsa or all          |"
+	echo "|  --print-level X          Just print infos equal or above the    |"
+	echo "|                           level X (All = 0 (default), infos = 1  |"
+	echo "|                           warnings(orange) = 2, errors(red) = 3  |"
+	echo "|  --skip                   Test(s) to skip, without the .test     |"
+	echo "|                           (ex: --skip nfs,ntp) comma separated   |"
+	echo "|  --check-update           Check if an update of YASAT exists     |"
+	echo "|  --send-support           Same as --check-support but you will   |"
+	echo "|                           send also your OS version as parameter |"
+	echo "|  --desktop                Use the desktop profile                |"
+	echo "|  --server                 Use the server profile                 |"
+	echo "|  --version           (-V) Print yasat version                    |"
+	echo "|                                                                  |"
+	echo "| Thanks for using YASAT.                                          |"
+	echo "|                                                                  |"
+	echo "===================================================================="
+}
+
+################################################################################
+################################################################################
+#compare 2 right 
+#example compare_right 666 640 YES said bad
+#example compare_right 666 640 YES said bad
+#example compare_right 400 640 NO said bad
+#example compare_right 400 640 YES said good
+#if arg #3 is NO, we want that $1 and $2 is strictly equal
+compare_right()
+{
+#	RESULTAT='ERROR'
+	if [ -z "$1" ] ; then
+		echo "ERROR compare_right() missing arg #1 (right to test)"
+		return 1;
+	fi
+	if [ -z "$2" ] ; then
+		echo "ERROR compare_right() missing arg #2 (right wanted)"
+		return 1;
+	fi
+	if [ -z "$3" ] ; then
+		echo "ERROR compare_right() missing arg #3 (accept or not more restricted right)"
+		return 1;
+	fi
+	WANT_U="`echo $2 | cut -c1`"
+	TEST_U="`echo $1 | cut -c1`"
+	WANT_G="`echo $2 | cut -c2`"
+	TEST_G="`echo $1 | cut -c2`"
+	WANT_O="`echo $2 | cut -c3`"
+	TEST_O="`echo $1 | cut -c3`"
+#	echo "$WANT_U vs $TEST_U"
+	if [ $TEST_U -gt $WANT_U ] ; then
+		return 2
+	else
+		if [ "$3" = 'NO' -a $TEST_U -lt $WANT_U ]; then
+			return 3
+		fi
+	fi
+#	echo "$WANT_G vs $TEST_G"
+	if [ $TEST_G -gt $WANT_G ] ; then
+		return 2
+	else
+		if [ "$3" = 'NO' -a $TEST_G -lt $WANT_G ]; then
+			return 3
+		fi
+	fi
+#	echo "$WANT_O vs $TEST_O"
+	if [ $TEST_O -gt $WANT_O ] ; then
+		return 2
+	else
+		if [ "$3" = 'NO' -a $TEST_O -lt $WANT_O ]; then
+			return 3
+		fi
+	fi
+#	RESULTAT='GOOD'
+	return 0
+}
+
+################################################################################
+################################################################################
+check_whiteliste_cert()
+{
+	if [ ! -e "$1" ] ; then
+		echo "ERROR check_certificate() $1 do not exist"
+		return 1;
+	fi
+	FINGERPRINT="` openssl x509 -in \"$1\" -fingerprint -noout | cut -d\= -f2`"
+	if [ -z "`grep $FINGERPRINT certdata.txt`" ];then
+			echo "$FINGERPRINT $1 $line" >> xp-cert.out
+	else
+			echo "$FINGERPRINT $1 $line" >> xp-cert.in
+	fi
+	return 0;
+	TMPF=`mktemp`
+	openssl x509 -in "$1" -text > $TMPF
+	CERT_CN="`grep 'Subject:.*CN=' $TMPF | sed 's,.*CN=,,' |sed 's/,.*//' |sed 's,/emailAddress=.*,,'`"
+	if [ ! -z "$CERT_CN" ];then
+		echo "$CERT_CN" >> xp-cert.log
+		echo "Found xxx${CERT_CN}xxx"
+		if [ -z "`grep \"CN=${CERT_CN},\" certdata.txt`" ];then
+			echo "$line" >> xp-cert.out
+		else
+			echo "$line" >> xp-cert.in
+		fi
+	else
+		CERT_OU="`grep 'Subject:.*OU=' $TMPF | sed 's,.*\,[[:space:]]*OU=,,' | sed 's,/emailAddress=.*,,'`"
+		echo "$CERT_OU" >> xp-cert.log
+		echo "Found xxx${CERT_OU}xxx"
+		if [ -z "`grep \"OU=${CERT_OU},\" certdata.txt`" ];then
+			echo "$line" >> xp-cert.out
+		else
+			echo "$line" >> xp-cert.in
+		fi
+	fi
+	rm $TMPF
+}
+################################################################################
+################################################################################
+
+#864000s = 1DAY
+#2592000 = 30DAYS
+check_certificate()
+{
+	RESULTAT='GOOD'
+	if [ ! -e "$1" ] ; then
+		echo "ERROR check_certificate() $1 do not exist"
+		return 1;
+	fi
+
+	if [ -z "$2" ] ; then
+		echo "ERROR check_certificate() missing #2 indent"
+		return 1;
+	fi
+	INDENT="$2"
+	CHECK_CERT_NAME="$1"
+	if [ ! -z "$3" ] ; then
+		CHECK_CERT_NAME="$3"
+	fi
+
+	#check_whiteliste_cert "$1"
+
+	#command not found return error code 127
+	openssl version> /dev/null 2>> $ERROR_OUTPUT_FILE
+	if [ $? -eq 127 ] ; then
+		Display --indent $INDENT --text "No openssl binary" --result WARNING --color RED
+		return 1;
+	fi
+	Display --indent $INDENT --text "Check $CHECK_CERT_NAME" --result INFO --color BLUE
+	INDENT=$(($INDENT+2))
+
+	$ECHOCMD -n "\033[${INDENT}C" && openssl x509 -in $1 -noout -enddate
+
+	BADTIME=1000000
+	for check_time in 0 604800 2592000
+	do
+		PERIOD_NAME='now'
+		if [ $check_time -eq 604800 ] ; then
+			PERIOD_NAME='week'
+		fi
+		if [ $check_time -eq 2592000 ] ; then
+			PERIOD_NAME='month'
+		fi
+		openssl x509 -in $1 -noout -checkend $check_time
+		if [ $? -eq 1 ] ; then
+			if [ $BADTIME -eq 1000000 ] ; then
+				if [ $check_time -eq 0 ] ; then
+					Display --indent $INDENT --text "Cert is outdated " --result WARNING --color RED --advice CERTIFICATE_OUTDATED
+				else
+					Display --indent $INDENT --text "Cert < 1 $PERIOD_NAME " --result WARNING --color RED --advice CERTIFICATE_OUTDATED
+				fi
+				RESULTAT='BAD'
+				BADTIME=$check_time
+			fi
+		fi
+	done
+	if [ $BADTIME -eq 1000000 ] ; then
+		Display --indent $INDENT --text "Cert expiration date > 1 month " --result OK --color GREEN
+	fi
+	#Get signature algorithm, we do not want MD5 hash http://www.win.tue.nl/hashclash/rogue-ca/
+	#md2WithRSAEncryption is bad
+	#md5WithRSAEncryption is bad
+	#sha1WithRSAEncryption is good
+	#sha256WithRSAEncryption is good
+	#ecdsa-with-SHA384 is ?
+	#dsaWithSHA1 ?
+	CERT_TMP_RESULT="${TEMPYASATDIR}/cert.out"
+	openssl x509 -in $1 -text > $CERT_TMP_RESULT
+
+	MINIMUM_KEY_SIZE=2048
+
+	SIGN_ALGO="`grep 'Signature Algorithm:' $CERT_TMP_RESULT | cut -d\: -f2 | sort | uniq`"
+	if [ ! -z "$SIGN_ALGO" ] ; then
+		for signalgo in $SIGN_ALGO
+		do
+			if [ ! -z "`echo $signalgo |grep -iE 'md5WithRSAEncryption|md2WithRSAEncryption'`" ] ; then
+				Display --indent $INDENT --text "Signature Algorithm: $signalgo" --result BAD --color RED --advice GLOBAL_UNSECURE_SIGN_ALGO
+				RESULTAT='BAD'
+			else
+				Display --indent $INDENT --text "Signature Algorithm: $signalgo" --result GOOD --color GREEN
+			fi
+			if [ "$signalgo" = 'ecdsa-with-SHA384' ] ; then
+				MINIMUM_KEY_SIZE=384
+			fi
+		done
+	fi
+
+	#get Public-Key: size
+	PUBKEYSIZE="`grep 'Public.Key:' $CERT_TMP_RESULT | cut -d\( -f2 | cut -d\  -f1`"
+	if [ -z "$PUBKEYSIZE" -a "$SIGN_ALGO" = 'ecdsa-with-SHA384' ] ; then
+		PUBKEYSIZE=384
+	fi
+	if [ -z "$PUBKEYSIZE" ] ; then
+		Display --indent $INDENT --text "Cannot get Key size" --result BUG --color RED
+		echo "Cannot read keysize in $1" >> $ERROR_OUTPUT_FILE
+	else
+		if [ "$PUBKEYSIZE" -lt $MINIMUM_KEY_SIZE ] ; then
+			Display --indent $INDENT --text "Key size: $PUBKEYSIZE" --result BAD --color RED --advice GLOBAL_RSA_KEY_SIZE
+			RESULTAT='BAD'
+		else
+			Display --indent $INDENT --text "Key size: $PUBKEYSIZE" --result GOOD --color GREEN
+		fi
+	fi
+}
+################################################################################
+################################################################################
+#check that a private key is well owned (generally root:root 600)
+#check also if it is password protected
+# arg1 is the file to be tested
+# arg2 is the indent for display
+# arg3 is the application type (optional)
+# arg4 is the owner (optional)
+# arg5 is the group (optional)
+check_private_key()
+{
+	if [ ! -e "$1" ] ; then
+		Display_error "ERROR: check_private_key() $1 do not exist"
+		return 1;
+	fi
+
+	if [ -z "$2" ] ; then
+		Display_error "ERROR: check_private_key() missing #2 (indent)"
+		return 1;
+	fi
+	#TODO 600 is perhaps a bit too much, some OS have a sslcert/sslpriv group (and also ldap, mail)
+	if [ $# -ge 3 ] ; then
+		if [ "$3" = 'ssh' ] ; then
+			check_a_file "$1" "$2" "$4" "$5" 600
+		else
+			if [ "$3" = 'sshd' ];then
+				SSH_KEYS_GROUP="$ROOTGROUP"
+				if [ "$LINUX_VERSION" = 'Fedora' ];then
+				        SSH_KEYS_GROUP='ssh_keys'
+				fi
+				if [ -z "`grep ^${SSH_KEYS_GROUP}: $SCAN_ROOT/etc/group`" ];then
+					SSH_KEYS_GROUP="$ROOTGROUP"
+				fi
+				check_a_file "$1" "$2" root "$SSH_KEYS_GROUP" 600
+			else
+				check_a_file "$1" "$2" root "$ROOTGROUP" 600
+			fi
+		fi
+	fi
+	if [ ! -z "`grep 'SSH PRIVATE KEY FILE FORMAT 1.1' $1`" ];then
+		# I do not found a way to easily found informations stored in this format
+		Display --indent $2 --text "SSH PRIVATE KEY FILE FORMAT 1.1" --result INFO --color BLUE
+		return 0;
+	fi
+	
+	Check_tool_presence openssl LOCAL
+	if [ $? -ne 0 ] ; then
+		Display --indent $2 --text "No openssl binary" --result INFO --color BLUE
+		return 1;
+	fi
+	#for the moment, I just test for this Proc-Type: 4,ENCRYPTED to know if a private key is password protected
+	if [ -z "`grep 'Proc-Type: 4,ENCRYPTED' $1`" ] ; then
+		PASSWORD_PROTECTED='no'
+	else
+		PASSWORD_PROTECTED='yes'
+		#check for encryption type
+		ENCRYPT_METHOD="`grep '^DEK-Info:' $1 |cut -d\  -f2 | cut -d\, -f1`"
+		if [ "$ENCRYPT_METHOD" = 'DES-CBC' ];then
+			Display --indent $2 --text "$1 encryption method" --result $ENCRYPT_METHOD --color RED
+		else
+			Display --indent $2 --text "$1 encryption method" --result $ENCRYPT_METHOD --color GREEN
+		fi
+	fi
+	#sshd could not use password protected key
+	if [ "$3" != 'sshd' -a "$3" != 'ssh' ] ; then
+		if [ "$PASSWORD_PROTECTED" = 'no' ];then
+			Display --indent $2 --text "$1 is not password protected" --result BAD --color ORANGE --advice GLOBAL_PRIVATE_KEY_NOT_PASSWORD_PROTECTED
+		else
+			Display --indent $2 --text "$1 is password protected" --result OK --color GREEN
+		fi
+	fi
+
+	TMP_RESULT="${TEMPYASATDIR}/ssl.out"
+	KEYTYPE="`grep 'BEGIN.*PRIVATE KEY-----' $1 | cut -d\  -f2`"
+	if [ "$KEYTYPE" = 'PRIVATE' ] ; then
+		#ok, we have a file with no information, try with that
+		openssl x509 -in $1 -text > "$TMP_RESULT" 2>> $ERROR_OUTPUT_FILE
+		if [ $? -ne 0 ] ; then
+			openssl rsa -in $1 -text > "$TMP_RESULT" 2>> $ERROR_OUTPUT_FILE
+		fi
+		if [ ! -z "`grep -i rsa $TMP_RESULT`" ] ; then
+			KEYTYPE='RSA'
+		fi
+		rm "${TMP_RESULT}"
+	fi
+	if [ "$KEYTYPE" = 'RSA' ] ; then
+		if [ "$PASSWORD_PROTECTED" = 'no' ] ; then
+			openssl rsa -in $1 -text 2>> $ERROR_OUTPUT_FILE  > $TMP_RESULT
+			if [ $? -eq 0 ] ; then
+				KEYSIZE="`grep 'Private-Key' $TMP_RESULT |cut -d\  -f2 | cut -d\( -f2`"
+				if [ $KEYSIZE -lt 2048 ] ; then
+					Display --indent $2 --text "$1 keysize" --result $KEYSIZE --color RED --advice GLOBAL_RSA_KEY_SIZE
+				else
+					Display --indent $2 --text "$1 keysize" --result $KEYSIZE --color GREEN
+				fi
+			else
+				Display --indent $2 --text "openssl error on $1" --result 'ERROR' --color RED --advice YASAT_BUG
+			fi
+		else
+			Display --indent $2 --text "Cannot check size" --result 'SKIP' --color BLUE
+		fi
+#	else
+		#it is a DSA or EC key
+		#DSA key is 1024bits, so useless to test its size
+	fi
+	return $?
+
+}
+
+################################################################################
+################################################################################
+
+check_user_cron()
+{
+	if [ -z "$1" ]
+	then
+		echo 'Erreur manque argument de check_user_cron()'
+	fi
+
+	if [ -e "/var/spool/cron/$1" ]; then
+		RESULTAT="YES"
+	else
+		RESULTAT="NO"
+	fi
+}
+
+################################################################################
+################################################################################
+
+check_user_crontab()
+{
+	if [ -z "$1" ]
+	then
+		echo 'Erreur manque argument de check_user_cron()'
+	fi
+	RESULTAT=`crontab -l |grep -v 'no crontab for'`
+}
+
+################################################################################
+################################################################################
+#not finished
+check_system_cron()
+{
+	grep -v '^#' /etc/crontab |
+	while read line
+	do
+#		echo "$line"
+		RESULTAT=`echo $line | awk '{print $7 }'`
+		if [ ! -z "$RESULTAT" ]
+		then
+			TMP_CRONUSER=`echo $line | awk '{print $6 }'`
+			echo "$line"
+			echo "$TMP_CRONUSER"
+		fi
+	done
+}
+################################################################################
+################################################################################
+#Check file for
+#
+# $1 is the path to the file
+# $2 is the indent
+# $3 is the owner (or NULL)
+# $4 is the group (or NULL)
+# $5 is right
+check_a_file()
+{
+	GOT_ERROR=0
+	if [ -z "$1" ] ; then
+		echo "ERROR check_a_file() missing parameter #1 (path to the file)"
+		return 1;
+	fi
+	if [ ! -e "$1" ] ; then
+		echo "ERROR check_a_file() $1 do not exists"
+		return 1;
+	fi
+	if [ -z "$2" ] ; then
+		echo "ERROR check_a_file() missing parameter #2"
+		return 1;
+	fi
+	if [ -z "$3" ] ; then
+		echo "ERROR check_a_file() missing parameter #3 (owner)"
+		return 1;
+	fi
+	if [ -z "$4" ] ; then
+		echo "ERROR check_a_file() missing parameter #4"
+		return 1;
+	fi
+	if [ -z "$5" ] ; then
+		echo "ERROR check_a_file() missing parameter #5"
+		return 1;
+	fi
+	if [ "$3" != 'NULL' ] ; then
+		USER="`stat $STAT_USER $1`"
+		if [ "$USER" != "$3" ] ; then
+			Display --indent $2 --text "$1 is not $3 owned" --result WARNING --color RED
+			GOT_ERROR=1
+		fi
+	fi
+	if [ "$4" != 'NULL' ] ; then
+		GROUP="`stat $STAT_GROUP $1`"
+		if [ "$GROUP" != "$4" ] ; then
+			Display --indent $2 --text "$1 is not $4 grouped" --result WARNING --color RED
+			GOT_ERROR=1
+		fi
+	fi
+	if [ "$5" != 'NULL' ] ; then
+		RIGHT="`stat $STAT_RIGHT $1`"
+		compare_right $RIGHT $5 YES
+		if [ $? -ne 0 ] ; then
+#		if [ "$RIGHT" != "$5" ] ; then
+			Display --indent $2 --text "$1 is not $5 but $RIGHT" --result WARNING --color RED
+			add_correction "chmod $5 $1"
+			GOT_ERROR=1
+		fi
+	fi
+	if [ $GOT_ERROR -eq 0 ] ; then
+		Display --indent $2 --text "$1 is $3:$4 $RIGHT" --result GOOD --color GREEN
+	fi
+	return $GOT_ERROR
+}
+
+################################################################################
+################################################################################
+#Check file for
+# - Not writable by others
+# - Info when suid or other things
+# - Not root:root owned
+#
+# $1 is the path to the file
+# $2 is the indent
+# $3 is the type (NORMAL PRIVKEY BINARY CERT etc..)
+#
+
+check_file()
+{
+	if [ "$1x" = "x" ] ; then
+		echo "ERROR check_file() missing parameter #1"
+		return 1;
+	fi
+	BINARY_TO_CHECK="$1"
+	if [ "$2x" = "x" ] ; then
+		echo "ERROR check_file() missing parameter #2"
+		return 1;
+	fi
+	if [ "$3x" = "x" ] ; then
+		echo "ERROR check_file() missing parameter #3"
+		return 1;
+	fi
+	if [ ! -e "$1" ] ; then
+		echo "ERROR check_file() $1 do not exist"
+		return 1;
+	fi
+	if [ -L $1 ] ; then
+		TARGET="`readlink $1`"
+#		if [ "$TARGET" = "`basename $TARGET`" ] ; then
+		if [ ! -z "`echo $TARGET |grep '\./' `" ] ; then
+			BINARY_TO_CHECK="`dirname $1`/`readlink $1`"
+		else
+			BINARY_TO_CHECK="$TARGET"
+		fi
+		echo "Warning $1 is a link using $BINARY_TO_CHECK"
+	fi
+	GOOD=1
+	USER="`stat $STAT_USER $BINARY_TO_CHECK`"
+	GROUP="`stat $STAT_GROUP $BINARY_TO_CHECK`"
+	RIGHT="`stat $STAT_RIGHT $BINARY_TO_CHECK`"
+	RIGHT_L="`echo $RIGHT | wc -c`"
+	if [ "$USER" != 'root' ] ; then
+		Display --indent $2 --text "$BINARY_TO_CHECK is not root owned" --result WARNING --color RED --advice GLOBAL_FILE_MUST_BE_OWNED_BY_ROOT
+		GOOD=0
+		add_correction "chown root $BINARY_TO_CHECK"
+	fi
+	#TODO on OpenBSD 5.6 bins are under bin group, do something betther than this hack
+	if [ "$GROUP" != "$ROOTGROUP" -a "$GROUP" != "bin" ] ;then
+		Display --indent $2 --text "$BINARY_TO_CHECK is not $ROOTGROUP (group) owned" --result WARNING --color RED --advice GLOBAL_FILE_MUST_BE_GROUPED_BY_ROOT
+		GOOD=0
+	fi
+	if [ "$3" = "CERT" ] ; then
+		check_certificate $BINARY_TO_CHECK $2
+	fi
+	if [ "$3" = "PRIVKEY" ] ; then
+		check_private_key $BINARY_TO_CHECK $2
+		if [ $? -ne 0 ] ; then
+			GOOD=0
+		fi
+	fi
+
+	if [ $RIGHT_L -ge 5 ] ;	then
+	#not common right
+		RIGHT_O="`echo $RIGHT | cut -b 4`"
+		Display --indent $2 --text "$BINARY_TO_CHECK is a spetial binary (suid etc)" --result WARNING --color RED
+		#TODO check what is spetial
+	else
+	#common right
+		RIGHT_O="`echo $RIGHT | cut -b 3`"
+		case $3 in
+		PRIVKEY)
+		if [ $RIGHT_O -ge 1 ] ; then
+			Display --indent $2 --text "$BINARY_TO_CHECK is other accessible" --result WARNING --color RED --advice GLOBAL_FILE_OTHER_READABLE
+			GOOD=0
+		fi
+		;;
+		NORMAL)
+		if [ $RIGHT_O -eq 7 -o $RIGHT_O -eq 6 ] ; then
+			Display --indent $2 --text "$BINARY_TO_CHECK is other writable" --result WARNING --color RED --advice GLOBAL_FILE_OTHER_WRITABLE
+			GOOD=0
+		fi
+		;;
+		CERT)
+		if [ $RIGHT_O -eq 7 -o $RIGHT_O -eq 6 ] ; then
+			Display --indent $2 --text "$BINARY_TO_CHECK is other writable" --result WARNING --color RED --advice GLOBAL_FILE_OTHER_WRITABLE
+			GOOD=0
+		fi
+		;;
+		BINARY)
+			if [ $RIGHT_O -eq 7 -o $RIGHT_O -eq 6 ] ; then
+				Display --indent $2 --text "$BINARY_TO_CHECK is other writable" --result WARNING --color RED --advice GLOBAL_FILE_OTHER_WRITABLE
+			fi
+			#how about non-linux ?
+			Check_tool_presence readelf
+			if [ "$RESULTAT" = 'notfound' ];then
+				Display --indent $2 --text "readelf tool" --result NOTFOUND --color BLUE
+			else
+				if [ -z "`readelf -h $BINARY_TO_CHECK 2>/dev/null| grep 'Type:'`" ] ; then
+					Display --indent $2 --text "$BINARY_TO_CHECK isnt a binary according to readelf" --result BAD --color ORANGE
+				else
+					#check for SSP and PIE
+					#__stack_smash_handler for OpenBSD
+					#__stack_chk_fail for Linux / FreeBSD
+					readelf -s $BINARY_TO_CHECK | grep -qE '__stack_chk_fail|__stack_smash_handler'
+					if [ $? -eq 0 ] ; then
+						Display --indent $2 --text "$BINARY_TO_CHECK have SSP" --result GOOD --color GREEN
+					else
+						Display --indent $2 --text "$BINARY_TO_CHECK havent SSP" --result BAD --color ORANGE --advice GLOBAL_BINARY_SSP
+					fi
+					readelf -h $BINARY_TO_CHECK | grep -q 'Type:[[:space:]]*DYN'
+					if [ $? -eq 0 ] ; then
+						Display --indent $2 --text "$BINARY_TO_CHECK is PIE" --result GOOD --color GREEN
+					else
+						Display --indent $2 --text "$BINARY_TO_CHECK isnt PIE" --result BAD --color ORANGE --advice GLOBAL_BINARY_PIE
+					fi
+				fi
+			fi
+			GOOD=0
+		;;
+		*)
+		echo "ERROR unrecognized type"
+		;;
+		esac
+	fi
+
+
+	if [ $GOOD -eq 1 ] ; then
+		Display --indent $2 --text "$BINARY_TO_CHECK $USER $GROUP $RIGHT" --result OK --color GREEN
+	fi
+}
+
+################################################################################
+################################################################################
+# Check dir owner
+# Param #1 is the PATH to be checked
+# Param #2 is the user that must own the directory
+# Param #3 is the file that get output of this function
+# Param #4 is the indent value for print info
+# Param #5 is the advice to be displayed in case of non-conformity
+check_directory_owner()
+{
+	Debug "DEBUG: check_directory_owner begin"
+	if [ -z "$1" ];	then
+		Display_error 'ERROR: missing parameter #1 (PATH) for check_directory_owner()'
+		return 1;
+	fi
+	if [ ! -e $1 ];	then
+		Display_error "ERROR: check_directory_owner() $1 do not exist"
+		return 1;
+	fi
+	if [ -z "$2" ];	then
+		Display_error 'ERROR: missing parameter #2 (owner id) for check_directory_owner()'
+		return 1;
+	fi
+	if [ -z "$3" ];	then
+		Display_error 'ERROR: missing parameter #3 (path to the output) for check_directory_owner()'
+		return 1;
+	fi
+	if [ -z "$4" ];	then
+		Display_error 'ERROR: missing parameter #4 (indent) for check_directory_owner()'
+		return 1;
+	fi
+	if [ -z "$5" ];	then
+		Display_error 'ERROR: missing parameter #5 (advice) for check_directory_owner()'
+		return 1;
+	fi
+	find "$1" ! -user $2 > $3
+	RESULTAT=`cat $3 | wc -l`
+	if [ $RESULTAT -eq 0 ];then
+		Display --indent $4 --text "Owner of $1" --result OK --color GREEN
+	else
+		Display --indent $4 --text "$RESULTAT files have invalid owning != $2 in $1" --result WARNING --color RED --advice $5
+	fi
+}
+
+
+
+################################################################################
+################################################################################
+#Check that a directory is group-ed by a group
+# Param #1 is the PATH to be checked
+# Param #2 is the group that must own the directory
+# Param #3 is the file that get output of this function
+# Param #4 is the indent value for print info
+
+check_directory_group()
+{
+	if [ -z "$1" ] ;then
+		echo 'Error missing parameter #1 (PATH) for check_directory_group()'
+		return 1;
+	fi
+	if [ ! -e "$1" ] ;then
+		echo "check_directory_group() Error $1 do not exist"
+		return 1;
+	fi
+	if [ -z "$2" ] ;then
+		echo 'Error missing parameter #2 (group) for check_directory_group()'
+		return 1;
+	fi
+	if [ -z "$3" ] ;then
+		echo 'Error missing parameter #3 (path to the output) for check_directory_group()'
+		return 1;
+	fi
+	if [ -z "$4" ] ;then
+		echo 'Error missing parameter #4 (indent) for check_directory_group()'
+		return 1;
+	fi
+	ADVICE="--advice $5"
+	if [ -z "$5" ] ; then
+		ADVICE=''
+	fi
+	find "$1" ! -group "$2" > "$3"
+	RESULTAT=`cat "$3" | wc -l`
+	if [ $RESULTAT -eq 0 ] ;then
+		Display --indent $4 --text "Group of $1" --result OK --color GREEN
+	else
+		Display --indent $4 --text "$RESULTAT files have invalid group owning != $2 in $1" --result WARNING --color RED $ADVICE
+	fi
+}
+
+################################################################################
+################################################################################
+#Check that a directory do not have right for the world
+# Param #1 is the PATH to be checked
+# Param #2 is the file that get output of this function
+# Param #3 is the indent value for print info
+# Param #4 is the advice
+
+check_directory_others()
+{
+	Debug "DEBUG: check_directory_others begin"
+	if [ -z "$1" ] ;then
+		echo 'Error missing parameter #1 (PATH) for check_directory_others()'
+		return 1;
+	fi
+	if [ ! -e "$1" ] ;then
+		echo "check_directory_others() Error $1 do not exist"
+		return 1;
+	fi
+	if [ -z "$2" ] ;then
+		echo 'Error missing parameter #2 (path to the output) for check_directory_others()'
+		return 1;
+	fi
+	if [ -z "$3" ] ;then
+		echo 'Error missing parameter #3 (indent) for check_directory_others()'
+		return 1;
+	fi
+	if [ -z "$4" ] ;then
+		echo 'Error missing parameter #4 (advice) for check_directory_others()'
+		return 1;
+	fi
+	NSAGID=0
+	CCEID=0
+	if [ ! -z "$5" ] ; then
+		NSAGID="$5"
+	fi
+	if [ ! -z "$6" ] ; then
+		CCEID="$6"
+	fi
+	find "$1"  ! -type l -perm $ORWX > $2
+	RESULTAT=`cat $2 | wc -l`
+	if [ $RESULTAT -eq 0 ] ;then
+		Display --indent $3 --text "Rights of $1" --result OK --color GREEN
+		Compliance --result 'OK' --plugin notknown --nsag $NSAGID --cce $CCEID
+	else
+		Display --indent $3 --text "$RESULTAT files have invalid others rights in $1" --result WARNING --color RED --advice $4
+		add_correction "chmod -R $CORRECT_ORWX $1"
+		Compliance --result 'NOK' --plugin notknown --nsag $NSAGID --cce $CCEID
+	fi
+
+}
+################################################################################
+################################################################################
+#Check dir
+check_directory_writable_by_group()
+{
+	if [ -z "$1" ]
+	then
+		echo 'Error missing parameter #1 (PATH) for check_directory_writable_by_group()'
+		return 1;
+	fi
+	if [ ! -e "$1" ]
+	then
+		echo "check_directory_writable_by_group() Error $1 do not exist"
+		return 1;
+	fi
+	if [ -z "$2" ]
+	then
+		echo 'Error missing parameter #2 (group) for check_directory_writable_by_group()'
+		return 1;
+	fi
+	if [ -z "$3" ]
+	then
+		echo 'Error missing parameter #3 (path to the output) for check_directory_writable_by_group()'
+		return 1;
+	fi
+	if [ -z "$4" ]
+	then
+		echo 'Error missing parameter #4 (indent) for check_directory_writable_by_group()'
+		return 1;
+	fi
+	find "$1" ! -type l -perm $PERM_GW > $3
+	RESULTAT=`cat $3 | wc -l`
+	if [ $RESULTAT -eq 0 ]
+	then
+		Display --indent $4 --text "$2 cannot write $1" --result OK --color GREEN
+	else
+		Display --indent $4 --text "$2 can write $RESULTAT files in $1" --result WARNING --color RED --advice $5
+	fi
+
+}
+
+################################################################################
+################################################################################
+prepare_kernel_config()
+{
+	if [ -e "${TEMPYASATDIR}/kernel_config" ] ;then
+		rm "${TEMPYASATDIR}/kernel_config"
+	fi
+	#config can be found at /boot/config-`uname -r`
+	if [ -e "/boot/config-`uname -r`" ] ;then
+		Display --indent 2 --text "/boot/config-`uname -r`" --result FOUND --color GREEN
+		cat "/boot/config-`uname -r`" > "${TEMPYASATDIR}/kernel_config"
+	fi
+	# if user give me the path to a .config, I wont read /proc/config.gz
+	if [ -z ${YASAT_PATH_TO_KERNEL_CONFIG:-""} ]	;then
+		YASAT_PATH_TO_KERNEL_CONFIG='/usr/src/linux/.config'
+		if [ -e /proc/config.gz ] ;then
+			Display --indent 2 --text "/proc/config.gz" --result FOUND --color GREEN
+			zcat /proc/config.gz > ${TEMPYASATDIR}/kernel_config
+		else
+			if [ -e "${TEMPYASATDIR}/kernel_config" ] ;then
+				#we have already found .config elsewhere
+				Display --indent 2 --text "/proc/config.gz" --result NOTFOUND --color BLUE
+			else
+				Display --indent 2 --text "/proc/config.gz" --result NOTFOUND --color ORANGE --advice KERNEL_NO_CONFIG
+			fi
+		fi
+	fi
+	if [ ! -e "${TEMPYASATDIR}/kernel_config" ] ;then
+		if [ -e "$YASAT_PATH_TO_KERNEL_CONFIG" ] ;then  
+			Display --indent 2 --text "$YASAT_PATH_TO_KERNEL_CONFIG" --result FOUND --color GREEN
+			cat "$YASAT_PATH_TO_KERNEL_CONFIG" > ${TEMPYASATDIR}/kernel_config
+		else    
+			Display --indent 2 --text "$YASAT_PATH_TO_KERNEL_CONFIG" --result NOTFOUND --color ORANGE --advice KERNEL_NO_CONFIG
+		fi      
+	fi      
+
+}
+
+################################################################################
+################################################################################
+# Find where the apache config is
+# No argument
+Find_apache_conf_location()
+{
+for LOCATION in ${POSSIBLE_APACHE_CONFIG_LOCATION}
+do
+	if [ -e "$SCAN_ROOT/${LOCATION}/apache.conf" -o -e "$SCAN_ROOT/${LOCATION}/httpd.conf" -o "$SCAN_ROOT/${LOCATION}/apache2.conf" ] ;then
+		export APACHE_CONF_REP="`echo $SCAN_ROOT/${LOCATION} | sed 's,//*,/,g'`"
+		return 0;
+	fi
+done
+	export APACHE_CONF_REP='NOTFOUND'
+	return 1;
+}
+
+################################################################################
+################################################################################
+# Having multiple apache is rare, and for the moment not handled
+apache_I_want_only_one()
+{
+	if [ ! -e $TEMPYASATDIR/apache_list ];then
+		return 1
+	fi
+	if [ `cat $TEMPYASATDIR/apache_list | wc -l` -ge 2 ];then
+		Display --indent 2 --text "I will scan only the first apache" --result WARN --color ORANGE
+	fi
+	export APACHE_CONF_REP=`head -n1 $TEMPYASATDIR/apache_list | sed 's,//*,/,g'`
+}
+
+################################################################################
+################################################################################
+# Produce a list of apache directory in $TEMPYASATDIR/apache_list
+# if something wrong or no apache foudn return 1
+apache_find_conf()
+{
+	local apache_conf
+	if [ -e "$TEMPYASATDIR/apache_list" ] ;	then
+		rm "$TEMPYASATDIR/apache_list"
+	fi
+	NB_APACHE_CONF=0
+	POSSIBLE_APACHE_CONFIG_LOCATION="$POSSIBLE_APACHE_CONFIG_LOCATION /home/svn/rekup/yasat/tests/fakeroot/etc/apache2/"
+	for apache_conf in $POSSIBLE_APACHE_CONFIG_LOCATION
+	do
+		if [ -e "$SCAN_ROOT/$apache_conf/httpd.conf" -o -e "$SCAN_ROOT/$apache_conf/apache2.conf" ];then
+			Display --indent 2 --text "Apache configuration $SCAN_ROOT/$apache_conf" --result FOUND --color BLUE
+			echo "$SCAN_ROOT/$apache_conf" >> $TEMPYASATDIR/apache_list
+			NB_APACHE_CONF=$(($NB_APACHE_CONF+1))
+		fi
+	done
+	Display --indent 2 --text "Found $NB_APACHE_CONF apache configuration" --result FOUND --color BLUE
+	if [ $NB_APACHE_CONF -eq 0 ];then
+		return 1
+	fi
+}
+
+################################################################################
+################################################################################
+# agregate all httpd conf in one file
+prepare_apache_conf()
+{
+	if [ $# -ne 1 ];then
+		Display_error 'Error: missing parameter #1 (apache directory) for prepare_apache_conf()'
+		return 1;
+	fi
+	if [ ! -d "$1" ];then
+		Display_error "prepare_apache_conf() Error: $1 is not a directory"
+		return 1;
+	fi
+
+	Display --indent 2 --text "Prepare analysis of $1" --result INFO --color BLUE
+
+	if [ -e "$TEMPYASATDIR/apache.conf" ] ;	then
+		rm "$TEMPYASATDIR/apache.conf"
+	fi
+	if [ -e "$TEMPYASATDIR/apache.conf.found" ] ;	then
+		rm "$TEMPYASATDIR/apache.conf.found"
+	fi
+	if [ -e "$1/apache2.conf" ] ; then
+		grep -v '^[[:space:]]*#' $1/apache2.conf > "$TEMPYASATDIR/apache.conf"
+		echo "$1/apache2.conf" >> "$TEMPYASATDIR/apache.conf.found"
+	fi
+	if [ -e "$1/httpd.conf" ] ; then
+		grep -v '^[[:space:]]*#' $1/httpd.conf >> "$TEMPYASATDIR/apache.conf"
+		echo "$1/httpd.conf" >> "$TEMPYASATDIR/apache.conf.found"
+	fi
+	if [ -e "$1/httpd2.conf" ] ;then
+		grep -v '^[[:space:]]*#' $1/httpd2.conf >> "$TEMPYASATDIR/apache.conf"
+		echo "$1/httpd2.conf" >> "$TEMPYASATDIR/apache.conf.found"
+	fi
+
+	if [ ! -e "$TEMPYASATDIR/apache.conf" ] ;then
+		Display --indent 2 --text "I cannot find apache configuration" --result WARNING --color RED
+		return 1;
+	fi
+
+	FindValueOf "$TEMPYASATDIR/apache.conf" "ServerRoot"
+	if [ -z "$RESULTAT" ] ;	then
+		Display --indent 2 --text "No ServerRoot found, defaulting to /etc/apache2" --result WARNING --color BLUE
+		SERVERROOT='/etc/apache2'
+	else
+		SERVERROOT=`echo $RESULTAT | sed 's/^\"//' | sed 's/\"$//'`
+	fi
+
+	grep -i '^[[:space:]]*include' "$TEMPYASATDIR/apache.conf" | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]][[:space:]]*//g'  | sort | uniq |
+	while read TMP_FILES
+	do
+#		TMP_FILES="`echo \"$line\" | sed 's/^[[:space:]]*include[[:space:]]*//gI'`"
+#		echo "$TMP_FILES"
+		#Check for relative files
+		FIRST_CHAR=`echo $TMP_FILES | cut -b 1`
+		if [ "$FIRST_CHAR" != "/" ];then
+#			echo "Debug relative path"
+			TMP_FILES="$SERVERROOT/$TMP_FILES"
+		fi
+
+		if [ -d "$TMP_FILES" ];then
+			Debug "$TMP_FILES has no wildward"
+			TMP_FILES="$TMP_FILES/*"
+		fi
+		Debug "Add $TMP_FILES"
+		echo "$TMP_FILES" >> "$TEMPYASATDIR/apache.conf.found"
+		#-s for be sure that on a minimal config with no modules/*.conf no errors would be printed
+		grep -vsh '^[[:space:]]*#' $TMP_FILES > "$TEMPYASATDIR/apache.conf.tmp"
+		grep -vsh '^[[:space:]]*#' $TMP_FILES >> "$TEMPYASATDIR/apache.conf"
+		#check recursivly for additional includes
+		grep -ih '^[[:space:]]*include' "$TEMPYASATDIR/apache.conf.tmp" | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]][[:space:]]*//g' | sort | uniq |
+		while read TMP_FILESS
+		do
+#			echo "$TMP_FILESS"
+			grep -vh '^[[:space:]]*#' $TMP_FILESS >> "$TEMPYASATDIR/apache.conf"
+		done
+
+	done
+	mv "$TEMPYASATDIR/apache.conf" "$TEMPYASATDIR/apache.conf.orig"
+	#clean the file
+	grep -v '^[[:space:]]*$' "$TEMPYASATDIR/apache.conf.orig" | sed 's,^[[:space:]]*,,' | sed 's,#.*,,' > "$TEMPYASATDIR/apache.conf"
+}
+
+
+################################################################################
+################################################################################
+# filter content from $1 in $2
+prepare_bind_conf_add() {
+	local in_comment=0
+
+	if [ ! -e "$1" -o -d "$1" ];then
+		return 1
+	fi
+	if [ $# -ne 2 ];then
+		Display_error "ERROR: Not enought parameter to prepare_bind_conf_add()"
+		return 1
+	fi
+
+	#TODO filter ending ';' ?
+	grep -v '^[[:space:]]*#' "$1" | sed 's,^[[:space:]]*,,' | grep -v '^[[:space:]]*$' \
+		| grep -v '^[[:space:]]*//' \
+		| sed 's,[[:space:]]{[[:space:]]*,\n{,' \
+		| sed 's,{[a-z0-9],\n&,' \
+		| sed 's,;,\n,g' \
+		| grep -v '^$' \
+		|
+	while read line
+	do
+		echo "$line" | grep -q '/\*'
+		if [ $? -eq 0 ];then
+		#if [ ! -z `echo "$line" | grep '/\*'` ];then
+			#echo "MATCH begin $line"
+			in_comment=1
+		fi
+		if [ $in_comment -eq 0 ];then
+			echo "$line" >> "$2"
+		fi
+		echo "$line" | grep -q '\*/'
+		#if [ ! -z "`echo $line | grep '\*/'`" ];then
+		if [ $? -eq 0 ];then
+			#echo "MATCH end $line"
+			in_comment=0
+		fi
+	done
+}
+################################################################################
+################################################################################
+# prepare a bind configuration to be parsed
+# arg1 is the full path to bind conf
+# arg2 is bind_conf_rep
+prepare_bind_conf()
+{
+	if [ $# -ne 2 ];then
+		Display_error 'ERROR: prepare_bind_conf: missing parameter #1 (named configuration)'
+		return 1;
+	fi
+	if [ ! -e "$1" ];then
+		Display_error "ERROR: prepare_bind_conf() ERROR: prepare_bind_conf: Cannot find $1"
+		return 1;
+	fi
+	if [ -e "$TEMPYASATDIR/named.conf" ];	then
+		rm "$TEMPYASATDIR/named.conf"
+	fi
+	> "$TEMPYASATDIR/named.conf"
+	echo "$1" > "$TEMPYASATDIR/named.filelist"
+
+	prepare_bind_conf_add "$1" "$TEMPYASATDIR/named.conf"
+
+	if [ ! -e "$TEMPYASATDIR/named.conf" ];	then
+		Display --indent 2 --text "I cannot find bind configuration" --result WARNING --color RED
+		return 1;
+	fi
+
+	local bind_base_dir="$2"
+	# Check if directory is present
+	FindValueOf "$TEMPYASATDIR/named.conf" 'directory' JUSTTEST
+	if [ ! -z "$RESULTAT" ];then
+		bind_base_dir="${BIND_CHROOT_DIR}`echo $RESULTAT | sed 's,\",,g'| sed 's,;,,'`"
+	fi
+
+	#now include all includes:)
+	grep -i '^[[:space:]]*include' "$TEMPYASATDIR/named.conf" | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]][[:space:]]*//g' | sed 's/";*//g' | sort | uniq |
+	while read bind_conf_include
+	do
+		local FIRST_CHAR=`echo $bind_conf_include | cut -b 1`
+		if [ "$FIRST_CHAR" != "/" ];then
+			echo "$bind_base_dir/$bind_conf_include" >> "$TEMPYASATDIR/named.filelist"
+			prepare_bind_conf_add "$bind_base_dir/$bind_conf_include" "$TEMPYASATDIR/named.conf"
+		else
+			echo "$BIND_CHROOT_DIR/$bind_conf_include" >> "$TEMPYASATDIR/named.filelist"
+			prepare_bind_conf_add "$BIND_CHROOT_DIR/$bind_conf_include" "$TEMPYASATDIR/named.conf"
+		fi
+	done
+
+	return 0
+}
+################################################################################
+################################################################################
+# filter content from $1 in $2
+prepare_dovecot_conf_add() {
+
+	if [ ! -e "$1" -o -d "$1" ];then
+		return 1
+	fi
+	if [ $# -ne 2 ];then
+		Display_error "ERROR: Not enought parameter to prepare_dovecot_conf_add()"
+		return 1
+	fi
+
+	grep -v '^[[:space:]]*#' "$1" | sed 's,^[[:space:]]*,,' | grep -v '^[[:space:]]*$' \
+		| grep -v '^[[:space:]]*//' \
+		| sed 's,[[:space:]]{[[:space:]]*,\n{,' \
+		| sed 's,{[a-z0-9],\n&,' \
+		| sed 's,;,\n,g' \
+		| grep -v '^$' \
+		|
+	while read line
+	do
+			echo "$line" >> "$2"
+	done
+}
+################################################################################
+################################################################################
+prepare_dovecot_conf() {
+	if [ $# -ne 2 ];then
+		Display_error 'ERROR: prepare_dovecot_conf: missing parameter #1 (named configuration)'
+		return 1;
+	fi
+	if [ ! -e "$1" ];then
+		Display_error "ERROR: prepare_dovecot_conf() ERROR: prepare_dovecot_conf: Cannot find $1"
+		return 1;
+	fi
+	if [ -e "$TEMPYASATDIR/dovecot.conf" ];	then
+		rm "$TEMPYASATDIR/dovecot.conf"
+	fi
+	> "$TEMPYASATDIR/dovecot.conf"
+	echo "$1" > "$TEMPYASATDIR/dovecot.filelist"
+
+	prepare_dovecot_conf_add "$1" "$TEMPYASATDIR/dovecot.conf"
+	grep -i '^[[:space:]]*!include[[:space:]]' "$TEMPYASATDIR/dovecot.conf" | cut -d\  -f2 | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]][[:space:]]*//g' | sed 's/";*//g' | sort | uniq |
+	while read dovecot_conf_include
+	do
+		for include_file in `ls $2/$dovecot_conf_include`
+		do
+			prepare_dovecot_conf_add $include_file "$TEMPYASATDIR/dovecot.conf"
+		done
+	done
+	return 0
+}
+
+################################################################################
+################################################################################
+# with a initial config file, generate a parseable config file
+# add all files with include
+# similar to prepare_apache_conf
+prepare_generic_conf()
+{
+	if [ -z "$1" ]
+	then
+		echo 'Error missing parameter #1 (initial config file) for prepare_generic_conf()'
+		return 1;
+	fi
+	if [ ! -e $1 ]
+	then
+		echo "prepare_generic_conf() Error $1 is not a config file"
+		return 1;
+	fi
+	if [ -z "$2" ]
+	then
+		echo "prepare_generic_conf() Missing parameter #2 (output file)"
+		return 1;
+	fi
+
+	if [ -e "$2" ]
+	then
+		cp "$2" "$2.bak"
+		rm "$2"
+	fi
+	grep -v '^[[:space:]]*#' $1 | grep -v '^[[:space:]]*$' | grep -v '^;' > "$2"
+
+	if [ ! -e "$2" ]
+	then
+		Display --indent 2 --text "I cannot find output configuration" --result WARNING --color RED
+		return 1;
+	fi
+
+	grep -i '^[[:space:]]*include' "$2" | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]][[:space:]]*//g' | sed 's/";*//g' | sort | uniq |
+	while read TMP_FILES
+	do
+		#Check for relative files
+		FIRST_CHAR=`echo $TMP_FILES | cut -b 1`
+		if [ "$FIRST_CHAR" != "/" ]
+		then
+#			echo "Debug relative path"
+			TMP_FILES="$1/$TMP_FILES"
+		fi
+
+		if [ -d "$TMP_FILES" ]
+		then
+			Debug "$TMP_FILES has no wildward"
+			TMP_FILES="$TMP_FILES/*"
+		fi
+		Debug "Add $TMP_FILES"
+		grep -vh '^[[:space:]]*#' $TMP_FILES > "$2.tmp"
+		grep -vh '^[[:space:]]*#' $TMP_FILES >> "$2"
+		#check recursivly for additional includes
+		grep -ih '^[[:space:]]*include' "$2.tmp" | sed 's/^[[:space:]]*[a-zA-Z][a-zA-Z]*[[:space:]][[:space:]]*//g' | sed 's/";*//g' | sort | uniq |
+		while read TMP_FILESS
+		do
+#			echo "$TMP_FILESS"
+			grep -vh '^[[:space:]]*#' $TMP_FILESS | grep -v '^[[:space:]]*$' | grep -v '^/'>> "$2"
+		done
+
+	done
+}
+
+
+################################################################################
+################################################################################
+#return the options of the partition
+#we could do the same with mount but bsd do not print the same infos
+# TODO I dont like all thoses if for ids
+check_partition()
+{
+if [ -z "$1" ] ; then
+	echo "ERROR check_partition() Missing arg #1 (mount point)"
+	return 1;
+fi
+	RESULTAT=''
+	EL_MOUNT=`grep -v '^#' ${SCAN_ROOT}/etc/fstab |grep "$1/*[[:space:]]"`
+	if [ "$2" = 'SEPARATE' ] ; then
+		T_CCEID=''
+		T_NSAGID=''
+		if [ "$1" = '/tmp' ] ; then T_CCEID='14161-4' ; T_NSAGID='2.1.1.1.1'; fi
+		if [ "$1" = '/var' ] ; then T_CCEID='14777-7' ; T_NSAGID='2.1.1.1.2'; fi
+		if [ "$1" = '/var/log' ] ; then T_CCEID='14011-1' ; T_NSAGID='2.1.1.1.3'; fi
+		if [ "$1" = '/var/log/audit' ] ; then T_CCEID='14171-3' ; T_NSAGID='2.1.1.1.4'; fi
+		if [ "$1" = '/home' ] ; then T_CCEID='14559-9' ; T_NSAGID='2.1.1.1.5'; fi
+		if [ -z "$EL_MOUNT" ] ; then
+			Display --indent 2 --text "$1 is not on a separate partition" --result NOTFOUND --color RED --advice PARTITION_SEPARATE_PART
+			if [ ! -z "$T_CCEID" ] ;then
+				Compliance --result 'NOK' --plugin 'partition' --type 'CCE' --cid $T_CCEID --type 'NSAG' --cid $T_NSAGID
+			fi
+		else
+			Display --indent 2 --text "$1 is on a separate partition" --result FOUND --color GREEN
+			if [ ! -z "$T_CCEID" ] ;then
+				Compliance --result 'OK' --plugin 'partition' --type 'CCE' --cid $T_CCEID --type 'NSAG' --cid $T_NSAGID
+			fi
+			RESULTAT=`echo $EL_MOUNT | sed 's/[[:space:]]/ /g' | cut -d\  -f4`
+			if [ $# -ge 3 ] ; then
+				PART_NAME="$1"
+				shift
+				shift
+				for wflag in "$@"
+				do
+					T_CCEID=''
+					T_NSAGID=''
+					PART_ADV='PARTITION_NOSUID'
+					if [ $wflag = 'nosuid' ] ; then
+						if [ $PART_NAME = '/mnt/cdrom' -o $PART_NAME = '/mnt/floppy' ] ;then
+							T_NSAGID='2.2.1.2'; T_CCEID='4042-8'
+						fi
+						if [ $PART_NAME = '/tmp' ] ;then T_NSAGID='2.2.1.3.1'; T_CCEID='14940-1' ;fi
+						if [ $PART_NAME = '/dev/shm' ] ;then T_NSAGID='2.2.1.3.2'; T_CCEID='14306-5' ;fi
+					fi
+					if [ $wflag = 'nodev' ] ; then
+						PART_ADV='PARTITION_NODEV'
+						if [ $PART_NAME = '/var' -o $PART_NAME = '/var/log' -o $PART_NAME = '/home' ] ; then
+							T_CCEID='4249-9' ;T_NSAGID='2.2.1.1'
+						fi
+						if [ $PART_NAME = '/mnt/cdrom' -o $PART_NAME = '/mnt/floppy' ] ;then
+							T_NSAGID='2.2.1.2'; T_CCEID='3522-0'
+						fi
+						if [ $PART_NAME = '/tmp' ] ;then T_NSAGID='2.2.1.3.1'; T_CCEID='14412-1' ;fi
+						if [ $PART_NAME = '/dev/shm' ] ;then T_NSAGID='2.2.1.3.2'; T_CCEID='15007-8' ;fi
+					fi
+					if [ $wflag = 'noexec' ] ; then
+						PART_ADV='PARTITION_NOEXEC'
+						if [ $PART_NAME = '/mnt/cdrom' -o $PART_NAME = '/mnt/floppy' ] ;then
+							T_NSAGID='2.2.1.2'; T_CCEID='4275-4'
+						fi
+						if [ $PART_NAME = '/tmp' ] ;then T_NSAGID='2.2.1.3.1'; T_CCEID='14927-8' ;fi
+						if [ $PART_NAME = '/dev/shm' ] ;then T_NSAGID='2.2.1.3.2'; T_CCEID='14703-3' ;fi
+					fi
+					if [ -z "`echo $RESULTAT | grep -i $wflag`" ] ;then
+						Display --indent 4 --text "$PART_NAME dont have $wflag" --result NOTFOUND --color ORANGE --advice $PART_ADV
+						if [ ! -z "$T_CCEID" ] ;then
+							Compliance --result 'NOK' --plugin "partition_${PART_NAME}_$wflag" --cce $T_CCEID --nsag $T_NSAGID
+						fi
+					else
+						Display --indent 4 --text "$PART_NAME have $wflag" --result FOUND --color GREEN
+						if [ ! -z "$T_CCEID" ] ;then
+							Compliance --result 'OK' --plugin "partition_${PART_NAME}_$wflag" --cce $T_CCEID --nsag $T_NSAGID
+						fi
+					fi
+				done
+			fi
+		fi
+		return 0;
+	fi
+	if [ -z "$EL_MOUNT" ] ; then
+#		Display --indent 2 --text "$1 is not on a separate partition" --result NOTFOUND --color RED --advice PARTITION_SEPARATE_PART
+		export RESULTAT='ERROR_NO_PARTITION'
+		return 1;
+	fi
+	RESULTAT=`echo $EL_MOUNT | sed 's/[[:space:]]/ /g' | cut -d\  -f4`
+#	Display --indent 2 --text "$1 is on a separate partition" --result FOUND --color GREEN
+}
+
+################################################################################
+################################################################################
+#
+# must produce a 4 digits results
+get_full_right()
+{
+if [ "$1x" = "x" ]
+then
+	echo "ERROR get_right() missing parameter #1"
+	return 1;
+fi
+if [ ! -e "$1" ]
+then
+	echo "ERROR $1 do not exists"
+	return 1;
+fi
+
+if [ "$OS" = "FreeBSD" ]
+then
+	RESULTAT=`stat -f %Mp%Lp $1`
+else
+	RESULTAT=`stat --format=%a $1`
+fi
+
+}
+################################################################################
+################################################################################
+# get the right of a file
+# must produce a 3 digits results
+get_simple_right()
+{
+RESULTAT='Error'
+if [ "$1x" = "x" ]
+then
+	echo "ERROR get_simple_right() missing parameter #1 (file to be stated)"
+	return 1;
+fi
+if [ ! -e "$1" ]
+then
+	echo "ERROR $1 do not exists"
+	return 1;
+fi
+
+if [ "$OS" = "FreeBSD" ]
+then
+	RESULTAT=`stat -f %Lp $1`
+else
+	RESULTAT=`stat --format=%a $1`
+fi
+
+}
+
+
+################################################################################
+################################################################################
+#For the fun
+draw_apache_tree()
+{
+if [ -z "$1" ] ;then
+	echo "ERROR: draw_apache_tree() missing parameter #1"
+	return 1;
+fi
+NUMINDENT=0
+
+#echo ''
+#echo "Draw apache tree (still in development)"
+#echo ''
+
+while read line
+do
+#	echo $line
+	if [ ! -z "`echo $line | grep -i '^VHOST'`" ]
+	then
+		echo "|-V- $line" | sed 's/VHOST=//g'
+		NUMINDENT=2
+	fi
+	if [ ! -z "`echo $line | grep -i '^ENDHOST'`" ]
+	then
+		echo "|"
+		NUMINDENT=0
+	fi
+	if [ ! -z "`echo $line | grep -i '^ALIAS'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |-A- $line" | sed 's/ALIAS=//g'
+		else
+			echo "|-A- $line" | sed 's/ALIAS=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^PASSWORD'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo '|   |   |--- PASSWORD'
+		else
+			echo '|   |--- PASSWORD'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^DENYFROMALL'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo '|   |   |--- DENYFROMALL'
+		else
+			echo '|   |--- DENYFROMALL'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^AUTHFILE'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |   |-P- $line"  | sed 's/AUTHFILE=//g'
+		else
+			echo "|   |-P- $line" | sed 's/AUTHFILE=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^DIRECTORY'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |-D- $line" | sed 's/DIRECTORY=//g'
+		else
+			echo "|-D- $line" | sed 's/DIRECTORY=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^LOCATION'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |-L- $line" | sed 's/LOCATION=//g'
+		else
+			echo "|-L- $line" | sed 's/LOCATION=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^HLOC'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |-H- $line" | sed 's/HLOC=//g'
+		else
+			echo "|-H- $line" | sed 's/HLOC=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^PROXY'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |-Pr- $line" | sed 's/PROXY=//g'
+		else
+			echo "|-Pr- $line" | sed 's/PROXY=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^JKMOUNT'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |-J- $line" | sed 's/JKMOUNT=//g'
+		else
+			echo "|-J- $line" | sed 's/JKMOUNT=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^SERVERNAME'`" ]
+	then
+		if [ $NUMINDENT -ge 2 ]
+		then
+			echo "|   |-SN- $line" | sed 's/SERVERNAME=//g'
+		else
+			echo "|-SN- $line" | sed 's/SERVERNAME=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^DEFLATE'`" ] ; then
+		if [ $NUMINDENT -ge 2 ] ; then
+			echo "|   |-mD- $line" | sed 's/DEFLATE=//g'
+		else
+			echo "|-mD- $line" | sed 's/DEFLATE=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^PHP_ADMIN_VALUE'`" ] ; then
+		if [ $NUMINDENT -ge 2 ] ; then
+			echo "|   |-PHP- $line" | sed 's/PHP_ADMIN_VALUE=//g'
+		else
+			echo "|-PHP- $line" | sed 's/PHP_ADMIN_VALUE=//g'
+		fi
+	fi
+	if [ ! -z "`echo $line | grep -i '^SSL=1'`" ] ; then
+		if [ $NUMINDENT -ge 2 ] ; then
+			echo '|   |-SSL-'
+		else
+			echo '|-SSL-'
+		fi
+	fi
+done < $1
+echo ''
+echo '-D- Directory -L- Location -V- vhost -A- alias -J- JKmount -mD- ModDeflate -PHP- PHP specific value'
+}
+
+
+################################################################################
+################################################################################
+#extract path from <directive value>
+get_path_from_apache_directives()
+{
+if [ -z "$1" ]
+then
+	echo "Missing parameter #1 (line to proceed) for get_path_from_apache_directives()"
+	return 1;
+fi
+#echo "->$1"
+export RESULTAT=`echo $1 | sed 's/^[[:space:]]*<[[:space:]]*[a-zA-Z0-9][a-zA-Z0-9]*[[:space:]]*//g'| sed 's/[[:space:]]*>.*//g' | cut -d\" -f2`
+#echo $1 | sed 's/^[[:space:]]*<[[:space:]]*//g'
+#export $RESULTAT
+return 0;
+}
+
+################################################################################
+################################################################################
+#extract path from <directive value>
+armageddon()
+{
+    echo "EXit via Ctrl-C"
+    exit 1;
+}
+
+################################################################################
+################################################################################
+Do_the_host_is_a_virtual_machine()
+{
+HOST_IS_VIRTUAL_MACHINE=0
+if [ "$OS_TYPE" = 'Linux' ] ;then
+	CPUMODEL="`cat /proc/cpuinfo |grep QEMU`"
+	if [ ! -z "$CPUMODEL" ] ;then
+		export HOST_IS_VIRTUAL_MACHINE=1
+	else
+		export HOST_IS_VIRTUAL_MACHINE=0
+	fi
+	return 0;
+fi
+if [ "$OS_TYPE" = 'BSD' ] ;then
+ 	CPUMODEL="`sysctl -a | grep -i 'hw.model' |grep QEMU`"
+	if [ ! -z "$CPUMODEL" ] ;then
+		export HOST_IS_VIRTUAL_MACHINE=1
+	else
+		export HOST_IS_VIRTUAL_MACHINE=0
+	fi
+	return 0;
+fi
+#unrecognized
+export HOST_IS_VIRTUAL_MACHINE=0
+}
+
+################################################################################
+################################################################################
+check_service_compliance_result()
+{
+	if [ -z "$1" ] ;then
+		Display_error "ERROR check_service_compliance_result() missing parameter #1: service name"
+		return 1;
+	fi
+	if [ -z "$2" ] ;then
+		Display_error "ERROR check_service_compliance_result() missing parameter #2: plugin name"
+		return 1;
+	fi
+	if [ -z "$3" ] ;then
+		Display_error "ERROR check_service_compliance_result() missing parameter #3: yes/no"
+		return 1;
+	fi
+	if [ "$3" != 'yes' -a "$3" != 'no' -a "$3" != 'any' ] ;then
+		Display_error 'ERROR #3 must be yes or no'
+		return 1;
+	fi
+	NSAID='0'
+	CCEID='0'
+	if [ ! -z "$4" ];then
+		NSAID="$4"
+	fi
+	if [ ! -z "$5" ];then
+		CCEID="$5"
+	fi
+	RESULT='ABSENT'
+	if [ "$RESULTAT" = 'yes' ] ;then
+		RESULT='ENABLED'
+	fi
+	if [ "$RESULTAT" = 'ERROR' ] ;then
+		RESULT='ERROR'
+	fi
+	if [ "$RESULTAT" = 'NOTIMPLEMENTED' ] ;then
+		RESULT='NOTIMPLEMENTED'
+		Display --indent 2 --text "$1 service" --result $RESULT --color BLUE
+		Compliance --result NOTIMPL --plugin "$2" --nsag $NSAID --cce $CCEID
+		return 0;
+	fi
+	if [ $DEBUG -ge 1 ];then
+		echo "DEBUG check_service_compliance_result RESULTAT=$RESULTAT NEED=$3"
+	fi
+	if [ "$RESULTAT" = "$3" -o "$3" = 'any' ] ;then
+		Display --indent 2 --text "$1 service" --result $RESULT --color GREEN
+		Compliance --result OK --plugin "$2" --nsag $NSAID --cce $CCEID
+		return 0;
+	fi
+	if [ "$RESULTAT" != "$3" ] ;then
+		Display --indent 2 --text "$1 service" --result $RESULT --color RED
+		Compliance --result NOK --plugin "$2" --nsag $NSAID --cce $CCEID
+		return 0;
+	fi
+}
+
+################################################################################
+################################################################################
+# #1 is package name
+# #2 is plugin name
+# #3 is status wanted
+check_package_compliance_result()
+{
+	if [ -z "$1" ] ;then
+		echo "ERROR check_package_compliance_result() missing parameter #1: package name"
+		return 1;
+	fi
+	if [ -z "$2" ] ;then
+#		echo "ERROR check_package_compliance_result() missing parameter #2: plugin name"
+		return 1;
+	fi
+	if [ -z "$3" ] ;then
+		return 1;
+	fi
+	if [ "$3" != 'yes' -a "$3" != 'no' ] ;then
+		echo "ERROR #3 must be yes or no, got $3"
+		return 1;
+	fi
+	NSAID='0'
+	CCEID='0'
+	if [ ! -z "$4" ];then
+		NSAID="$4"
+	fi
+	if [ ! -z "$5" ];then
+		CCEID="$5"
+	fi
+	RESULT='ABSENT'
+	if [ "$RESULTAT" = 'yes' ] ;then
+		RESULT='PRESENT'
+	fi
+	if [ "$RESULTAT" = 'NOTIMPLEMENTED' ] ;then
+		RESULT='NOTIMPLEMENTED'
+		Display --indent 2 --text "$1 service" --result $RESULT --color BLUE
+		Compliance --result NOTIMPL --plugin "$2" --nsag $NSAID --cce $CCEID
+		return 0;
+	fi
+	if [ $DEBUG -ge 1 ];then
+		echo "DEBUG check_service_compliance_result RESULTAT=$RESULTAT NEED=$3"
+	fi
+	if [ "$RESULTAT" = "$3" ] ;then
+		Display --indent 2 --text "$1 package" --result $RESULT --color GREEN
+		Compliance --result OK --plugin "$2" --nsag $NSAID --cce $CCEID
+		return 0;
+	fi
+	if [ "$RESULTAT" != "$3" ] ;then
+		Display --indent 2 --text "$1 package" --result $RESULT --color GREEN
+		Compliance --result NOK --plugin "$2" --nsag $NSAID --cce $CCEID
+		return 0;
+	fi
+}
+
+################################################################################
+################################################################################
+# Check if a program is installed via the package manager or at hand
+#
+# $1 is the package to be searched
+#
+# RESULTAT is yes or no or NOTIMPLEMENTED or ERROR
+# RESULTAT_VERSION is the version number
+# use LIST_PKG for finding package, (rpm, dpkg, emerge)
+Is_installed_via_package_manager()
+{
+	export RESULTAT='ERROR'
+	if [ -z "$1" ] ;then
+		echo "ERROR Is_installed_via_package_manager() missing parameter #1"
+		return 1;
+	fi
+	if [ "$LIST_PKG" = "dpkg" -o "$LIST_PKG" = "apt-get" ] ;then
+		PKGLIST="`dpkg -l |grep ^ii |grep -i $1`"
+		if [ -z "$PKGLIST" ] ;then
+			export RESULTAT='no'
+		else
+			export RESULTAT='yes'
+		fi
+		check_package_compliance_result "$1" "$2" "$3" "$4" "$5"
+		return 0;
+	fi
+	if [ "$LIST_PKG" = "rpm" ] ;then
+		PKGLIST="`rpm -qa |grep ^$1`"
+		if [ -z "$PKGLIST" ] ;then
+			export RESULTAT='no'
+		else
+			export RESULTAT='yes'
+		fi
+		check_package_compliance_result "$1" "$2" "$3" "$4" "$5"
+		return 0;
+	fi
+	if [ "$LIST_PKG" = "emerge" ] ;then
+		#TODO could be better
+		PKGLIST="`equery -C -q l $1`"
+		if [ -z "$PKGLIST" ] ;then
+			export RESULTAT='no'
+		else
+			export RESULTAT='yes'
+		fi
+		check_package_compliance_result "$1" "$2" "$3" "$4" "$5"
+		return 0;
+	fi
+	if [ "$LIST_PKG" = "pacman" ] ;then
+		PKGLIST="`pacman -Q | grep ^$1`"
+		if [ -z "$PKGLIST" ] ;then
+			export RESULTAT='no'
+		else
+			export RESULTAT='yes'
+		fi
+		check_package_compliance_result "$1" "$2" "$3" "$4" "$5"
+		return 0;
+	fi
+	if [ "$LIST_PKG" = 'pkg_' ];then
+		if [ -z "`pkg_info |grep ^${1}-`" ];then
+			export RESULTAT='no'
+		else
+			export RESULTAT='yes'
+		fi
+		return 0;
+	fi
+	Display --indent 2 --text "Package manager $LIST_PKG" --result 'NOTIMPLEMENTED' --color BLUE
+	export RESULTAT='NOTIMPLEMENTED'
+	return 1;
+}
+
+################################################################################
+################################################################################
+# Check if a service is auto started
+# $1 is the service to be checked
+# RESULTAT is the result yes or no or NOTIMPLEMENTED or ERROR
+# RESULTAT_VERSION is the version number
+Check_auto_start()
+{
+	export RESULTAT='ERROR'
+	AUTO_START_DO_COMPLIANCE=1
+#        while [ $# -ge 1 ]; do
+#		case $1 in
+ #       	--nocompliance)
+#			AUTO_START_DO_COMPLIANCE=0
+#			shift
+#		;;
+#		esac
+#	done
+	if [ "$1" = '--nocompliance' ];then
+		AUTO_START_DO_COMPLIANCE=0
+		shift
+	fi
+	if [ -z "$1" ] ;then
+		echo "ERROR Check_auto_start() missing parameter #1: service name"
+		return 1;
+	fi
+	if [ "$SCAN_ROOT" != '/' ] ; then
+		#CentOS
+		if [ -e "$SCAN_ROOT/etc/rc.d" ] ; then
+			if [ -z "`find $SCAN_ROOT/etc/rc.d |grep $1`" ] ;then
+				RESULTAT='no'
+			else
+				RESULTAT='yes'
+			fi
+			if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+				check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+			fi
+			return 0;
+		fi
+		#Gentoo
+		if [ -e "$SCAN_ROOT/etc/runlevels/" ] ; then
+			if [ -z "`find $SCAN_ROOT/etc/runlevels |grep $1`" ] ;then
+				RESULTAT='no'
+			else
+				RESULTAT='yes'
+			fi
+			if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+				check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+			fi
+			return 0;
+		fi
+		#Debian
+		if [ -e "$SCAN_ROOT/etc/rc2.d/" ] ; then
+			if [ -z "`find $SCAN_ROOT/etc/rc2.d |grep $1`" ] ;then
+				RESULTAT='no'
+			else
+				RESULTAT='yes'
+			fi
+			if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+				check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+			fi
+			return 0;
+		fi
+		if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+			check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+		fi
+		return 1;
+	fi
+	if [ "$LINUX_VERSION" = 'Red Hat' -o "$LINUX_VERSION" = 'CentOS' -o "$LINUX_VERSION" = 'Fedora' ] ;then
+		chkconfig $1 > /dev/null
+		if [ $? -eq 0 ] ;then
+			export RESULTAT='yes'
+		else
+			export RESULTAT='no'
+		fi
+		if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+			check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+		fi
+		return 0;
+	fi
+	if [ "$LINUX_VERSION" = "Debian" -o "$LINUX_VERSION" = "Ubuntu" ] ;then
+		#could be better
+		if [ ! -z "`find /etc/rc* |grep -i $1`" ]
+		then
+			export RESULTAT='yes'
+		else
+			export RESULTAT='no'
+		fi
+		if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+			check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+		fi
+		return 0;
+	fi
+	if [ "$LINUX_VERSION" = "Gentoo" ] ; then
+#		RUNLEVEL="`rc-update show 2>> $ERROR_OUTPUT_FILE | grep $1 `"
+#		if [ $? -ne 0 ] ; then
+#			export RESULTAT='ERROR'
+#			return 1;
+#		fi
+		if [ -e "/etc/runlevels/boot/$1" -o -e "/etc/runlevels/default/$1" ] ; then
+			RESULTAT='yes'
+		else
+			RESULTAT='no'
+		fi
+		if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+			check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+		fi
+		return 0;
+	fi
+	if [ "$OS_TYPE" = 'BSD' ];then
+		if [ -e /etc/rc.conf ];then
+			if [ ! -z "`grep $1_enable= /etc/rc.conf |grep YES`" ];then
+				RESULTAT='yes'
+			else
+				RESULTAT='no'
+			fi
+			if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+				check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+			fi
+			return 0;
+		fi
+	fi
+	export RESULTAT='NOTIMPLEMENTED'
+	if [ $AUTO_START_DO_COMPLIANCE -eq 1 ];then
+		check_service_compliance_result "$1" "$2" "$3" "$4" "$5"
+	fi
+	return 1;
+}
+
+################################################################################
+################################################################################
+Check_for_update()
+{
+RET=0
+wget -nv "http://yasat.sourceforge.net/get_last_yasat_version.php?current=$YASAT_VERSION" -O latest
+if [ $? -ne 0 -o ! -e latest ];then
+	echo "Error with wget"
+	rm latest
+	exit 2
+fi
+LAST_VERSION="`cat latest`"
+echo "You have yasat version $YASAT_VERSION and the latest is $LAST_VERSION"
+
+if [ "$YASAT_VERSION" -eq "$LAST_VERSION" ];then
+	echo "You have already the latest version of YASAT"
+fi
+if [ "$YASAT_VERSION" -lt "$LAST_VERSION" ];then
+	echo "A new version is available at http://yasat.sourceforge.net/"
+	RET=1
+fi
+
+rm latest
+exit $RET
+}
+################################################################################
+################################################################################
+send_support()
+{
+. ${YASAT_ROOT}/osdetection
+RET=0
+SYSTEME="${LINUX_VERSION}${OS}$OS_FULLNAME"
+wget -nv "http://yasat.sourceforge.net/get_last_yasat_version.php?current=$YASAT_VERSION&systeme=$SYSTEME" -O latest
+if [ $? -ne 0 -o ! -e latest ] ;then
+	echo "Error with wget"
+	rm latest
+	exit 2
+fi
+LAST_VERSION="`cat latest`"
+echo "You have yasat version $YASAT_VERSION and the latest is $LAST_VERSION"
+
+if [ "$YASAT_VERSION" -eq "$LAST_VERSION" ];then
+	echo "You have already the latest version of YASAT"
+fi
+if [ "$YASAT_VERSION" -lt "$LAST_VERSION" ];then
+	echo "A new version is available at http://yasat.sourceforge.net/"
+	RET=1
+fi
+
+rm latest
+exit $RET
+}
+################################################################################
+################################################################################
+#Try to identify which technology is behind a vhost or a directory
+#example PHP mod_perl JAVA/JK
+# for the moment test a very simple case:)
+#
+# param $1 is the directory to scan
+# param $2 (optional)
+identify_web_tech_in_dir()
+{
+	WEBTECH='unknown'
+	if [ -z "$1" ] ; then
+		echo "ERROR identify_web_tech_dir missing parameter #1"
+		return 1;
+	fi
+	#check if $1 contain a *
+	if [ ! -z "`echo $1 |grep '*'`" ] ; then
+		return ;
+	fi
+	if [ "$1" = '/' ] ; then
+		return ;
+	fi
+	if [ -e "$1/index.php" ] ; then
+		#echo "PHP"
+		export WEBTECH="PHP"
+		return ;
+	fi
+	if [ $# -ge 2 ] ; then
+		if [ "$2" = "recursive" ] ; then
+			find "$1" -maxdepth 2 -type f |grep -i '.php$' > "${TEMPYASATDIR}/find.tmp"
+			if [ -s "${TEMPYASATDIR}/find.tmp" ] ; then
+				export WEBTECH="PHP"
+				return 0;
+			fi
+		fi
+	fi
+
+}
+
+################################################################################
+################################################################################
+qa_test()
+{
+	if [ "$1" != "$2" ] ; then
+		echo "BAD got $1 not $2"
+	else
+		echo "GOOD (result is $1)"
+	fi
+}
+################################################################################
+################################################################################
+# find witch file have a specific directive
+find_file_with_directive()
+{
+	export RES_FILE_WITH_DIRECTIVE='/tmp/nonexistent'
+	if [ -z "$1" ] ; then
+		echo 'Error missing parameter #1 directory for find_file_with_directive()'
+		return 1;
+	fi
+	if [ -z "$2" ] ; then
+		echo 'Error missing parameter #2 directive for find_file_with_directive()'
+		return 1;
+	fi
+	RES_FILE_WITH_DIRECTIVE="`grep -rli $2 $1 | head -n 1`"
+	#manpage said that -l return only one line but it seems false
+}
+################################################################################
+################################################################################
+#
+add_correction()
+{
+	echo "$1" >> "$CORRECT_FILE"
+}
+################################################################################
+################################################################################
+# list all test comment. In the future we could list by reference id (by CCE ID for example)
+list_all_yasat_test() {
+	grep -h '#YASAT_TEST' ${PLUGINS_REP}/*.test | sed 's/^[[:space:]]*//g'
+}
+################################################################################
+################################################################################
+#check_value value_tested value_wanted bad_if_empty? text colour advice
+check_value() {
+	if [ -z "$2" ] ; then
+		echo 'Error missing parameter #2 value_wanted for check_value()'
+		return 1;
+	fi
+	if [ -z "$3" ] ; then
+		echo 'Error missing parameter #3 bad_if_empty? for check_value()'
+		return 1;
+	fi
+	if [ -z "$4" ] ; then
+		echo 'Error missing parameter #4 text for check_value()'
+		return 1;
+	fi
+	if [ -z "$5" ] ; then
+		echo 'Error missing parameter #5 colour for check_value()'
+		return 1;
+	fi
+	if [ -z "$6" ] ; then
+		echo 'Error missing parameter #5 advice for check_value()'
+		return 1;
+	fi
+	NSAGID=0
+	CCEID=0
+	if [ ! -z "$7" ];then
+		NSAGID="$7"
+	fi
+	if [ ! -z "$8" ];then
+		CCEID="$8"
+	fi
+	if [ -z "$1" ] ; then
+		if [ "$3" = 'true' ] ; then
+			Display --indent 2 --text "$4" --result "NOTFOUND" --color $5 --advice $6
+			Compliance --result KO --plugin notknown --nsag $NSAGID --cce $CCEID
+		else
+			Display --indent 2 --text "$4" --result "NOTFOUND" --color GREEN
+			Compliance --result OK --plugin notknown --nsag $NSAGID --cce $CCEID
+		fi
+		return 0;
+	fi
+	if [ "$1" != "$2" ]; then
+		Display --indent 2 --text "$4" --result "$1" --color $5 --advice $6
+		Compliance --result KO --plugin notknown --nsag $NSAGID --cce $CCEID
+	else
+		Display --indent 2 --text "$4" --result "$1" --color GREEN
+		Compliance --result OK --plugin notknown --nsag $NSAGID --cce $CCEID
+	fi
+}
+
+################################################################################
+################################################################################
+#get the value after i"$1" in a line
+#used for apache_vhosts, we assume $1 is present
+get_value_in_string() {
+	if [ -z "$1" ] ; then
+		echo 'Error missing parameter #1 value_wanted for get_value_in_string()'
+		return 1;
+	fi
+	if [ -z "$2" ] ; then
+		echo 'Error missing parameter #2 string to be seeked for get_value_in_string()'
+		return 1;
+	fi
+	export RESULTAT="`echo $2 | sed 's/^[[:space:]]*//' | sed 's,#.*,,' | sed 's,[[:space:]][[:space:]]*, ,g' | cut -d\  -f2`"
+}
+################################################################################
+################################################################################
+# check SSLProtocol
+# arg1 is indent
+# arg2 is the sslprotocol list
+# TODO do the same for gnutls 
+# return 0 on problem
+# return 1 if list is good
+# return 2 if list is bad
+check_ssl_protocol_openssl() {
+	if [ $# -le 1 ];then
+		Display_error "ERROR: not enought parameter to check_ssl_protocol_openssl"
+		return 1
+	fi
+	#first question does all is in it, if yes check for sslv2/sslv3 disabled
+	local ssl_protocol_all_found=0
+	local ssl_protocol_sslv2_found=0
+	local ssl_protocol_sslv3_found=0
+	local ssl_protocol_sslv2_disabled=0
+	local ssl_protocol_sslv3_disabled=0
+	local c_proto
+	for c_proto in $2
+	do
+		#TODO check if ALL is first
+		is_equal "$c_proto" 'all' -i
+		if [ $? -eq 0 ];then
+			ssl_protocol_all_found=1
+		fi
+		is_equal "$c_proto$" 'sslv2' -i
+		if [ $? -eq 0 ];then
+			ssl_protocol_sslv2_found=1
+		fi
+		is_equal "$c_proto" 'sslv3' -i
+		if [ $? -eq 0 ];then
+			ssl_protocol_sslv3_found=1
+		fi
+		is_equal "$c_proto" '-sslv2' -i
+		if [ $? -eq 0 ];then
+			ssl_protocol_sslv2_disabled=1
+		fi
+		is_equal "$c_proto" '-sslv3' -i
+		if [ $? -eq 0 ];then
+			ssl_protocol_sslv3_disabled=1
+		fi
+	done
+	if [ $ssl_protocol_all_found -eq 1 ];then
+		if [ $ssl_protocol_sslv2_disabled -eq 1 ];then
+			Display --indent $1 --text "SSLv2 is disabled" --result GOOD --color GREEN
+		else
+			Display --indent $1 --text "SSLv2 is not disabled" --result BAD --color RED --advice SSL_PROTOCOL_SSLV2
+		fi
+		if [ $ssl_protocol_sslv3_disabled -eq 1 ];then
+			Display --indent $1 --text "SSLv3 is disabled" --result GOOD --color GREEN
+		else
+			Display --indent $1 --text "SSLv3 is not disabled" --result BAD --color RED --advice SSL_PROTOCOL_SSLV3
+		fi
+	else
+		if [ $ssl_protocol_sslv2_found -eq 1 ];then
+			Display --indent $1 --text "SSLv2 is enabled" --result BAD --color RED --advice SSL_PROTOCOL_SSLV2
+		else
+			Display --indent $1 --text "SSLv2 is not enabled" --result GOOD --color GREEN
+		fi
+		if [ $ssl_protocol_sslv3_found -eq 1 ];then
+			Display --indent $1 --text "SSLv3 is enabled" --result BAD --color RED --advice SSL_PROTOCOL_SSLV3
+		else
+			Display --indent $1 --text "SSLv3 is not enabled" --result GOOD --color GREEN
+		fi
+	fi
+	return 0
+}
+################################################################################
+################################################################################
+# check a cipher suite
+check_cipher_list() {
+	if [ -z "$1" ] ; then
+		Display_error 'Error missing parameter #1 indent'
+		return 1;
+	fi
+	if [ -z "$2" ] ; then
+		Display_error 'Error missing parameter #2 cipherlist'
+		return 1;
+	fi
+	for ciph in LOW NULL SSLv2 SSLv3 EXP aNULL
+	do
+		if [ -z "`echo $2 | grep -Ei \"!${ciph}(:|$)\"`" ] ; then
+			Display --indent $1 --text "Cipher $ciph" --result ACTIVE --color ORANGE
+		else
+			Display --indent $1 --text "Cipher $ciph" --result DISACTIVE --color GREEN
+		fi
+	done
+#	export RESULTAT="`echo $2 | sed 's/^[[:space:]]*//' | sed 's,#.*,,' | sed 's,[[:space:]][[:space:]]*, ,g' | cut -d\  -f2`"
+}
+
+################################################################################
+################################################################################
+# this function assume that the tools certutil is present
+# Use Check_tool_presence certutil for veryfying it
+check_nss_certificate() {
+	if [ -z "$1" ] ; then
+		Display_error 'ERROR: missing parameter #1 indent'
+		return 1;
+	fi
+	if [ -z "$2" ] ; then
+		Display_error 'ERROR: missing parameter #2 profile directory'
+		return 1
+	fi
+	PROFILDIR="$2"
+	certutil -L -d $PROFILDIR | sed 's/[[:space:]][[:space:]]*[Pu]*,[cpu]*,[u]*[[:space:]]*$//' | grep -vE '^[[:space:]]*$|^Certificate|SSL,S/MIME,JAR/XPI$' |sort |uniq > $TMP_LIST
+	if [ $? -ne 0 ] ; then
+		Display --indent $1 --text "certutil error" --result ERROR --color RED
+		return 1;
+	fi
+	while read line
+	do
+		echo ""
+		Display --indent $1 --text "$line" --result 'INFO' --color BLUE
+		certutil -L -d $PROFILDIR -n "$line" -a > $TMP_CERT
+		check_certificate $TMP_CERT $1 "$line"
+	done < $TMP_LIST
+}
+################################################################################
+################################################################################
+#Add a compliance result
+#The result must be present first, then the plugin name
+Compliance() {
+	if [ -z "$1" ] ; then
+		Display_error 'ERROR: Compliance: missing parameter #1'
+		return 1
+	fi
+	if [ -z "$TESTNAME" ];then
+		echo "WARNING: TESTNAME is not set debug: $@"
+		TESTNAME_ID='NOTSET'
+		TESTNAME_TEXT='NOTSET'
+	else
+		TESTNAME_ID="`echo $TESTNAME | cut -d\  -f1`"
+		TESTNAME_TEXT="`echo $TESTNAME | cut -d\  -f2- | sed 's/[A-Z][A-Z]*ID=[0-9,-]*[[:space:]]//' | sed 's/NSAG=[0-9,\.-]*[[:space:]]//'`"
+	fi
+	echo "" >> ${COMPLIANCE_OUTPUT}
+	echo "$TESTNAME" >> ${COMPLIANCE_OUTPUT}
+	COMP_RESULT='UNK'
+	COMP_TYPE='CCE'
+	COMP_ID='0'
+	COMP_PLUGIN=""
+	COMPLIANCE_COLOR='lightgreen'
+        while [ $# -ge 1 ]; do
+		if [ "$COMP_RESULT" = 'UNK' ];then
+			COMPLIANCE_COLOR='blue'
+		fi
+		if [ "$COMP_RESULT" = 'NOTIMPL' ];then
+			COMPLIANCE_COLOR='lightgrey'
+		fi
+		if [ "$COMP_RESULT" = 'NOTTESTED' ];then
+			COMPLIANCE_COLOR='lightgrey'
+		fi
+		if [ "$COMP_RESULT" = 'NOK' ];then
+			COMPLIANCE_COLOR='red'
+		fi
+		if [ "$COMP_RESULT" = 'OK' ];then
+			COMPLIANCE_COLOR='lightgreen'
+		fi
+		case $1 in
+        	--result)
+			shift
+			if [ -z "$1" ] ; then
+				echo "Missing parameter to result"
+				return 1
+			fi
+			COMP_RESULT="$1"
+			echo "$TESTNAME_ID,$COMP_RESULT" >> "${COMPLIANCE_OUTPUT}"
+			shift
+		;;
+        	--cid)
+			shift
+			if [ -z "$1" ] ; then
+				echo "Missing parameter to cid"
+				return 1;
+			fi
+			COMP_ID="$1"
+			echo "${COMP_TYPE},${COMP_ID},${COMP_RESULT},${COMP_PLUGIN}" >> ${COMPLIANCE_OUTPUT}
+			if [ "${COMP_TYPE}" = 'NSAG' ];then
+				echo "<tr>
+					<td></td>
+					<td style=\"background-color: $COMPLIANCE_COLOR; text-align: center\">$TESTNAME_ID</td>
+					<td style=\"background-color: $COMPLIANCE_COLOR; text-align: center\">$1</td>
+					<td style=\"background-color: $COMPLIANCE_COLOR; text-align: center\">$COMP_RESULT</td>
+					<td>$TESTNAME_TEXT</td>
+					</tr>
+				" >> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG
+			fi
+			shift
+		;;
+        	--type)
+			shift
+			if [ -z "$1" ] ; then
+				echo "Missing parameter"
+				return 1;
+			fi
+			COMP_TYPE="$1"
+			shift
+		;;
+		--nsag)
+			shift
+			if [ -z "$1" ] ; then
+				echo "Missing parameter to nsag"
+				return 1;
+			fi
+			if [ $1 != '0' ] ; then
+				echo "NSAG,$1,${COMP_RESULT},${COMP_PLUGIN}" >> ${COMPLIANCE_OUTPUT}
+				echo "<tr>
+					<td></td>
+					<td style=\"background-color: $COMPLIANCE_COLOR; text-align: center\">$TESTNAME_ID</td>
+					<td style=\"background-color: $COMPLIANCE_COLOR; text-align: center\">$1</td>
+					<td style=\"background-color: $COMPLIANCE_COLOR; text-align: center\">$COMP_RESULT</td>
+					<td>$TESTNAME_TEXT</td>
+					</tr>
+				" >> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG
+			fi
+			shift
+		;;
+		--cce)
+			shift
+			if [ -z "$1" ] ; then
+				echo "Missing parameter to cce"
+				return 1;
+			fi
+			#TODO check if multiple id is gived with ','
+			if [ $1 != '0' ] ; then
+				echo "CCE,$1,${COMP_RESULT},${COMP_PLUGIN}" >> ${COMPLIANCE_OUTPUT}
+			fi
+			shift
+		;;
+        	--plugin)
+			shift
+			if [ -z "$1" ] ; then
+				Display_error "Missing parameter to --plugin"
+				return 1;
+			fi
+			COMP_PLUGIN="$1"
+			shift
+		;;
+		--color)
+			shift
+			if [ -z "$1" ] ; then
+				Display_error "ERROR: Missing parameter to --color"
+				return 1;
+			fi
+			YASAT_COLOR="$1"
+			if [ "$1" = 'green' -o "$1" = 'GREEN' ];then
+				YASAT_COLOR='lightgreen'
+				YASAT_COMP_GREEN=$(($YASAT_COMP_GREEN+1))
+			fi
+			if [ "$1" = 'orange' -o "$1" = 'ORANGE' ];then
+				YASAT_COMP_ORANGE=$(($YASAT_COMP_ORANGE+1))
+			fi
+			if [ "$1" = 'red' -o "$1" = 'RED' ];then
+				YASAT_COMP_RED=$(($YASAT_COMP_RED+1))
+			fi
+			if [ "$1" = 'blue' -o "$1" = 'BLUE' ];then
+				YASAT_COLOR='lightblue'
+			fi
+			shift
+		;;
+		--yasatresult)
+			shift
+			if [ -z "$1" ] ; then
+				Display_error "ERROR: Missing parameter to --color"
+				return 1;
+			fi
+			echo "<tr>
+			<td></td>
+			<td style=\"background-color: $YASAT_COLOR; text-align: center\">$TESTNAME_ID</td>
+			<td>$1</td>
+			<td>$TESTNAME_TEXT</td>
+			</tr>
+			" >> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT
+			shift
+		;;
+		*)
+			Display_error "ERROR: Unknown option $1"
+			return 1;
+		;;
+		esac
+	done
+
+	TESTNAME=''
+}
+
+################################################################################
+################################################################################
+Compliance_result() {
+	if [ -e "${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG" ];then
+		echo "<html><head><link href='./yasat.css' rel='stylesheet' type='text/css'></head><table>
+		`cat ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG`
+		</table>" > ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG.html
+	fi
+	if [ -e "${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT" ];then
+		echo "<html><head><link href='./yasat.css' rel='stylesheet' type='text/css'></head><table>
+		`cat ${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT`
+		</table>" > ${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT.html
+	fi
+
+	if [ ! -z "`echo $DO_COMPLIANCE |grep -iE 'CCE|all'`" ];then
+		NBCCE=`grep ^CCE $COMPLIANCE_OUTPUT | sort | uniq | wc -l`
+		NBCCE_REAL=`grep ^CCE $COMPLIANCE_OUTPUT | grep 'OK,' | sort | uniq | wc -l`
+		NBCCE_OK=`grep ^CCE $COMPLIANCE_OUTPUT | grep ',OK,' | sort | uniq | wc -l`
+		NBCCE_NOTIMPL=`grep ^CCE $COMPLIANCE_OUTPUT | grep ',NOTIMPL,' | sort | uniq | wc -l`
+		NBCCE_NOTTESTED=`grep ^CCE $COMPLIANCE_OUTPUT | grep ',NOTTESTED,' | sort | uniq | wc -l`
+		if [ $NBCCE -ge 1 ] ; then
+			echo "You have passed CCE $NBCCE_OK of $NBCCE tests ($(($NBCCE_OK*100/$NBCCE))%)"
+		fi
+		echo "but $NBCCE_NOTTESTED are not tested and $NBCCE_NOTIMPL are not implemented"
+		if [ $NBCCE_REAL -eq 0 ] ; then
+			NBCCE_REAL=1
+		fi
+		echo "So your real score is CCE $NBCCE_OK of $NBCCE_REAL $(($NBCCE_OK*100/$NBCCE_REAL))%"
+	fi
+
+	if [ ! -z "`echo $DO_COMPLIANCE |grep -iE 'NSA|all'`" ];then
+		NBNSAG=`grep ^NSAG $COMPLIANCE_OUTPUT | sort | uniq | wc -l`
+		NBNSAG_REAL=`grep ^NSAG $COMPLIANCE_OUTPUT | grep 'OK,' | sort | uniq | wc -l`
+		NBNSAG_OK=`grep ^NSAG $COMPLIANCE_OUTPUT | grep ',OK,' | sort | uniq | wc -l`
+		NBNSAG_NOK=`grep ^NSAG $COMPLIANCE_OUTPUT | grep ',NOK,' | sort | uniq | wc -l`
+		NBNSAG_NOTIMPL=`grep ^NSAG $COMPLIANCE_OUTPUT | grep ',NOTIMPL,' | sort | uniq | wc -l`
+		NBNSAG_NOTTESTED=`grep ^NSAG $COMPLIANCE_OUTPUT | grep ',NOTTESTED,' | sort | uniq | wc -l`
+
+		if [ $NBNSAG -ge 1 ] ; then
+			echo "You have passed $NBNSAG_OK of $NBNSAG tests ($(($NBNSAG_OK*100/$NBNSAG))%) of thee NSA guide"
+		fi
+		echo "but $NBNSAG_NOTTESTED are not tested and $NBNSAG_NOTIMPL are not implemented"
+		if [ $NBNSAG_REAL -eq 0 ] ; then
+			NBNSAG_REAL=1
+		fi
+		if [ $NBNSAG -eq 0 ];then
+			PERCENT_OK=0
+			PERCENT_NOK=0
+			PERCENT_NOTIMPL=0
+			PERCENT_NOTTESTED=0
+		else
+			PERCENT_OK=$(($NBNSAG_OK*100/$NBNSAG))
+			PERCENT_NOK=$(($NBNSAG_NOK*100/$NBNSAG))
+			PERCENT_NOTIMPL=$(($NBNSAG_NOTIMPL*100/$NBNSAG))
+			PERCENT_NOTTESTED=$(($NBNSAG_NOTTESTED*100/$NBNSAG))
+		fi
+		echo "So your real score is $NBNSAG_OK of $NBNSAG_REAL $(($NBNSAG_OK*100/$NBNSAG_REAL))%"
+		if [ -e "${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG" ];then
+			echo "<center><table class='resultats'><tr>
+				<td><div style=\"background-color: lightgreen; height: $PERCENT_OK%; width: 40px\">&nbsp;</div></td>
+				<td>OK<br>$PERCENT_OK%</td>
+				<td><div style=\"background-color: red; height: $PERCENT_NOK%; width: 40px\">&nbsp;</div></td>
+				<td>KO<br>$PERCENT_NOK%</td>
+				<td><div style=\"background-color: lightgrey; height: $PERCENT_NOTIMPL%; width: 40px\">&nbsp;</div></td>
+				<td>not implemented<br>$PERCENT_NOTIMPL%</td>
+				<td><div style=\"background-color: lightgrey; height: $PERCENT_NOTTESTED%; width: 40px\">&nbsp;</div></td>
+				<td>not tested<br>$PERCENT_NOTTESTED%</td>
+			</tr></table></center><html>" >> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG.html
+		fi
+	fi
+	if [ ! -z "`echo $DO_COMPLIANCE |grep -iE 'yasat|all'`" ];then
+		echo "RED $YASAT_STAT_RED ORANGE $YASAT_STAT_ORANGE GREEN $YASAT_STAT_GREEN"
+	fi
+	if [ -e "${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT" ];then
+		YASAT_TOTAL_TEST=$(($YASAT_COMP_RED+$YASAT_COMP_ORANGE+$YASAT_COMP_GREEN))
+		if [ $YASAT_TOTAL_TEST -eq 0 ];then
+			YASAT_TOTAL_TEST=1
+		fi
+		PERCENT_GREEN=$(($YASAT_COMP_GREEN*100/$YASAT_TOTAL_TEST))
+		PERCENT_ORANGE=$(($YASAT_COMP_ORANGE*100/$YASAT_TOTAL_TEST))
+		PERCENT_RED=$(($YASAT_COMP_RED*100/$YASAT_TOTAL_TEST))
+		echo "<center><table class='resultats'><tr>
+			<td><div style=\"background-color: lightgreen; height: $PERCENT_GREEN%; width: 40px\">&nbsp;</div></td>
+			<td>GREEN<br>$PERCENT_GREEN% ($YASAT_COMP_GREEN of $YASAT_TOTAL_TEST)</td>
+			<td><div style=\"background-color: orange; height: $PERCENT_ORANGE%; width: 40px\">&nbsp;</div></td>
+			<td>ORANGE<br>$PERCENT_ORANGE% ($YASAT_COMP_ORANGE of $YASAT_TOTAL_TEST)</td>
+			<td><div style=\"background-color: red; height: $PERCENT_RED%; width: 40px\">&nbsp;</div></td>
+			<td>RED<br>$PERCENT_RED% ($YASAT_COMP_RED of $YASAT_TOTAL_TEST)</td>
+		</tr></table></center><html>" >> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT.html
+	fi
+
+
+#	echo "<html><head></head><table>
+#	`cat $HTML_COMPLIANCE_BODY_OUTPUT`
+#	</table>
+#	</html>" > $HTML_COMPLIANCE_OUTPUT
+}
+################################################################################
+################################################################################
+# Since sysctl value could be found in /etc/sysctl.conf and in /etc/sysctl.d/*.conf
+Get_sysctl() {
+	RESULTAT='notfound'
+	if [ -z "$1" ] ; then
+		echo 'Error missing parameter #1: value searched'
+		return 1;
+	fi
+	Get_sysctl_tmp="$TEMPYASATDIR/getsysctl"
+	> "$Get_sysctl_tmp"
+	if [ -e "$SCAN_ROOT/etc/sysctl.conf" ] ; then
+		grep -v '^#' $SCAN_ROOT/etc/sysctl.conf >> "$Get_sysctl_tmp"
+	fi
+	if [ -e "$SCAN_ROOT/etc/sysctl.d" ] ; then
+		grep -v '^#' "$SCAN_ROOT/etc/sysctl.d/*.conf" >> "$Get_sysctl_tmp" 2> /dev/null
+	fi
+	RESULTAT="`grep ^$1 $Get_sysctl_tmp | sed 's,^.*=[[:space:]]*,,'`"
+	rm "$Get_sysctl_tmp"
+}
+
+################################################################################
+################################################################################
+Get_limits_conf() {
+	RESULTAT='notfound'
+	if [ -z "$1" ] ; then
+		echo 'Error missing parameter #1: hard/soft'
+		return 1;
+	fi
+	if [ -z "$2" ] ; then
+		echo 'Error missing parameter #2: key'
+		return 1;
+	fi
+	Get_limits_tmp="$TEMPYASATDIR/getlimitsconf"
+	> "$Get_limits_tmp"
+	if [ -e "$SCAN_ROOT/etc/security/limits.conf" ] ; then
+		grep -v '^#' $SCAN_ROOT/etc/security/limits.conf >> "$Get_limits_tmp"
+	fi
+	if [ -e "$SCAN_ROOT/etc//security/limits.d" ] ; then
+		grep -v '^#' "$SCAN_ROOT/etc/security/limits.d/*.conf" >> "$Get_limits_tmp" 2> /dev/null
+	fi
+	RESULTAT=`grep "$1[[:space:]][[:space:]]*$2" $Get_limits_tmp |sed 's/[[:space:]][[:space:]]*/ /g' | cut -d\  -f4`
+	rm "$Get_limits_tmp"
+}
+
+################################################################################
+################################################################################
+# Check_tool_presence check for a binary, if found, store the full path in RESULTAT
+# if not found, RESULTAT is set to notfound
+# parameter 1 is the tool name
+# parameter 2 (optional) could be LOCAL, meaning we want to search for a tool in the host in case of SCAN_ROOT
+Check_tool_presence() {
+	Debug "DEBUG: FUNCTION CALL Check_tool_presence $*"
+	RESULTAT='notfound'
+	if [ $# -eq 0 ] ; then
+		Display_error 'Error missing parameter #1: binary name'
+		return 1;
+	fi
+	# which is not present on minimum CentOS, 
+	local readonly POSSIBLE_PATH_FOR_WHICH="/usr/bin /bin /usr/sbin /sbin"
+	local ppath
+	local FOUND_WHICH=0
+	for ppath in $POSSIBLE_PATH_FOR_WHICH
+	do
+		if [ -x ${ppath}/which ];then
+			FOUND_WHICH=1
+		fi
+	done
+	if [ $FOUND_WHICH -eq 1 ];then
+		#TODO SCAN_ROOT
+		PATH_TO_TOOL="`which $1 2>> $ERROR_OUTPUT_FILE`"
+		if [ $? -ne 0 ];then
+			return 1;
+		fi
+		RESULTAT="$PATH_TO_TOOL"
+		return 0;
+	else
+		POSSIBLE_PATH="`echo $PATH | tr \: \ `"
+		for ppath in $POSSIBLE_PATH
+		do
+			if [ -x ${ppath}/$1 ];then
+				RESULTAT="${ppath}/$1"
+				return 0;
+			fi
+		done
+	fi
+	return 1;
+}
+
+################################################################################
+################################################################################
+# getent is not available on some platform (OpenWrt)
+# getent cannot be used with SCAN_ROOT
+my_getent() {
+	MY_PASSWD="${TEMPYASATDIR}/my_passwd"
+	if [ -z "$SCAN_ROOT" -o "$SCAN_ROOT" = '/' ];then
+		Check_tool_presence getent
+		if [ "$RESULTAT" = 'notfound' ];then
+			cat /etc/passwd > $MY_PASSWD
+			return 0;
+		else
+			getent passwd > $MY_PASSWD
+			return 0;
+		fi
+	else
+		if [ -e "$SCAN_ROOT/etc/passwd" ];then
+			cat $SCAN_ROOT/etc/passwd > $MY_PASSWD
+			return 0;
+		else
+			Display_error "Error: $SCAN_ROOT/etc/passwd cannot be found"
+			> $MY_PASSWD
+			return 1;
+		fi
+	fi
+}
+
+################################################################################
+################################################################################
+print_desc() {
+	if [ ! -e "$PLUGINS_REP/$1.test" ];then
+		Display_error "ERROR: cannot find plugin $1"
+		return 1;
+	fi
+	#TODO plugin desc variable
+	grep 'YASAT_TEST' "$PLUGINS_REP/$1.test" | sed 's,^[[:space:]]*,,'
+}
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+# find a runinng process
+# arg1 is a regex to find the process with ps
+# arg2 is [root|nonroot|any] for checking user running the process
+# return 1+ if process found
+# return 0 if process not found
+# export all data in $TEMPYASATDIR/find_process.tmp
+find_process() {
+	local found=0
+	if [ $# -le 1 ];then
+		Display_error "ERROR: Not enought parameter to find_process (got $#)"
+		return 0
+	fi
+	create_tmp
+	if [ $? -ne 0 ];then
+		return 0
+	fi
+	#TODO non linux ps ?
+	#TODO use pgrep
+	ps aux |grep "$1" |grep -v grep | sed 's,[[:space:]][[:space:]]*, ,g' > "$TEMPYASATDIR/find_process.tmp"
+	if [ -s "$TEMPYASATDIR/find_process.tmp" ];then
+		found=0
+		Display --indent 2 --text "Process $1" --result FOUND --color BLUE
+		FIND_PROCESS_USER="`cut -d\  -f1 $TEMPYASATDIR/find_process.tmp`"
+		for find_process_user in $FIND_PROCESS_USER
+		do
+			found=$(($found+1))
+			case $2 in
+			root)
+				if [ "$find_process_user" = 'root' ];then
+					Display --indent 4 --text "Process $1 running as" --result "$find_process_user" --color GREEN
+				else
+					Display --indent 4 --text "Process $1 running as" --result "$find_process_user" --color RED
+				fi
+			;;
+			nonroot)
+				if [ "$find_process_user" != 'root' ];then
+					Display --indent 4 --text "Process $1 running as" --result "$find_process_user" --color GREEN
+				else
+					Display --indent 4 --text "Process $1 running as" --result "$find_process_user" --color RED
+				fi
+			;;
+			any)
+				Display --indent 4 --text "Process $1 running as" --result $find_process_user --color BLUE
+			;;
+			*)
+				Display_error "ERROR: invalid arg#2 to find_process"
+			;;
+			esac
+		done
+	fi
+	return $found
+}
+################################################################################
+################################################################################
+# check /proc/xxx/root
+# return 0 if not chrooted
+# return 1 if chrooted
+# TODO for the moment expect only one process
+detect_chroot() {
+	if [ ! -e "$TEMPYASATDIR/find_process.tmp" ];then
+		Display_error "ERROR: detect_chroot need to be launched after find_process"
+		return 2
+	fi
+	if [ ! -e /proc ];then
+		Display_error "ERROR: Testing system without /proc is not implemented yet"
+		return 2
+	fi
+	local pid
+	local inum
+	local chroot_tgt
+	pid="`cut -d\  -f2 $TEMPYASATDIR/find_process.tmp`"
+	chroot_tgt=`readlink /proc/$pid/root`
+	inum="`stat --format=%i $chroot_tgt`"
+	if [ $? -ne 0 ];then
+		Display_error "ERROR: Cannot stat $chroot_tgt"
+		return 2
+	fi
+	Debug "DEBUG: detect_chroot: Found $inum for $pid"
+	if [ $inum -ne 2 ];then
+		BIND_CHROOT_DIR="$chroot_tgt"
+		return 1
+	fi
+	#TODO try to detect -t
+	return 0
+}
+################################################################################
+################################################################################

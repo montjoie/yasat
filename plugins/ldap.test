@@ -1,0 +1,170 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_OPENLDAP_CONF="/etc/openldap/ldap.conf /usr/local/etc/openldap/ldap.conf"
+OPENLDAP_CONF="/etc/openldap/ldap.conf"
+
+for LOCATION in ${POSSIBLE_OPENLDAP_CONF}
+do
+	if [ -e "${LOCATION}" ] ; then
+		OPENLDAP_CONF="${LOCATION}"
+	fi
+done
+
+OPENSLAPD_CONF="`dirname $OPENLDAP_CONF`/slapd.conf"
+
+Title "Check OPENLDAP"
+
+if [ ! -e "$OPENLDAP_CONF" ] ; then
+	return 1;
+fi
+
+Display --indent 2 --text "$OPENLDAP_CONF" --result FOUND --color BLUE
+#get_simple_right $OPENLDAP_CONF
+#if [ "$RESULTAT" = '644' ] ; then
+#	Display --indent 4 --text "Right of $OPENLDAP_CONF" --result OK --color GREEN
+#else
+#	Display --indent 4 --text "Right of $OPENLDAP_CONF" --result "$RESULTAT" --color RED
+#fi
+check_a_file "$OPENLDAP_CONF" 2 root root 644
+
+if [ ! -e "$OPENSLAPD_CONF" ]
+then
+	return 1;
+fi
+
+Display --indent 2 --text "$OPENSLAPD_CONF" --result FOUND --color GREEN
+#get_simple_right $OPENSLAPD_CONF
+#if [ "$RESULTAT" = '640' ] ; then
+#	Display --indent 4 --text "Right of $OPENSLAPD_CONF" --result OK --color GREEN
+#else
+#	Display --indent 4 --text "Right of $OPENSLAPD_CONF" --result "$RESULTAT" --color RED
+#fi
+check_a_file "$OPENSLAPD_CONF" 2 root ldap 640
+
+#TLSCertificateFile
+FindValueOfEqual $OPENSLAPD_CONF TLSCertificateFile JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "TLS cert $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 CERT
+else
+	Display --indent 2 --text "No cert TLS" --result ADVICE --color ORANGE --advice LDAP_NO_TLS
+fi
+
+#TLSCACertificateFile
+FindValueOfEqual $OPENSLAPD_CONF TLSCACertificateFile JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "TLS ca $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 CERT
+else
+	Display --indent 2 --text "No ca TLS" --result ADVICE --color ORANGE --advice LDAP_NO_TLS
+fi
+
+
+#TLSCertificateKeyFile
+FindValueOfEqual $OPENSLAPD_CONF TLSCertificateKeyFile JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "TLS key $RESULTAT" --result OK --color GREEN
+	check_file $RESULTAT 4 PRIVKEY
+else
+	Display --indent 2 --text "No TLS key" --result ADVICE --color ORANGE --advice LDAP_NO_TLS
+fi
+
+if [ ! -z "`grep '^[[:space:]]*allow[[:space:]]bind_v2' $OPENSLAPD_CONF`" ] ; then
+	Display --indent 2 --text "allow bind_v2" --result FOUND --color ORANGE --advice LDAP_BINDV2
+fi
+
+if [ -z "`grep '^[[:space:]]*disallow[[:space:]]bind_anon' $OPENSLAPD_CONF`" ] ; then
+	Display --indent 2 --text "disallow bind_anon" --result NOTFOUND --color ORANGE --advice LDAP_BIND_ANON
+else
+	Display --indent 2 --text "disallow bind_anon" --result FOUND --color GREEN
+fi
+if [ -z "`grep '^[[:space:]]*require[[:space:]]authc' $OPENSLAPD_CONF`" ] ; then
+	Display --indent 2 --text "require authc" --result NOTFOUND --color ORANGE --advice LDAP_REQUIRE_AUTHC
+else
+	Display --indent 2 --text "require authc" --result FOUND --color GREEN
+fi
+
+#TODO hint for replication
+
+#clear password
+grep rootpw $OPENSLAPD_CONF |
+while read line
+do
+	FOUND=0
+	PASS=`echo $line | sed 's/^.*rootpw[[:space:]]*//g'`
+	if [ `echo $PASS |grep '{SHA}'` ] ; then
+		Display --indent 2 --text "rootpw $PASS" --result SHA --color GREEN
+		FOUND=1
+	fi
+	if [ `echo $PASS |grep '{SSHA}'` ] ; then
+		Display --indent 2 --text "rootpw $PASS" --result SSHA --color GREEN
+		FOUND=1
+	fi
+
+	if [ `echo $PASS |grep '{MD5}'` ] ; then
+		Display --indent 2 --text "rootpw $PASS" --result MD5 --color GREEN
+		FOUND=1
+	fi
+	if [ `echo $PASS |grep '{SMD5}'` ] ; then
+		Display --indent 2 --text "rootpw $PASS" --result SMD5 --color GREEN
+		FOUND=1
+	fi
+	if [ `echo $PASS |grep '{CLEARTEXT}'` ] ; then
+		Display --indent 2 --text "rootpw $PASS" --result CLEARTEXT --color RED --advice LDAP_PASSWD_CLEAR
+		FOUND=1
+	fi
+	if [ `echo $PASS |grep '{CRYPT}'` ] ; then
+		Display --indent 2 --text "rootpw $PASS" --result CRYPT --color GREEN
+		FOUND=1
+	fi
+	if [ $FOUND -eq 0 ] ; then
+		Display --indent 2 --text "rootpw " --result CLEARTEXT --color RED --advice LDAP_PASSWD_CLEAR
+	fi
+
+done
+
+#try to find under which user openldap is running
+LDAPUSER=''
+LDAPUSER="`ps aux | grep slapd |grep -v grep | cut -d\  -f1`"
+
+if [ -z "$LDAPUSER" ] ; then
+	LDAPUSER='ldap'
+fi
+
+#ubuntu use /var/lib/slapd/
+#gentoo use /var/lib/openldap-data/
+#redhat use /var/lib/ldap
+
+for ldapdata in /var/lib/slapd/ /var/lib/openldap-data/
+do
+	if [ -e "${ldapdata}" ] ; then
+		Display --indent 2 --text "LDAP DATA $ldapdata" --result FOUND --color GREEN
+		TMP_RESULT="${TEMPYASATDIR}/slapd.cdo"
+		check_directory_owner $ldapdata "$LDAPUSER" $TMP_RESULT 4
+		TMP_RESULT="${TEMPYASATDIR}/slapd.cdg"
+		check_directory_group $ldapdata "$LDAPUSER" $TMP_RESULT 4
+		TMP_RESULT="${TEMPYASATDIR}/slapd.cdother"
+		#TODO better advice
+		check_directory_others $ldapdata $TMP_RESULT 4 GLOBAL_FILE_OTHER_READABLE
+	fi
+done
+return 0;

@@ -1,0 +1,16 @@
+EN,SSH_ROOT_LOGIN=Disable direct root login
+  <div class="conf">PermitRootLogin no</div>
+  Tt's better for audit to see nominal login account before su to root or sudo
+ADVICEEND
+EN,SSH_X11FORWARDING=Disable X11Forwarding
+  <div class="conf">X11Forwarding no</div>
+  According to manpage, When X11 forwarding is enabled, there may be additional exposure to the server and to client displays if the sshd(8) proxy
+  display is configured to listen on the wildcard address (see X11UseLocalhost below), though this is not the default.
+  Additionally, the authentication spoofing and authentication data verification and substitution occur on the client side.  The security
+  risk of using X11 forwarding is that the client's X11 display server may be exposed to attack when the SSH client requests
+  forwarding (see the warnings for ForwardX11 in ssh_config(5)).
+ADVICEEND
+EN,SSH_IGNORERHOSTS=Disable IgnoreRhosts
+  <div class="conf">IgnoreRhosts yes</div>
+  For security reasons it is recommended to no use rhosts or shosts files for authentication.
+ADVICEEND

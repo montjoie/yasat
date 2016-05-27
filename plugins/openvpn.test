@@ -1,0 +1,121 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_OPENVPN_CONF="/etc/openvpn /usr/local/etc/openvpn"
+OPENVPN_CONF_REP=""
+
+for LOCATION in ${POSSIBLE_OPENVPN_CONF}
+do
+	if [ -d "${LOCATION}/" ]
+	then
+		OPENVPN_CONF_REP="${LOCATION}"
+	fi
+done
+
+Title "Check OpenVPN"
+
+if [ -z "$OPENVPN_CONF_REP" ] ;then
+	return 1;
+fi
+
+if [ ! -e "$OPENVPN_CONF_REP" ] ;then
+	return 1;
+fi
+
+Display --indent 2 --text "$OPENVPN_CONF_REP" --result FOUND --color GREEN
+
+TESTNAME='YASAT_TEST_OPENVPN1 Check that openvpn configuration file is owned by root'
+RESULTAT=`find $OPENVPN_CONF_REP ! -type l ! -user root -exec ls {} \;`
+if [ ! -z "$RESULTAT" ] ;then
+	Display --indent 2 --text "owner of $OPENVPN_CONF_REP " --result WARNING --color RED
+#	echo "    $RESULTAT"
+else
+	Display --indent 2 --text "owner of $OPENVPN_CONF_REP " --result OK --color GREEN
+fi
+
+#RESULTAT=`find $OPENVPN_CONF_REP ! -type l ! -group $ROOTGROUP -exec ls {} \;`
+#if [ ! -z "$RESULTAT" ]
+#then
+#	Display --indent 2 --text "group of $OPENVPN_CONF_REP " --result WARNING --color RED
+#	echo "    $RESULTAT"
+#else
+#	Display --indent 2 --text "group of $OPENVPN_CONF_REP " --result OK --color GREEN
+#fi
+
+#RESULTAT=`find $OPENVPN_CONF_REP ! -type l -perm $ORWX -exec ls {} \;`
+#if [ ! -z "$RESULTAT" ]
+#then
+#	Display --indent 2 --text "Rights of $OPENVPN_CONF_REP " --result WARNING --color RED
+#	echo "    $RESULTAT"
+#else
+#	Display --indent 2 --text "Rights of $OPENVPN_CONF_REP " --result OK --color GREEN
+#fi
+
+TMP_RESULT="${TEMPYASATDIR}/openvpn.tmpresult"
+
+TESTNAME='YASAT_TEST_OPENVPN2 Check that openvpn configuration file is under the right group'
+check_directory_group "$OPENVPN_CONF_REP" $ROOTGROUP "$TMP_RESULT" 2
+TESTNAME='YASAT_TEST_OPENVPN3 Check that openvpn configuration file is not readable by others'
+check_directory_others "$OPENVPN_CONF_REP" "$TMP_RESULT" 2 GLOBAL_FILE_OTHER_READABLE
+
+#TODO check that there some .conf file
+OPENVPN_CONF_LIST=`ls ${OPENVPN_CONF_REP}/*.conf`
+for i in $OPENVPN_CONF_LIST
+do
+	Display --indent 2 --text "$i" --result FOUND --color GREEN
+	TESTNAME='YASAT_TEST_OPENVPN4 Check if User is gived'
+	FindValueOf $i 'user' JUSTTEST
+	if [ -z "$RESULTAT" ] ;then
+		Display --indent 4 --text "User " --result NOTFOUND --color RED
+	else
+		Display --indent 4 --text "User " --result "$RESULTAT" --color GREEN
+	fi
+	TESTNAME='YASAT_TEST_OPENVPN4 Check if a certificate is used'
+	FindValueOf $i 'cert' JUSTTEST
+	if [ -z "$RESULTAT" ] ;then
+		Display --indent 4 --text "cert " --result NOTFOUND --color RED
+	else
+		Display --indent 4 --text "cert " --result "$RESULTAT" --color GREEN
+		TESTNAME='YASAT_TEST_OPENVPN5 Check the certificate used by openvpn'
+		check_file $RESULTAT 6 CERT
+	fi
+	TESTNAME='YASAT_TEST_OPENVPN6 Check if a CA certificate is used'
+	FindValueOf $i 'ca' JUSTTEST
+	if [ -z "$RESULTAT" ] ;then
+		Display --indent 4 --text "ca " --result NOTFOUND --color RED
+	else
+		Display --indent 4 --text "ca " --result "$RESULTAT" --color GREEN
+		TESTNAME='YASAT_TEST_OPENVPN7 Check the CA certificate used by openvpn'
+		check_file $RESULTAT 6 CERT
+	fi
+	TESTNAME='YASAT_TEST_OPENVPN8 Check if a private key is used'
+	FindValueOf $i 'key' JUSTTEST
+	if [ -z "$RESULTAT" ] ;then
+		Display --indent 4 --text "key " --result NOTFOUND --color RED
+	else
+		Display --indent 4 --text "key " --result "$RESULTAT" --color GREEN
+		TESTNAME='YASAT_TEST_OPENVPN9 Check the private key used by openvpn'
+		check_file $RESULTAT 6 PRIVKEY
+	fi
+done
+
+
+return 0;

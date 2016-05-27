@@ -1,0 +1,5 @@
+EN,VSFTPD_ANONYMOUS_LOGIN=Disable anonymous connection if possible
+EN,VSFTPD_ANONYMOUS_UPLOAD=Disable anonymous upload if possible
+EN,VSFTPD_ANONYMOUS_ASCII=Disable ASCII mode
+EN,VSFTPD_ANONYMOUS_NO_XFERLOG=Add an xferlog entry
+EN,VSFTPD_ANONYMOUS_NOCHROOTLOCAL=Chroot local users if possible

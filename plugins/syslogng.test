@@ -1,0 +1,79 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_SYSLOGNG_CONF="/etc/syslog-ng/syslog-ng.conf /usr/local/etc/syslog-ng/syslog-ng.conf"
+SYSLOGNG_CONF=""
+
+for LOCATION in ${POSSIBLE_SYSLOGNG_CONF}
+do
+	if [ -e "${LOCATION}" ]
+	then
+		SYSLOGNG_CONF="${LOCATION}"
+	fi
+done
+
+Title "Check syslog-ng"
+
+if [ -z "$SYSLOGNG_CONF" ]
+then
+	return 1;
+fi
+
+if [ ! -e "$SYSLOGNG_CONF" ]
+then
+	return 1;
+fi
+
+Display --indent 2 --text "$SYSLOGNG_CONF" --result FOUND --color GREEN
+
+SYSLOGNGCONFRIGHT="`stat $STAT_RIGHT $SYSLOGNG_CONF`"
+if [ "$SYSLOGNGCONFRIGHT=" != '640' -a "$SYSLOGNGCONFRIGHT" != '600' ]
+then
+	Display --indent 2 --text "Rights of $SYSLOGNG_CONF" --result WARNING --color RED --advice GLOBAL_FILE_CHMOD640
+else
+	Display --indent 2 --text "Rights of $SYSLOGNG_CONF" --result OK --color GREEN
+fi
+
+if [ "`stat $STAT_USER $SYSLOGNG_CONF`" != 'root' ]
+then
+	Display --indent 2 --text "owner of $SYSLOGNG_CONF" --result WARNING --color RED --advice GLOBAL_FILE_MUST_BE_OWNED_BT_ROOT
+else
+	Display --indent 2 --text "owner of $SYSLOGNG_CONF" --result OK --color GREEN
+fi
+
+if [ "`stat $STAT_GROUP $SYSLOGNG_CONF`" != "$ROOTGROUP" ]
+then
+	Display --indent 2 --text "group of $SYSLOGNG_CONF" --result WARNING --color RED --advice GLOBAL_FILE_MUST_BE_GROUPED_BT_ROOT
+else
+	Display --indent 2 --text "group of $SYSLOGNG_CONF" --result OK --color GREEN
+fi
+
+#TODO check use_dns
+#if [ `grep -v '^#*' $SYSLOGNG_CONF | grep 'use_dns'` ]
+#then
+#	echo "toto"
+#fi
+
+#TODO for logging local1-6
+
+#TODO loghost tcp or udp better ?
+
+return 0;

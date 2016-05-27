@@ -1,0 +1,100 @@
+Hello,
+
+Thanks for using Y.A.S.A.T.
+
+1 PRESENTATION
+
+    YASAT (Yet Another Stupid Audit Tool) is a simple stupid audit tool.
+    Its goal is to be as simple as possible with minimum binary dependencies (only sed, grep and cut)
+    Second goal is to document each test with maximum information and links to official documentation.
+
+    It do many tests for checking security configuration issue or others good practice. 
+    You may think that some test is pedantic, useless or too paranoiac, sorry for that, it is just my point of view of I want to check.
+
+    Don't forget that YASAT is not the only audit tool,
+    you can also use tiger, lynis, sectool, nessus, openvas, Debian's checksecurity, etc... for checking your systems
+
+
+2 INSTALLATION, CONFIGURATION
+
+    Dependencies: sed, cut, grep. YASAT will use also openssl for some tests.
+    Latest version can be found at http://yasat.sourceforge.net
+
+    2.1 On-my-home installation
+	Simply untar the yasat tarball
+	tar xvzf yasat-version.tar.gz
+
+	Change directory to yasat directory
+	cd yasat
+
+	and type ./yasat for having the list of options.
+
+    2.2 On the FS installation
+	Just do make install
+	and type yasat
+
+    You can configure override some variable of yasat by using /etc/yasat/yasat.conf or /usr/local/etc/yasat/yasat.conf or ~/.yasat/yasat.conf (Priority in this order)
+    Example 1: if you are under Linux kernel and dont have compiled CONFIG_IKCONFIG_PROC, you can provided .config through YASAT_PATH_TO_KERNEL_CONFIG .
+    Example 2: You can give to YASAT the path to a manual installation of apache through POSSIBLE_APACHE_CONFIG_LOCATION .
+
+3 USAGE
+
+    For standard test, type ./yasat -s
+
+
+4 PATCHS, CRITICS
+
+    Patch, contributions, critics ( even bad:) ) are welcome.
+    You can mail me at clabbe.montjoie@gmail.com with, and if possible, a subject beginning by [YASAT].
+    You can also perhaps find me on channel #yasat on Freenode IRC servers.
+
+
+5 CONTENTS, PLUGIN WRITING
+    (TO FINISH)
+
+    ./tests/
+    In this directory, you will find all scripts for testing yasat (non regressions, etc... )
+
+    ./plugins/
+    In this directory, you will find plugins.
+    A plugin is segmented in 3 files:
+	plugin.test		: All test to do for this plugin
+        plugin.data		: All data necessary for the plugin (ex: all directives to check )
+	plugin.advice		: List of advice for each check made by the plugin
+
+    For writing plugins you have many functions at your disposal
+    	get_simple_right()
+	get_full_right()
+	get_path_from_apache_directives()
+	check_file()
+	check_directory_group()
+	check_directory_others()
+	check_directory_writable_by_group()
+	FindValueOf()
+	FindValueOfEqual()
+	FindValueOfDDot()
+	CheckPresenceOf()
+	Title()
+
+	For referencing tests done by YASAT, now use the following comment.
+	Put external reference like PCIDSS RedHat compliance etc...
+	#CCE http://cce.mitre.org/lists/cce_list.html
+	#YASAT_TEST_name_of_test [RH=xxx] [PCIDSS=xx] [CCEID=xxx] [NSAG=xxx] description of the test
+
+6 THANKS
+	thanks to all alpha/betatesters
+	ptipimousse
+	cain
+	khali
+	Etienne
+	JC
+	Eldwin
+	Celius
+	Raphink
+	Damien B.
+	Mikal Sande
+	Richard Dumais
+	Renard Olivier
+	Renard Christophe
+	Marot Nicolas
+

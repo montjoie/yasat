@@ -1,0 +1,199 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+if [ -z "$POSSIBLE_APACHE_BIN" ] ; then
+	POSSIBLE_APACHE_BIN="/usr/sbin/apache2 /usr/local/sbin/httpd /usr/local/sbin/apache2 /usr/sbin/httpd"
+fi
+APACHE_BIN=""
+
+for LOCATION in ${POSSIBLE_APACHE_BIN}
+do
+	if [ -x "$SCAN_ROOT/${LOCATION}" ] ;then
+		APACHE_BIN="`echo $SCAN_ROOT/${LOCATION} | sed 's,//*,/,g'`"
+	fi
+done
+
+#for LOCATION in ${POSSIBLE_APACHE_CONFIG_LOCATION}
+#do
+#	if [ -d "${LOCATION}/" ]
+#	then
+#		APACHE_CONF_REP="${LOCATION}"
+#	fi
+#done
+Find_apache_conf_location
+
+Title "Check apache modules"
+
+if [ -z "${APACHE_BIN}" ] ; then
+	Display --indent 2 --text "No apache binary found" --result NOTFOUND --color BLUE
+	return 1;
+fi
+
+if [ -x "$APACHE_BIN" ] ; then
+	Display --indent 2 --text "$APACHE_BIN" --result FOUND --color GREEN
+else
+	Display --indent 2 --text "$APACHE_BIN is not executable" --result ERROR --color RED
+	return 1;
+fi
+
+#if [ -l $APACHE_BIN ] ; then
+#	TMP="`readlink $APACHE_BIN`"
+#	if [ -z "`echo $TMP | grep '\.\.'`" ] ; then
+#		APACHE_BIN="$TMP"
+#	else
+#		APACHE_BIN="`basename ${APACHE_BIN}/$TMP`"
+#	fi
+#fi
+
+check_file "$APACHE_BIN" 2 BINARY
+
+if [ "$LINUX_VERSION" = "Gentoo" ] ;then
+	. /etc/conf.d/apache2
+	APACHE_BIN="$APACHE_BIN $APACHE2_OPTS"
+fi
+
+if [ "$LINUX_VERSION" = "Debian" ] ;then
+	if [ -e "$SCAN_ROOT/etc/apache2/envvars" ];then
+		. "$SCAN_ROOT/etc/apache2/envvars"
+	else
+		Display --indent 2 --text "Missing /etc/apache2/envvars" --result WARN --color ORANGE
+	fi
+fi
+
+Check_auto_start $APACHE_PACKAGE_NAME apache_modules any
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
+	Display --indent 2 --text "$APACHE_PACKAGE_NAME is started at boot" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "$APACHE_PACKAGE_NAME is started at boot" --result YES --color BLUE
+	else
+		Display --indent 2 --text "$APACHE_PACKAGE_NAME is started at boot" --result NO --color GREEN
+	fi
+fi
+
+TESTNAME='YASAT_TEST_APACHE_PACKAGE NSAG=3.16.2.1 CCEID=4346-3 Check if apache is installed via a package'
+Is_installed_via_package_manager $APACHE_PACKAGE_NAME
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
+	Display --indent 2 --text "$APACHE_PACKAGE_NAME installation" --result UNKNOWN --color BLUE
+	Compliance --result 'NOTTESTED' --plugin apache --nsag 3.16.2.1 --cce 4346-3
+else
+	if [ "$RESULTAT" = "yes" ] ;then
+		Display --indent 2 --text "$APACHE_PACKAGE_NAME is installed by package" --result GOOD --color GREEN
+		Compliance --result 'OK' --plugin apache --nsag 3.16.2.1 --cce 4346-3
+	else
+		Display --indent 2 --text "$APACHE_PACKAGE_NAME is installed at hand" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND
+		Compliance --result 'NOK' --plugin apache --nsag 3.16.2.1 --cce 4346-3
+	fi
+fi
+
+
+if [ ! -d $APACHE_CONF_REP ] ;then
+        Display --indent 2 --text "No apache found" --result NOTFOUND --color BLUE
+        return 1;
+else
+        Display --indent 2 --text "$APACHE_CONF_REP " --result FOUND --color GREEN
+fi
+
+prepare_apache_conf $APACHE_CONF_REP
+APACHE_CONF_LOCATION_TO_TEST="${TEMPYASATDIR}/apache.conf"
+if [ ! -e "$APACHE_CONF_LOCATION_TO_TEST" ] ;then
+	echo "Error no $APACHE_CONF_LOCATION_TO_TEST"
+	return 1;
+fi
+
+if [ $SCAN_ROOT = '/' ] ; then
+	$APACHE_BIN -t 2>> $ERROR_OUTPUT_FILE
+	if [ $? -eq 1 ] ;then
+		Display --indent 2 --text "$APACHE_BIN return with ERROR CODE" --result WARNING --color RED --advice APACHE_MODULE_ERROR_CODE
+		return 1;
+	fi
+	TESTNAME='YASAT_TEST_APACHE_CORE_MODULES NSAG=3.16.2.2 Check builtin modules of apache'
+	TMP_RESULT="${TEMPYASATDIR}/apache_core.out"
+	$APACHE_BIN -l 2>> $ERROR_OUTPUT_FILE > $TMP_RESULT
+	if [ -z "`grep -vE '^Compiled|[[:space:]]core.c|worker.c|http_core.c|mod_so.c' $TMP_RESULT`" ] ; then
+		Display --indent 2 --text "builtin modules" --result OK --color GREEN
+		Compliance --result OK --plugin apache --nsag 3.16.2.2
+	else
+		Display --indent 2 --text "builtin modules" --result BAD --color ORANGE
+		Compliance --result NOK --plugin apache --nsag 3.16.2.2
+	fi
+else
+	Display --indent 2 --text 'Dynamic check' --result SKIP --color BLUE
+fi
+
+if [ -e "${PLUGINS_REP}/apache_modules.data" ] ; then
+	for MODULE in `$APACHE_BIN -M 2>&1 |grep _module | cut -d\  -f2`
+	do
+		if [ ! -z "`grep -v '^#' ${PLUGINS_REP}/apache_modules.data | grep ^$MODULE`" ] ; then
+			Display --indent 2 --text "Module $MODULE necessary ?" --result WARNING --color ORANGE --advice APACHE_MODULE_DISABLE_UNNECESSARY_MODULES
+		fi
+	done
+else
+	Display --indent 2 --text "No ${PLUGINS_REP}/apache_modules.data" --result WARNING --color RED --advice GLOBAL_INTERNAL_ERROR
+fi
+
+#check default MPM
+#MaxClients|200|NM
+#StartServers|100|NM
+#MinSpareServers|50|NM
+#MaxSpareServers|250|NM
+
+APACHEMPM=`$APACHE_BIN -M 2>&1 |grep _module |grep mpm_ | cut -d\  -f2 | cut -d\_ -f2`
+Display --indent 2 --text "MPM " --result "${APACHEMPM}" --color BLUE
+
+#for basefile in `find $APACHE_CONF_REP ! -type d | grep .conf`
+#do
+	MPMFOUND=0
+	egrep -v "^[[:space:]]*#" $APACHE_CONF_LOCATION_TO_TEST |
+	while read line
+	do
+		if [ ! -z "`echo $line | grep -i "<IfModule mpm_${APACHEMPM}_module"`" ] ;then
+			Display --indent 2 --text "Find $APACHEMPM options" --result FOUND --color GREEN
+			MPMFOUND=1
+		fi
+		if [ ! -z "`echo $line | grep -i '</IfModule>'`" ] ;then
+			MPMFOUND=0
+		fi
+		if [ $MPMFOUND -eq 1 ] ;then
+			if [ ! -z "`echo $line | grep -i '^[[:space:]]*MaxClients'`" ] ;then
+				VALUE=`echo $line | sed 's/^[[:space:]]*//g' | cut -d\  -f2`
+				Display --indent 4 --text "MaxClients " --result "$VALUE" --color BLUE
+			fi
+			if [ ! -z "`echo $line | grep -i '^[[:space:]]*StartServers'`" ] ;then
+				VALUE=`echo $line | sed 's/^[[:space:]]*//g' | cut -d\  -f2`
+				Display --indent 4 --text "StartServers " --result "$VALUE" --color BLUE
+			fi
+			if [ ! -z "`echo $line | grep -i '^[[:space:]]*MinSpareServers'`" ] ;then
+				VALUE=`echo $line | sed 's/^[[:space:]]*//g' | cut -d\  -f2`
+				Display --indent 4 --text "MinSpareServers " --result "$VALUE" --color BLUE
+			fi
+			if [ ! -z "`echo $line | grep -i '^[[:space:]]*MaxSpareServers'`" ] ;then
+				VALUE=`echo $line | sed 's/^[[:space:]]*//g' | cut -d\  -f2`
+				Display --indent 4 --text "MaxSpareServers " --result "$VALUE" --color BLUE
+			fi
+
+		fi
+	done
+#done
+
+return 0;
+
+

@@ -1,0 +1,4 @@
+EN,PROCESS_NOT_BE_ROOT=This process must not be run as root
+EN,PROCESS_ONLY_ROOT=Logically, this process must be run as root (send a bug ?)
+EN,PROCESS_MAY_NOT_BE_ROOT=Does this process need to be run as root ?
+EN,PROCESS_CAN_BE_ROOT=This process may be run as a non-root user in some cases

@@ -1,0 +1,30 @@
+EN,NETWORK_ICMP_ECHO_IGNORE_BROADCASTS=Set icmp_echo_ignore_broadcasts to 1
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_FIN_TIMEOUT=Decrease tcp_fin_timeout value
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_IGNORE_BOGUS_ERROR_RESPONSES=Set icmp_ignore_bogus_error_responses to 1
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_CONF_ALL_ACCEPT_REDIRECTS=TODO
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_CONF_DEFAULT_ACCEPT_REDIRECTS=TODO
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_TCP_SYNCOOKIES=Enable TCP_SYN_COOKIE
+  See <a href="http://en.wikipedia.org/wiki/SYN_cookie">http://en.wikipedia.org/wiki/SYN_cookie</a>
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_CONF_ALL_ACCEPT_SOURCE_ROUTE=TODO
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_CONF_DEFAULT_ACCEPT_SOURCE_ROUTE=TODO
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_CONF_ENABLE_IP_SPOOFING_PROTECTION=Enable IP spoofing protection
+  For a complete security guide see <a href="http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9">http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9</a>
+ADVICEEND
+EN,NETWORK_CONF_TODO=TODO
+#http://www.gentoo.org/doc/fr/security/security-handbook.xml?part=1&chap=9

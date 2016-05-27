@@ -1,0 +1,230 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+SSH_CONF_REP="${SCAN_ROOT}/etc/ssh/"
+
+Title "Check ssh and sshd configurations"
+
+if [ ! -e "$SSH_CONF_REP" ]; then
+	echo "strange no ssh directory"
+	return 1;
+fi
+
+TESTNAME='YASAT_TEST_SSH Disable and Remove OpenSSH Software'
+Compliance --result 'NOTTESTED' --plugin ssh --nsag 3.5.1.1 --cce 4268-9 --cce 4272-1
+TESTNAME='YASAT_TEST_SSH Remove SSH Server iptables Firewall Exception'
+Compliance --result 'NOTTESTED' --plugin ssh --nsag 3.5.1.2 --cce 4295-2
+TESTNAME='YASAT_TEST_SSH Limit Users SSH Access'
+Compliance --result 'NOTTESTED' --plugin ssh --nsag 3.5.2.2
+TESTNAME='YASAT_TEST_SSH Set Idle Timeout Interval for User Logins'
+Compliance --result 'NOTTESTED' --plugin ssh --nsag 3.5.2.3 --cce 14061-6
+TESTNAME='YASAT_TEST_SSH Enable a Warning Banner'
+Compliance --result 'NOTIMPL' --plugin ssh --nsag 3.5.2.8 --cce 4431-3
+TESTNAME='YASAT_TEST_SSH Do Not Allow Users to Set Environment Options'
+Compliance --result 'NOTIMPL' --plugin ssh --nsag 3.5.2.9 --cce 14716-5
+TESTNAME='YASAT_TEST_SSH Use Only Approved Ciphers in Counter Mode'
+Compliance --result 'NOTIMPL' --plugin ssh --nsag 3.5.2.10 --cce 14491-5
+TESTNAME='YASAT_TEST_SSH Strengthen Firewall Configuration if Possible'
+Compliance --result 'NOTIMPL' --plugin ssh --nsag 3.5.2.11
+
+#TODO not always /usr/sbin/sshd
+check_file "${SCAN_ROOT}/usr/sbin/sshd" 2 BINARY
+
+TESTNAME='YASAT_TEST_SSH_PERMITROOTLOGIN NSAG=3.5.2.6 CCEID=4387-7 PermitRootLogin must be set to no'
+FindValueOf ${SSH_CONF_REP}/sshd_config PermitRootLogin JUSTTEST 
+check_value "$RESULTAT" 'no' 'false' 'PermitRootLogin' 'RED' 'SSH_ROOT_LOGIN' 3.5.2.6 4387-7
+#if [ ! -z "$RESULTAT" ] ; then
+#	if [ "$RESULTAT" = "yes" ] ;then
+#		Display --indent 2 --text "PermitRootLogin" --result "$RESULTAT" --color RED --advice SSH_ROOT_LOGIN
+#	else
+#		Display --indent 2 --text "PermitRootLogin" --result "$RESULTAT" --color GREEN
+#	fi
+#else
+#	Display --indent 2 --text "PermitRootLogin" --result NOTFOUND --color RED --advice SSH_ROOT_LOGIN
+#fi
+
+TESTNAME='YASAT_TEST_SSH_2 NSAG=3.5.2.7 CCEID=3660-8 PermitEmptyPassword must be set to no'
+FindValueOf ${SSH_CONF_REP}/sshd_config PermitEmptyPassword JUSTTEST
+check_value "$RESULTAT" 'no' 'false' 'PermitEmptyPassword' 'RED' 'TODO' 3.5.2.7 3660-8
+#if [ ! -z "$RESULTAT" ] ; then
+#	if [ "$RESULTAT" = "no" ] ;then
+#		Display --indent 2 --text "PermitEmptyPassword" --result "$RESULTAT" --color RED
+#	else
+#		Display --indent 2 --text "PermitEmptyPassword" --result "$RESULTAT" --color GREEN
+#	fi
+#else
+#	Display --indent 2 --text "PermitEmptyPassword" --result NOTFOUND --color GREEN
+#fi
+
+TESTNAME='YASAT_TEST_SSH_3 NSAG=3.5.2.5 CCEID=4370-3 HostbasedAuthentication must be set to no'
+FindValueOf ${SSH_CONF_REP}/sshd_config HostbasedAuthentication JUSTTEST
+check_value "$RESULTAT" 'no' 'false' 'HostbasedAuthentication' 'RED' 'TODO' 3.5.2.5 4370-3
+#if [ ! -z "$RESULTAT" ] ;then
+#	if [ "$RESULTAT" = "yes" ] ;then
+#		Display --indent 2 --text "HostbasedAuthentication" --result "$RESULTAT" --color RED
+#	else
+#		Display --indent 2 --text "HostbasedAuthentication" --result "$RESULTAT" --color GREEN
+#	fi
+#else
+#	Display --indent 2 --text "HostbasedAuthentication" --result NOTFOUND --color GREEN
+#fi
+
+TESTNAME='YASAT_TEST_SSH_4 RhostsAuthentication must be set to no'
+FindValueOf ${SSH_CONF_REP}/sshd_config RhostsAuthentication JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	if [ "$RESULTAT" = "yes" ] ;then
+		Display --indent 2 --text "RhostsAuthentication" --result "$RESULTAT" --color RED
+	else
+		Display --indent 2 --text "RhostsAuthentication" --result "$RESULTAT" --color GREEN
+	fi
+else
+	Display --indent 2 --text "RhostsAuthentication" --result NOTFOUND --color GREEN
+fi
+
+TESTNAME='YASAT_TEST_SSH_5 NSAG=3.5.2.1 CCEID=4325-7 Protocol must be set to 2'
+FindValueOf ${SSH_CONF_REP}/sshd_config Protocol JUSTTEST
+if [ ! -z "$RESULTAT" ] ;then
+	if [ "$RESULTAT" = "2" ] ;then
+		Display --indent 2 --text "Protocol" --result "$RESULTAT" --color GREEN
+		Compliance --result OK --plugin ssh --nsag 3.5.2.1 --cce 4325-7
+	else
+		Display --indent 2 --text "Protocol" --result "$RESULTAT" --color RED
+		Compliance --result NOK --plugin ssh --nsag 3.5.2.1 --cce 4325-7
+	fi
+else
+	Display --indent 2 --text "Protocol" --result NOTFOUND --color GREEN
+	Compliance --result OK --plugin ssh --nsag 3.5.2.1 --cce 4325-7
+fi
+
+TESTNAME="YASAT_TEST_SSH_STRICT_MODES StrictModes must be set to yes"
+FindValueOf ${SSH_CONF_REP}/sshd_config StrictModes JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	if [ "$RESULTAT" = "no" ] ; then
+		Display --indent 2 --text "StrictModes" --result "$RESULTAT" --color RED
+	else
+		Display --indent 2 --text "StrictModes" --result "$RESULTAT" --color GREEN
+	fi
+else
+	Display --indent 2 --text "StrictModes" --result NOTFOUND --color GREEN
+fi
+
+TESTNAME="YASAT_TEST_SSH_7 UsePrivilegeSeparation must be set to yes"
+FindValueOf ${SSH_CONF_REP}/sshd_config UsePrivilegeSeparation JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	if [ "$RESULTAT" = "no" ] ; then
+		Display --indent 2 --text "UsePrivilegeSeparation" --result "$RESULTAT" --color RED
+	else
+		Display --indent 2 --text "UsePrivilegeSeparation" --result "$RESULTAT" --color GREEN
+	fi
+else
+	Display --indent 2 --text "UsePrivilegeSeparation" --result NOTFOUND --color GREEN
+fi
+
+TESTNAME="YASAT_TEST_SSH_8 X11Forwarding must be set to no"
+FindValueOf ${SSH_CONF_REP}/sshd_config X11Forwarding JUSTTEST
+check_value "$RESULTAT" 'no' 'false' 'X11Forwarding' 'ORANGE' 'SSH_X11FORWARDING'
+
+TESTNAME='YASAT_TEST_SSH_9 NSAG=3.5.2.4 CCEID=4475-0 IgnoreRhosts must be set to yes'
+FindValueOf ${SSH_CONF_REP}/sshd_config IgnoreRhosts JUSTTEST
+check_value "$RESULTAT" 'yes' 'false' 'IgnoreRhosts' 'RED' 'SSH_IGNORERHOSTS' 3.5.2.4 4475-0
+
+#check HostKey
+#grep ^HostKey "${SSH_CONF_REP}/sshd_config"
+
+TESTNAME="YASAT_TEST_SSH_HOST_DSA_KEY Check ssh_host_dsa_key permissions"
+if [ -e "${SSH_CONF_REP}"/ssh_host_dsa_key ] ; then
+	check_private_key "${SSH_CONF_REP}"/ssh_host_dsa_key 2 sshd
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+TESTNAME="YASAT_TEST_SSH_HOST_DSA_KEY_PUB Check ssh_host_dsa_key.pub permissions"
+if [ -e "${SSH_CONF_REP}"/ssh_host_dsa_key ] ; then
+	check_a_file "${SSH_CONF_REP}"/ssh_host_dsa_key.pub 2 root "$ROOTGROUP" 644
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+
+TESTNAME="YASAT_TEST_SSH_HOST_RSA_KEY Check ssh_host_rsa_key permissions and keysize"
+if [ -e "${SSH_CONF_REP}"/ssh_host_rsa_key ] ; then
+	check_private_key "${SSH_CONF_REP}"/ssh_host_rsa_key 2 sshd
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+TESTNAME="YASAT_TEST_SSH_HOST_RSA_KEY_PUB Check ssh_host_rsa_key.pub permissions"
+if [ -e "${SSH_CONF_REP}"/ssh_host_rsa_key ] ; then
+	check_a_file "${SSH_CONF_REP}"/ssh_host_rsa_key.pub 2 root "$ROOTGROUP" 644
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+
+TESTNAME="YASAT_TEST_SSH_HOST_KEY Check ssh_host_key permissions"
+if [ -e "${SSH_CONF_REP}"/ssh_host_key ] ; then
+#	check_a_file "${SSH_CONF_REP}"/ssh_host_key 2 root "$ROOTGROUP" 600
+	check_private_key "${SSH_CONF_REP}"/ssh_host_key 2 sshd
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+TESTNAME="YASAT_TEST_SSH_HOST_KEY_PUB Check ssh_host_key.pub permissions"
+if [ -e "${SSH_CONF_REP}"/ssh_host_key ] ; then
+	check_a_file "${SSH_CONF_REP}"/ssh_host_key.pub 2 root "$ROOTGROUP" 644
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+
+TESTNAME="YASAT_TEST_SSH_SSHD_CONFIG_PERM Check sshd_config_key permissions"
+if [ -e "${SSH_CONF_REP}"/sshd_config ] ; then
+	check_a_file "${SSH_CONF_REP}"/sshd_config 2 root "$ROOTGROUP" 600
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+TESTNAME="YASAT_TEST_SSH_SSH_CONFIG_PERM Check sshd_config_key permissions"
+if [ -e "${SSH_CONF_REP}"/ssh_config ] ; then
+	check_a_file "${SSH_CONF_REP}"/ssh_config 2 root "$ROOTGROUP" 644
+	if [ $? -eq 0 ];then
+		Compliance --result OK --plugin ssh
+	else
+		Compliance --result NOK --plugin ssh
+	fi
+fi
+
+#TODO if Ciphers is set, check for old cipher (arcfour) (usefull https://bbs.archlinux.org/viewtopic.php?id=188613 ?)
+
+return 0;

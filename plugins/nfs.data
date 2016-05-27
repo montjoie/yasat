@@ -1,0 +1,20 @@
+#nfs option,ADVICE
+#rw|||
+subtree_check,NFS_EXPORT_SUBTREE_CHECK
+no_subtree_check,
+no_root_squash,NFS_EXPORT_NO_ROOT_SQUASH
+sync,
+async,
+udp,NFS_EXPORT_UDP
+proto=udp,NFS_EXPORT_UDP
+tcp,
+proto=tcp,
+intr,
+hard,
+defaults,
+noatime,
+nodiratime,
+nodev,
+noexec,
+nosuid,
+noac,NFS_CLIENT_NOAC

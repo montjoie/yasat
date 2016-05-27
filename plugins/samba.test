@@ -1,0 +1,76 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#TODO directory security mask create mask
+#TODO invalid users
+
+POSSIBLE_SAMBA_CONF="/etc/samba/smb.conf /usr/local/etc/samba/smb.conf"
+SAMBA_CONF="/etc/samba/smb.conf"
+
+for LOCATION in ${POSSIBLE_SAMBA_CONF}
+do
+	if [ -e "${SCAN_ROOT}/${LOCATION}" ] ;then
+		SAMBA_CONF="${SCAN_ROOT}/${LOCATION}"
+	fi
+done
+
+SAMBA_CONF="`dirname $SAMBA_CONF`/smb.conf"
+
+Title "Check SAMBA"
+
+if [ ! -e "$SAMBA_CONF" ] ;then
+	return 1;
+fi
+
+Display --indent 2 --text "$SAMBA_CONF" --result FOUND --color GREEN
+get_simple_right "$SAMBA_CONF"
+if [ "$RESULTAT" = '644' ]
+then
+	Display --indent 4 --text "Right of $SAMBA_CONF" --result OK --color GREEN
+else
+	Display --indent 4 --text "Right of $SAMBA_CONF" --result "$RESULTAT" --color RED
+fi
+
+TESTNAME='YASAT_TEST_SAMBA_SERVICE_ENABLED NSAG=3.18.1 CCEID=4551-8 Check if the samba service is enabled'
+Check_auto_start samba samba any 
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
+	Display --indent 2 --text "samba is started at boot" --result UNKNOWN --color BLUE
+	Compliance --result 'NOTTESTED' --plugin samba --nsag 3.18.1 --cce 4551-8
+else
+	if [ "$RESULTAT" = "yes" ] ;then
+		Display --indent 2 --text "samba is started at boot" --result YES --color BLUE
+	else
+		Display --indent 2 --text "samba is started at boot" --result NO --color GREEN
+	fi
+fi
+
+Is_installed_via_package_manager samba
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ]
+then
+	Display --indent 2 --text "samba installation" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "samba is installed by package" --result GOOD --color GREEN
+	else
+		Display --indent 2 --text "samba is installed at hand" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND
+	fi
+fi
+return 0;

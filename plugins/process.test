@@ -1,0 +1,112 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#TODO add list of possible user like snmpd run under root or snmp
+
+
+Title "Check running process"
+
+if [ ! -e "${PLUGINS_REP}/process.data" ]
+then
+	Display --indent 2 --text "process.data" --result NOTFOUND --color RED
+	return -1;
+fi
+
+#TODO FreeBSD said ps: Process environment requires procfs(5)
+#all gnome-* must not be root
+ps -eo user,tty,args | grep " gnome-" | grep -v 'grep' |
+while read lineuser
+do
+	PROCESS="`echo $lineuser | cut -d\  -f3`"
+	USERPROCESS="`echo $lineuser | cut -d\  -f1`"
+	if [ $USERPROCESS = "root" ]
+	then
+		Display --indent 4 --text "$PROCESS Run as $USERPROCESS" --result BAD --color RED --advice PROCESS_NOT_BE_ROOT
+	else
+		Display --indent 4 --text "$PROCESS Run as $USERPROCESS" --result GOOD --color GREEN
+	fi
+done
+PS_ARGS='axeo user,tty,args'
+if [ "$OS" = 'OpenBSD' ]
+then
+	PS_ARGS='-axeo user,tty,comm'
+fi
+#under wheezy I have MAIL=xxxxx just after process name, clean it (TODO find why)
+ps $PS_ARGS | grep -v ^USER | grep -v \ tty/ | grep -v \ pts/ |grep -v \ tty[0-9] | grep -v " \[" | grep -v " gnome-" | sed 's,MAIL=/var/mail/root.*,,' |grep -v 'grep' | sort | uniq |
+while read line
+do
+	PROCESS="`echo $line | cut -d\  -f3`"
+	USERPROCESS="`echo $line | cut -d\  -f1`"
+	PROCESSTYPE="`grep -v '^#' $PLUGINS_REP/process.data |grep -v '^$' |grep ^${PROCESS}= | cut -d\= -f2`"
+	if [ -z "$PROCESSTYPE" ]
+	then
+		Display --indent 2 --text "$PROCESS" --result UNKNOWN --color ORANGE
+		if [ $USERPROCESS = "root" ]
+		then
+			Display --indent 4 --text "Run as $USERPROCESS" --result UNKNOWN --color ORANGE --advice PROCESS_MAY_NOT_BE_ROOT
+		fi
+	else
+		Display --indent 2 --text "$PROCESS" --result KNOWN --color GREEN
+		case $PROCESSTYPE in
+		CANBEROOT)
+			if [ $USERPROCESS = "root" ]
+			then
+				Display --indent 4 --text "Run as $USERPROCESS" --result GOOD --color ORANGE --advice PROCESS_CAN_BE_ROOT
+			else
+				Display --indent 4 --text "Run as $USERPROCESS" --result GOOD --color GREEN
+			fi
+		;;
+		ONLYROOT)
+			if [ $USERPROCESS = "root" ]
+			then
+				Display --indent 4 --text "Run as $USERPROCESS" --result GOOD --color GREEN
+			else
+				Display --indent 4 --text "Run as $USERPROCESS" --result BAD --color RED --advice PROCESS_ONLY_ROOT
+			fi
+		;;
+		NOTHINGTOSAY)
+			Display --indent 4 --text "Run as $USERPROCESS" --result GOOD --color GREEN
+		;;
+		NOTBEROOT)
+			if [ $USERPROCESS = "root" ]
+			then
+				Display --indent 4 --text "Run as $USERPROCESS" --result BAD --color RED --advice PROCESS_NOT_BE_ROOT
+			else
+				Display --indent 4 --text "Run as $USERPROCESS" --result GOOD --color GREEN
+			fi
+		;;
+		*)
+			Display --indent 4 --text "PROCESSTYPE $PROCESSTYPE" --result UNKNOWN --color RED
+		;;
+		esac
+	fi
+	if [ -e "$PROCESS" ]
+	then
+		PROCESS_FS_OWNER="`stat $STAT_USER $PROCESS`"
+#		echo "debug $PROCESS $PROCESS_FS_OWNER"
+		if [ "$PROCESS_FS_OWNER" != "root" ]
+		then
+			Display --indent 4 --text "$PROCESS is not owned by root on the FS" --result WARNING --color RED
+		fi
+	fi
+done
+
+return 0;
+

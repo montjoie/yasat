@@ -1,0 +1,13 @@
+EN,XINETD_SERVICES_USELESS=Remove unused services from xinetd (even if disabled)
+EN,XINETD_SERVICES_OPTIONAL=Are these services in use ?(remove it otherwise)
+EN,XINETD_SERVICES_NODISABLE=Disable this services if you don't use it
+EN,XINETD_SERVICES_NO_LOG_TYPE=Add a log_type entry
+  Set where xinetd logs goes (SYSLOG or FILE).
+  See man xinetd.conf (search for log_type)
+ADVICEEND
+EN,XINETD_SERVICES_NO_LOG_FAILURE=Add a log_on_failure entry
+ADVICEEND
+EN,XINETD_SERVICES_NO_ONLY_FROM=Add a only_from entry
+  If this service is non-public, restrain with a only_from its access.
+  Like only_from = 127.0.0.1 192.168.1.2
+ADVICEEND

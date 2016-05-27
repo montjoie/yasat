@@ -1,0 +1,386 @@
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+#
+# This function is originated from Copyright 2007-2009, Michael Boelen (michael@rootkit.nl), The Netherlands
+# Web site: http://www.rootkit.nl
+#
+#################################################################################
+#
+# Operating System detection
+#
+#################################################################################
+#
+
+#default value
+ORWX="/o=rwx"
+CORRECT_ORWX="o-rwx"
+PERM_GW="/g=w"
+PERM_GX="/g=x"
+PERM_OW="/o+w"
+STAT_RIGHT="--format=%a"
+STAT_FULL_RIGHT="--format=%a"
+STAT_USER="--format=%U"
+STAT_GROUP="--format=%G"
+FIND_SETUID="+06000"
+SNMPD_CONF_REP="/etc/snmpd/"
+ROOTGROUP="root"
+BSD_SYSCTL='sysctl'
+#OS_TYPE is Linux BSD other
+OS_TYPE='unknown'
+OS_NICKNAME="unknown"
+DEFAULT_APACHE_DOCROOT="/var/www/"
+
+#package names
+SNMPD_PACKAGE_NAME='net-snmp'
+APACHE_PACKAGE_NAME='apache'
+MYSQLD_PACKAGE_NAME='mysql-server'
+BIND_PACKAGE_NAME='bind'
+
+    # Check operating system
+    case `uname` in
+
+	# IBM AIX
+	AIX)
+		OS="AIX"
+		OS_NAME="AIX"
+		OS_TYPE='other'
+		OS_FULLNAME=`uname -s -r`
+		OS_VERSION=`uname -r`
+		CPU=`uname -p`
+		HARDWARE=`uname -M`
+		FIND_BINARIES="whereis -b"
+	;;
+
+	# Mac OS X
+	Darwin)
+	  OS="MacOS"
+	  OS_TYPE='other'
+	  if [ -x /usr/bin/sw_vers ]; then
+	      OS_NAME=`/usr/bin/sw_vers -productName`
+	      OS_VERSION=`/usr/bin/sw_vers -productVersion`
+	      OS_FULLNAME="${OS_NAME} ${OS_VERSION}"
+	    else
+	      # Fall back to pretty safe name
+	      OS_NAME="Mac OS X"
+	      OS_FULLNAME=`uname -s -r`
+	      OS_VERSION=`uname -r`
+	  fi
+	  HARDWARE=`uname -m`
+	  HOMEDIRS="/Users"
+	  FIND_BINARIES="whereis"
+	  OS_KERNELVERSION=`uname -r`
+	;;
+
+	# FreeBSD
+        FreeBSD)
+	  OS="FreeBSD"
+	  OS_TYPE='BSD'
+	  OS_NAME="FreeBSD"
+          OS_FULLNAME=`uname -s -r`
+	  OS_VERSION=`uname -r`
+	  HARDWARE=`uname -m`
+	  HOMEDIRS="/home /root"
+	  FIND_BINARIES="whereis -q -a -b"
+	  OS_KERNELVERSION=`uname -i`
+	  ORWX="+007"
+	  PERM_GW="+020"
+	  PERM_GX="+010"
+	  PERM_OW='+002'
+	  STAT_RIGHT="-f %Lp"
+	  STAT_FULL_RIGHT="-f %Mp%Lp"
+	  STAT_USER="-f %Su"
+	  STAT_GROUP="-f %Sg"
+	  ROOTGROUP="wheel"
+	  LIST_PKG="pkg_"
+	  BSD_SYSCTL='sysctl -e'
+        ;;
+
+	# HP-UX
+	HP-UX)
+	  OS="HP-UX"
+	  OS_NAME="HP-UX"
+	  OS_TYPE='other'
+	  OS_FULLNAME=`uname -s -r`
+	  OS_VERSION=`uname -r`
+	  HARDWARE=`uname -m`
+	  FIND_BINARIES="whereis -b"
+	;;
+
+	# Linux
+	Linux)
+	  OS="Linux"
+	  OS_TYPE='Linux'
+	  OS_NAME="Linux"
+          OS_FULLNAME=""
+	  OS_VERSION=`uname -r`
+	  LINUX_VERSION=""
+	  LINUX_PKG=""
+	  HARDWARE=`uname -m`
+	  HOMEDIRS="/home"
+	  FIND_BINARIES="whereis -b"
+	  OS_KERNELVERSION=`uname -r`
+	  # Cobalt
+	  if [ -e "/etc/cobalt-release" ]; then		OS_FULLNAME=`cat /etc/cobalt-release`; fi
+	  # CPUBuilders Linux
+	  if [ -e "/etc/cpub-release" ]; then		OS_FULLNAME=`cat /etc/cpub-release`; fi
+
+	if [ -e "/etc/debian_version" -a ! -e /etc/lsb-release ] ;then
+		LIST_PKG="apt-get"
+		OS_VERSION=`cat /etc/debian_version`
+		LINUX_VERSION="Debian"
+	  	SNMPD_PACKAGE_NAME='snmpd'
+		APACHE_PACKAGE_NAME='apache2'
+		BIND_PACKAGE_NAME='bind9'
+		#under debian my.cnf is owned by mysql-common
+		MYSQLD_PACKAGE_NAME='mysql-common'
+		if [ ! -z `echo $OS_VERSION |grep '^5[\.0-9]*'` ] ;then
+		  	OS_NICKNAME="Lenny"
+		    	OS_FULLNAME="Debian Lenny ${OS_VERSION}"
+		fi
+		if [ ! -z `echo $OS_VERSION |grep '^4[\.0-9]*'` ] ;then
+		    	OS_NICKNAME="Etch"
+		    	OS_FULLNAME="Debian Etch ${OS_VERSION}"
+		fi
+		if [ ! -z `echo $OS_VERSION |grep '^6[\.0-9]*'` ] ;then
+		    	OS_NICKNAME="Squeeze"
+		    	OS_FULLNAME="Debian Squeeze ${OS_VERSION}"
+		fi
+		if [ ! -z "`echo $OS_VERSION |grep '^7[\.0-9]*'`" -o ! -z "`echo $OS_VERSION |grep -i wheezy`" ] ;then
+		    	OS_NICKNAME="Wheezy"
+		    	OS_FULLNAME="Debian Wheezy ${OS_VERSION}"
+		fi
+		if [ ! -z `echo $OS_VERSION |grep 'jessie'` ];then
+			OS_NICKNAME="Jessie"
+			OS_FULLNAME="Debian Jessie ${OS_VERSION}"
+		fi
+	fi
+
+		# Debian/Ubuntu
+		if [ -e "/etc/debian_version" -a -e /etc/lsb-release ]; then
+			LIST_PKG="apt-get"
+		  	OS_VERSION=`cat /etc/debian_version`
+		  	SNMPD_PACKAGE_NAME='snmpd'
+			APACHE_PACKAGE_NAME='apache2'
+			BIND_PACKAGE_NAME='bind9'
+			#under debian my.cnf is owned by mysql-common
+			MYSQLD_PACKAGE_NAME='mysql-common'
+			FIND=`grep "^DISTRIB_ID=" /etc/lsb-release | cut -d '=' -f2`
+			if [ "${FIND}" = "Ubuntu" ]; then
+				#OS_NAME="Ubuntu"
+				OS_VERSION=`grep "^DISTRIB_RELEASE=" /etc/lsb-release | cut -d '=' -f2`
+				OS_FULLNAME="Ubuntu ${OS_VERSION}"
+				LINUX_VERSION="Ubuntu"
+			else
+				#OS_NAME="Debian"
+				LINUX_VERSION="Debian"
+				OS_FULLNAME="Debian ${OS_VERSION}"
+				if [ ! -z `echo $OS_VERSION |grep '^5[\.0-9]*' ` ] ;then
+					OS_NICKNAME="Lenny"
+					OS_FULLNAME="Debian Lenny ${OS_VERSION}"
+				fi
+				if [ ! -z `echo $OS_VERSION |grep '^4[\.0-9]*' ` ];then
+					OS_NICKNAME="Etch"
+					OS_FULLNAME="Debian Etch ${OS_VERSION}"
+				fi
+				if [ ! -z `echo $OS_VERSION |grep 'jessie'` ];then
+					OS_NICKNAME="Jessie"
+					OS_FULLNAME="Debian Jessie ${OS_VERSION}"
+				fi
+			fi
+		# Ubuntu test (optional) `cat /proc/version | grep "[Uu]buntu"`
+		fi
+	  # E-smith
+	  if [ -e "/etc/e-smith-release" ]; then	OS_FULLNAME=`cat /etc/e-smith-release`; fi
+	  # Gentoo
+	if [ -e "/etc/gentoo-release" ]; then
+	  	OS_FULLNAME=`cat /etc/gentoo-release | awk '{ print $5 }' | cut -d '.' -f1,2`;
+		LINUX_VERSION="Gentoo" ;
+		LIST_PKG="emerge"
+		APACHE_PACKAGE_NAME='apache'
+		MYSQLD_PACKAGE_NAME='mysql'
+		DEFAULT_APACHE_DOCROOT="/var/www/localhost/htdocs/"
+	fi
+	  # Red Hat and others
+	  # I test /etc/debian_version because installing rpm under debian put the /etc/redhat-release file
+	  if [ -e "/etc/redhat-release" -a ! -e "/etc/debian_version" ]; then
+		  LIST_PKG="rpm"
+		  APACHE_PACKAGE_NAME='httpd'
+		# CentOS
+	  	FIND=`grep "CentOS" /etc/redhat-release`
+		if [ ! "${FIND}" = "" ]; then
+#			OS_NAME="CentOS"
+			OS_FULLNAME=`cat /etc/redhat-release | grep "CentOS"`
+			LINUX_VERSION="CentOS"
+			OS_VERSION="${OS_FULLNAME}"
+		fi
+		# Fedora
+	  	FIND=`grep "Fedora" /etc/redhat-release`
+		if [ ! "${FIND}" = "" ]; then
+#			OS_NAME="Fedora"
+			OS_FULLNAME=`cat /etc/redhat-release | grep "Fedora"`
+			OS_VERSION="${OS_FULLNAME}"
+			LINUX_VERSION="Fedora"
+		fi
+		# Oracle Enterprise Linux
+	  	FIND=`grep "Enterprise Linux Enterprise Linux Server" /etc/redhat-release`
+		if [ ! "${FIND}" = "" ]; then		OS_NAME="Oracle Enterprise Linux";	OS_FULLNAME=`cat /etc/redhat-release | grep "Enterprise Linux"`;	OS_VERSION="${OS_FULLNAME}"; fi
+
+		# Red Hat
+	  	FIND=`grep "Red Hat" /etc/redhat-release`
+		if [ ! "${FIND}" = "" ]; then
+#			OS_NAME="Red Hat"
+			OS_FULLNAME=`cat /etc/redhat-release | grep "Red Hat"`
+			OS_VERSION="${OS_FULLNAME}"
+			LINUX_VERSION="Red Hat"
+		fi
+	  fi
+	  if [ -e "/etc/SLOX-release" ]; then		OS_FULLNAME=`cat /etc/SLOX-release | grep "SuSE Linux"`; fi
+
+	  # Slackware
+	  if [ -e "/etc/slackware-version" ]; then	OS_FULLNAME=`cat /etc/slackware-version`;		LINUX_VERSION="Slackware"; fi
+
+	  # SuSE
+	  if [ -e "/etc/SuSE-release" ]; then		OS_VERSION=`cat /etc/SuSE-release | head -n 1`; 	LINUX_VERSION="SuSE"; fi
+
+	  # Turbo Linux
+	  if [ -e "/etc/turbolinux-release" ]; then	OS_FULLNAME=`cat /etc/turbolinux-release`; fi
+	  # YellowDog
+	  if [ -e "/etc/yellowdog-release" ]; then	OS_FULLNAME=`cat /etc/yellowdog-release`; fi
+
+		if [ -e "/etc/arch-release" ] ;then
+			#/etc/arch-release is empty
+			LINUX_VERSION="arch"
+			OS_FULLNAME="ArchLinux"
+			LIST_PKG="pacman"
+		fi
+		if [ -e "/etc/openwrt_release" ];then
+			LINUX_VERSION='openwrt'
+			OS_FULLNAME=`grep DISTRIB_DESCRIPTION /etc/openwrt_release | cut -d\= -f2 | cut -d\" -f2`
+			OS_VERSION=`grep DISTRIB_RELEASE /etc/openwrt_release | cut -d\= -f2 | cut -d\" -f2`
+			OS_NICKNAME=`grep DISTRIB_CODENAME /etc/openwrt_release | cut -d\= -f2 | cut -d\" -f2`
+		fi
+
+	  # If Linux version is unknown, use uname value
+	  if [ "${OS_FULLNAME}" = "" ]; then OS_FULLNAME=`uname -s -r`; fi
+
+	;;
+
+	# NetBSD
+	NetBSD)
+	  OS="NetBSD"
+	  OS_TYPE='BSD'
+	  OS_NAME="NetBSD"
+	  OS_FULLNAME=`uname -s -r`
+	  OS_KERNELVERSION=`uname -v`
+	  OS_VERSION=`uname -r`
+	  HARDWARE=`uname -m`
+	  FIND_BINARIES="whereis"
+	    LIST_PKG="pkg_"
+	;;
+
+	# OpenBSD
+	OpenBSD)
+	  OS="OpenBSD"
+	  OS_TYPE='BSD'
+	  OS_NAME="OpenBSD"
+	  OS_FULLNAME=`uname -s -r`
+	  OS_KERNELVERSION=`uname -v`
+	  OS_VERSION=`uname -r`
+	  HARDWARE=`uname -m`
+	  FIND_BINARIES="whereis"
+	    LIST_PKG="pkg_"
+	  ORWX="-007"
+	  PERM_GW="-020"
+	  PERM_GX="-010"
+	  PERM_OW='-002'
+	  STAT_RIGHT="-f %Lp"
+	  STAT_FULL_RIGHT="-f %Mp%Lp"
+	  STAT_USER="-f %Su"
+	  STAT_GROUP="-f %Sg"
+	  ROOTGROUP="wheel"
+	  FIND_SETUID="-06000"
+
+	;;
+
+	# Solaris / OpenSolaris
+	SunOS)
+	  OS="Solaris"
+	  OS_TYPE='other'
+	  OS_NAME="Sun Solaris"
+	  OS_FULLNAME=`uname -s -r`
+	  OS_VERSION=`uname -r`
+	  HARDWARE=`uname -m`
+	  if [ -x /usr/bin/isainfo ]; then
+	      # Returns 32, 64
+	      OS_MODE=`/usr/bin/isainfo -b`
+	  fi
+	;;
+
+	# Unknown or unsupported systems
+        *)
+	  echo "[ ${WARNING}WARNING${NORMAL} ]"
+          echo "${WARNING}Error${NORMAL}: ${WHITE}Unknown OS found. No support available for this OS or platform...${NORMAL}"
+          exit 1
+        ;;
+
+    esac
+
+# Testing for old find version (4.1.20)
+# BSD do not have --version
+if [ "$OS_TYPE" = 'Linux' ] ;then
+	if [ "$LINUX_VERSION" = 'openwrt' ];then
+		#find is busybox
+		Display --indent 2 --text "find is Busybox" --result INFO --color BLUE
+		ORWX="+007"
+		PERM_GW="-020"
+		PERM_GX="-010"
+		PERM_OW='-002'
+	else
+		if [ ! -z "`find --version | grep ' 4.1.20'`" ];then
+			Display --indent 2 --text "Old find detected" --result WARNING --color BLUE
+			ORWX='+o=rwx'
+		fi
+	fi
+fi
+
+Debug "OS_TYPE=$OS_TYPE"
+Debug "OS_NAME=$OS_NAME"
+Debug "OS_FULLNAME=$OS_FULLNAME"
+Debug "OS_KERNELVERSION=$OS_KERNELVERSION"
+Debug "OS_VERSION=$OS_VERSION"
+Debug "OS_NICKNAME=$OS_NICKNAME"
+Debug "HARDWARE=$HARDWARE"
+Debug "LINUX_VERSION=$LINUX_VERSION"
+
+#detect hardware
+# generic name x86 x86_64 arm
+HARDWARE_GEN=`uname -m`
+if [ "$HARDWARE_GEN" = 'i686' -o "$HARDWARE_GEN" = 'i486' -o "$HARDWARE_GEN" = 'i586' ];then
+	HARDWARE_GEN=x86
+fi
+if [ "$HARDWARE_GEN" = 'amd64' ];then
+	HARDWARE_GEN=x86_64
+fi
+if [ "$HARDWARE_GEN" = 'armv7l' ];then
+	HARDWARE_GEN=arm
+fi
+if [ "$HARDWARE_GEN" = 'armv7j' ];then
+	HARDWARE_GEN=arm
+fi
+

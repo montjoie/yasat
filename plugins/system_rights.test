@@ -1,0 +1,191 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+CONF_FILE="system_rights.data"
+
+if [ "${OS_TYPE}" = 'BSD' ]
+then
+CONF_FILE="system_rights_bsd.data"
+fi
+
+Title "Check system rights $LINUX_VERSION"
+
+if [ -f $PLUGINS_REP/$CONF_FILE ] ;then
+	for i in `grep -v '^#' $PLUGINS_REP/$CONF_FILE |grep -v "!$OS_NICKNAME" | grep -v "!$LINUX_VERSION" | sed 's/#.*//g'`
+	do
+#		echo "TEST ==== $i"
+		lepath="`echo $i | cut -f1 -d\|`"
+		if [ "$SCAN_ROOT" != '/' ] ; then
+			lepath="$SCAN_ROOT/`echo $i | cut -f1 -d\|`"
+		fi
+		lesdroits=`echo $i | cut -f2 -d\|`
+		luser=`echo $i | cut -f3 -d\|`
+		lgroup=`echo $i | cut -f4 -d\|`
+		loption=`echo $i | cut -f5 -d\|`
+		ldistrib=`echo $i | cut -f6 -d\|`
+		loption2=`echo $i | cut -f7 -d\|`
+		nsag_id_o=`echo $i | cut -f8 -d\|`
+		cceid_o=`echo $i | cut -f9 -d\|`
+		nsag_id_g=`echo $i | cut -f10 -d\|`
+		cceid_g=`echo $i | cut -f11 -d\|`
+		nsag_id_r=`echo $i | cut -f12 -d\|`
+		cceid_r=`echo $i | cut -f13 -d\|`
+		if [ -z "$cceid_o" ] ;then cceid_o=0;fi
+		if [ -z "$nsag_id_o" ] ;then nsag_id_o=0;fi
+		if [ -z "$cceid_g" ] ;then cceid_g=0;fi
+		if [ -z "$nsag_id_g" ] ;then nsag_id_g=0;fi
+		if [ -z "$cceid_r" ] ;then cceid_r=0;fi
+		if [ -z "$nsag_id_r" ] ;then nsag_id_r=0;fi
+		ALLGOOD=1
+		if [ "$OS_TYPE" = "BSD" ] ;then
+			if [ $lgroup = 'root' ] ;then
+				 lgroup='wheel';
+			fi
+		fi
+		if [ "${ldistrib}x" != "x" ] ;then
+			if [ "$ldistrib" != "$LINUX_VERSION" -a "$ldistrib" != "$OS_NICKNAME" ] ;then
+				continue
+			fi
+		fi
+		if [ "$loption" = "N" ] ;then
+			if [ ! -e "$lepath" ] ;	then
+			Display --indent 2 --text "Error $lepath do not exists" --result ERROR --color RED
+			fi
+		fi
+		if [ ! -e "$lepath" ];then
+		lepath="/usr/local/$lepath"
+		fi
+		if [ -e "$lepath" ] ;then
+		    #echo -n "check $lepath => $lesdroits $luser $lgroup $loption"
+		    case $loption in
+		    R)
+		    	TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is chmod $lesdroits"
+		    	Display --indent 2 --text "Checking $lepath" --result INFO --color BLUE
+			#check for files with other rights
+		    	TMP_RESULT="${TEMPYASATDIR}/system_right.tmp"
+		    	check_directory_others $lepath $TMP_RESULT 4 GLOBAL_FILE_OTHER_READABLE
+			RIGHT="`stat $STAT_RIGHT $lepath`"
+			if [ $RIGHT != "$lesdroits" ] ;then
+				Display --indent 4 --text "Right of $lepath: $RIGHT" --result BAD --color RED
+				Compliance --result 'NOK' --plugin "system_rights_r_$lepath" --nsag $nsag_id_r --cce $cceid_r
+			else
+				Display --indent 4 --text "Right of $lepath: $RIGHT" --result OK --color GREEN
+				Compliance --result 'OK' --plugin "system_rights_r_$lepath" --nsag $nsag_id_r --cce $cceid_r
+			fi
+			#TODO tests
+			if [ "$loption2" != "gw" ] ;then
+				RESULTAT="`find $lepath ! -type l -perm $PERM_GW`"
+				if [ ! -z "$RESULTAT" ] ;then
+					Display --indent 2 --text "Group writable files in $lepath" --result WARNING --color RED
+					find $lepath ! -type l -perm $PERM_GW |
+					while read line
+					do
+						Display --indent 4 --text "$line" --result "`stat $STAT_RIGHT $line`" --color RED
+					done
+				fi
+			fi
+#			find $lepath -type f -perm $PERM_GX -ls;
+			#check the owner of the files
+	    		TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by $luser"
+			RESULTATUSER="`find $lepath ! -user $luser -ls`"
+			if [ ! -z "$RESULTATUSER" ] ;then
+				Display --indent 2 --text "Bad owner $lepath (must be $luser)" --result WARNING --color RED
+				Compliance --result 'NOK' --plugin "system_rights_own_$lepath" --nsag $nsag_id_o --cce $cceid_o
+				find $lepath ! -user $luser |
+				while read line
+				do
+					Display --indent 4 --text "$line" --result "`stat $STAT_USER $line`" --color RED
+				done
+				ALLGOOD=0
+			else
+				Display --indent 4 --text "$lepath owner `stat $STAT_USER $lepath`" --result GOOD --color GREEN
+				Compliance --result 'OK' --plugin "system_rights_own_$lepath" --nsag $nsag_id_o --cce $cceid_o
+			fi
+
+	    		TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by group $lgroup"
+			RESULTATGROUPE="`find $lepath ! -group $lgroup`"
+			if [ ! -z "$RESULTATGROUPE" ] ;then
+				Display --indent 2 --text "Bad group $lepath (must be $lgroup)" --result WARNING --color RED
+				Compliance --result 'NOK' --plugin "system_rights_grp_$lepath" --nsag $nsag_id_g --cce $cceid_g
+				find $lepath ! -group $lgroup |
+				while read line
+				do
+					Display --indent 4 --text "$line" --result "`stat $STAT_GROUP $line`" --color RED
+				done
+				ALLGOOD=0
+			else
+				Display --indent 4 --text "$lepath group `stat $STAT_GROUP $lepath`" --result GOOD --color GREEN
+				Compliance --result 'OK' --plugin "system_rights_grp_$lepath" --nsag $nsag_id_g --cce $cceid_g
+			fi
+#			echo ""
+
+		    ;;
+		    *)
+			TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is chmod $lesdroits"
+		    ACTUAL_RIGHT="`stat $STAT_RIGHT $lepath`"
+		    if [ "${ACTUAL_RIGHT}" != $lesdroits  -o `stat $STAT_GROUP $lepath` != $lgroup -o `stat $STAT_USER $lepath` != $luser ] ;then
+		    	#check for stricter right than we want (example we want 640 but local have 600)
+			if [ $lesdroits = 640 -a "${ACTUAL_RIGHT}" = 600 ] ; then
+				Display --indent 2 --text "$lepath $lesdroits $luser $lgroup is more strict than i want" --result OK --color GREEN
+				TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by $luser"
+				Compliance --result 'OK' --plugin "system_rights_own_$lepath" --nsag $nsag_id_o --cce $cceid_o
+				TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by group $lgroup"
+				Compliance --result 'OK' --plugin "system_rights_grp_$lepath" --nsag $nsag_id_g --cce $cceid_g
+				TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is chmod $lesdroits"
+				Compliance --result 'OK' --plugin "system_rights_rig_$lepath" --nsag $nsag_id_r --cce $cceid_r
+			else
+				Display --indent 2 --text "$lepath is not $lesdroits $luser $lgroup " --result WARNING --color RED
+				ALLGOOD=0
+				TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by $luser"
+				Compliance --result 'NOK' --plugin "system_rights_own_$lepath" --nsag $nsag_id_o --cce $cceid_o
+				TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by group $lgroup"
+				Compliance --result 'NOK' --plugin "system_rights_grp_$lepath" --nsag $nsag_id_g --cce $cceid_g
+				TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is chmod $lesdroits"
+				Compliance --result 'NOK' --plugin "system_rights_rig_$lepath" --nsag $nsag_id_r --cce $cceid_r
+			fi
+		    else
+			Display --indent 2 --text "$lepath => $lesdroits $luser $lgroup " --result OK --color GREEN
+			TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by $luser"
+			Compliance --result 'OK' --plugin "system_rights_own_$lepath" --nsag $nsag_id_o --cce $cceid_o
+			TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is owned by group $lgroup"
+			Compliance --result 'OK' --plugin "system_rights_grp_$lepath" --nsag $nsag_id_g --cce $cceid_g
+			TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is chmod $lesdroits"
+			Compliance --result 'OK' --plugin "system_rights_rig_$lepath" --nsag $nsag_id_r --cce $cceid_r
+		    fi
+		    esac
+		fi
+		if [ ! -z "$nsag_id" ] ; then
+			TESTNAME='YASAT_TEST_SYSTEMRIGHT_GENERIC TODO'
+			if [ $ALLGOOD -eq 1 ] ; then
+				Compliance --result 'OK' --plugin 'system_rights_$lepath' --nsag $nsag_id
+			else
+				Compliance --result 'NOK' --plugin 'system_rights_$lepath' --nsag $nsag_id
+			fi
+		fi
+	done
+fi
+
+#/etc/security/console.perms.d/50-default.perms TOTHINK
+#if [ "$LINUX_VERSION" = 'Red Hat' ]
+#then
+#
+#fi
+

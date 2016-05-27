@@ -1,0 +1,119 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check network parameter"
+#TODO check if we have a public IP and check open ports
+
+
+if [ "$OS_TYPE" != "Linux" ] ;then
+		Display --indent 2 --text "Not Linux" --result TODO --color BLUE
+	return 1;
+fi
+
+
+TESTNAME='YASAT_TEST_NETWORK_SNIFFER NSAG=2.5.1.3 CCEID=15013-6 Ensure System is Not Acting as a Network Sniffer'
+if [ "$SCAN_ROOT" = '/' -a -e /proc/net/packet ] ;then
+	if [ `cat /proc/net/packet | wc -l` -ge 2 ] ;then
+		Display --indent 2 --text "Sniffer check" --result NOK --color ORANGE
+		Compliance --result 'NOK' --plugin network --nsag 2.5.1.3 --cce 15013-6
+	else
+		Display --indent 2 --text "Sniffer check" --result OK --color GREEN
+		Compliance --result 'OK' --plugin network --nsag 2.5.1.3 --cce 15013-6
+	fi
+else
+	Display --indent 2 --text "Sniffer check" --result SKIP --color BLUE
+	Compliance --result 'NOTTESTED' --plugin network --nsag 2.5.1.3 --cce 15013-6
+fi
+
+
+if [ ! -e "${PLUGINS_REP}/network.data" ] ;then
+	Display --indent 2 --text "No $PLUGINS_REP/network.data" --result WARNING --color ORANGE
+fi
+for i in `grep -v ^# $PLUGINS_REP/network.data`
+do
+	ldirective=`echo $i | cut -f1 -d\|`
+	lparam=`echo $i | cut -f2 -d\|`
+	loption=`echo $i | cut -f3 -d\|`
+	ladvice=`echo $i | cut -f4 -d\|`
+	lnsag=`echo $i | cut -f5 -d\|`
+	lcce=`echo $i | cut -f6 -d\|`
+	if [ -z "$lnsag" ];then
+		lnsag=0
+	fi
+	if [ -z "$lcce" ];then
+		lcce=0
+	fi
+	EL_PATH=`echo "/proc/sys/$ldirective" | sed 's/\./\//g'`
+	if [ -e "$EL_PATH" ] ;then
+		VALUE="`cat $EL_PATH`"
+		case $loption in
+		'=')#equal
+			if [ $VALUE -eq $lparam ] ;then
+				Display --indent 2 --text "$EL_PATH" --result "$VALUE" --color GREEN
+			else
+				Display --indent 2 --text "$EL_PATH" --result "$VALUE" --color RED --advice $ladvice
+			fi
+		;;
+		'<')
+			if [ $VALUE -lt $lparam ] ;then
+				Display --indent 2 --text "$EL_PATH" --result "$VALUE" --color GREEN
+			else
+				Display --indent 2 --text "$EL_PATH" --result "$VALUE" --color RED --advice $ladvice
+			fi
+		;;
+		*)
+			Display --indent 2 --text "Unknown $loption" --result WARNING --color RED --advice $ladvice
+		esac
+	else
+		Display --indent 2 --text "$EL_PATH " --result NOTFOUND --color ORANGE --advice $ladvice
+	fi
+	TESTNAME="YASAT_TEST_NETWORK_GENERIC Check if $ldirective is present in sysctl.conf"
+	Get_sysctl $ldirective
+	if [ -z "$RESULTAT" ] ;then
+		Display --indent 4 --text "not in sysctl.conf" --result NOTFOUND --color ORANGE --advice $ladvice
+		Compliance --result NOK --plugin network --nsag $lnsag --cce $lcce
+	else
+		VALUE=`grep "^[[:space:]]*$ldirective" /etc/sysctl.conf | sed 's/^.*=[[:space:]]*//g'`
+		case $loption in
+		'=')#equal
+			if [ $VALUE -eq $lparam ] ;then
+				Display --indent 4 --text "in sysctl.conf" --result "$VALUE" --color GREEN
+				Compliance --result OK --plugin network --nsag $lnsag --cce $lcce
+			else
+				Display --indent 4 --text "in sysctl.conf" --result "$VALUE" --color RED --advice $ladvice
+				Compliance --result NOK --plugin network --nsag $lnsag --cce $lcce
+			fi
+		;;
+		'<')
+			if [ $VALUE -lt $lparam ] ;then
+				Display --indent 4 --text "in sysctl.conf" --result "$VALUE" --color GREEN
+				Compliance --result OK --plugin network --nsag $lnsag --cce $lcce
+			else
+				Display --indent 4 --text "in sysctl.conf" --result "$VALUE" --color RED --advice $ladvice
+				Compliance --result NOK --plugin network --nsag $lnsag --cce $lcce
+			fi
+		;;
+		*)
+			Display --indent 4 --text "Unknown $loption" --result WARNING --color RED --advice $ladvice
+		esac
+	fi
+done
+
+return 0;

@@ -1,0 +1,40 @@
+EN,SYSTEM_USER_UMASK=umask must be 027, 022 by default is not strict enough.
+EN,SYSTEM_USER_DOTFILES=This file must be chmod 600
+EN,SYSTEM_USER_DOTDIR=This directory must be chmod 700
+EN,SYSTEM_USER_HOMEDIR_ROOT_SLASH=Why is the homedir / ?
+EN,SYSTEM_USER_HOMEDIR_READABLE_BY_OTHERS=The homedir is readable by others
+EN,SYSTEM_USER_USELESS=Does this user used by your system ?
+EN,SYSTEM_USER_RSA_VS_DSA=RSA keys are preferred.
+  See <a href="http://leaf.dragonflybsd.org/mailarchive/users/2005-01/msg00140.html">http://leaf.dragonflybsd.org/mailarchive/users/2005-01/msg00140.html</a>
+  See <a href="http://lists.gnupg.org/pipermail/gnupg-users/2000-May/005657.html">http://lists.gnupg.org/pipermail/gnupg-users/2000-May/005657.html</a>
+  See <a href="http://kerneltrap.org/mailarchive/dragonflybsd-user/2005/1/11/135791">http://kerneltrap.org/mailarchive/dragonflybsd-user/2005/1/11/135791</a>
+ADVICEEND
+EN,--SYSTEM_USER_PASSWORD_LEAKING=Caution, some password might be visible
+  Cleartext password can be found in your .bash_history
+  I have checked mysql, wget and other commands to find passwords typed in the shell
+  I will also check commands not in path
+ADVICEEND
+EN,SYSTEM_USER_MYSQL_HISTORY_PASSWORD_LEAKING=Caution, some password might be visible
+  Check the rights of .mysql_history
+  You can also disable mysql_history:
+  <div class="command">export MYSQL_HISTFILE=/dev/null</div>
+  See MYSQL_HISTFILE in <a href="http://dev.mysql.com/doc/refman/5.1/en/environment-variables.html">http://dev.mysql.com/doc/refman/5.1/en/environment-variables.html</a>
+  See <a href="http://bugs.mysql.com/bug.php?id=16803">http://bugs.mysql.com/bug.php?id=16803</a>
+ADVICEEND
+EN,SYSTEM_USER_USER_wITH_UID0=Check if this account is necessary
+  Logically, there must be only one account with UID=0.
+  FreeBSD comes with a toor account that can be disabled.
+  See also <a href="http://www.freebsd.org/doc/en/books/faq/security.html#TOOR-ACCOUNT">http://www.freebsd.org/doc/en/books/faq/security.html#TOOR-ACCOUNT</a>
+ADVICEEND
+EN,SYSTEM_USER_NO_HOMEDIR=This user has no homedir, why?
+  Perhaps this user is not needed.
+ADVICEEND
+EN,SYSTEM_USER_NOPASS_AND_SHELL=This account probably doesn't need a shell
+  If this user is not an interactive user, suppress the user's shell.
+  <div class="command">usermod -s /bin/false <i>account_name</i></div>
+ADVICEEND
+EN,SYSTEM_USER_FIREFOX_MIXED_HTTPS=Enable warning of loading mixed HTTP/HTTPS content
+  You can find it at Tools/Options/Security/Settings
+ADVICEEND
+EN,SYSTEM_USER_FIREFOX_NO_AUTO_UPDATE=Enable automatic check of firefox updates
+ADVICEEND

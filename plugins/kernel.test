@@ -1,0 +1,414 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check Kernel version and configuration"
+
+#check securelevel
+#TODO check also value in /etc/rc.securelevel
+if [ "$OS_TYPE" = 'OpenBSD' ];then
+	TESTNAME='YASAT_TEST_KERNEL_OPENBSD_SECURELEVEL Check if Secure level is used'
+	SECURELEVEL="`$BSD_SYSCTL kern.securelevel | cut -d\= -f2`"
+	if [ $SECURELEVEL -ge 0 ];then
+		Display --indent 2 --text "Secure level" --result "$SECURELEVEL" --color BLUE
+	else
+		Display --indent 2 --text "Secure level" --result "$SECURELEVEL" --color RED --advice OPENBSD_SECURE_LEVEL_BELOW_ZERO
+	fi
+	return 1;
+fi
+
+#TODO Made some checks Under BSD 
+if [ "$OS_TYPE" != 'Linux' ] ;then
+	Display --indent 2 --text "Other OS than linux" --result TODO --color BLUE
+	return 1;
+fi
+
+#Generaly on a server usb modules should not be loaded by default
+#TODO check for monolithic addition of USB
+#if /proc/modules dont exists, lsmod fail
+if [ -e /proc/modules ] ; then
+	USB_FOUND=0
+	FIRE_FOUND=0
+	USB_MODULES='uhci_hcd ohci_hcd ehci_hcd usb_storage usbnet'
+	TMP_RESULT="${TEMPYASATDIR}/lsmod.out"
+	TESTNAME='YASAT_TEST_KERNEL_USB_MODULE Check if USB module are loaded'
+	lsmod > $TMP_RESULT 2> $ERROR_OUTPUT_FILE
+	if [ $? -eq 0 ] ; then
+		for usbmodule in $USB_MODULES
+		do
+			if [ ! -z "`grep ^$usbmodule[[:space:]] $TMP_RESULT`" ] ; then
+				Display --indent 2 --text "USB module $usbmodule" --result FOUND --color ORANGE --advice KERNEL_USB_MODULES
+				USB_FOUND=1
+			fi
+		done
+		if [ $USB_FOUND -eq 0 ] ; then
+			Display --indent 2 --text "Checking for unnecessary modules.. USB" --result NOTFOUND --color GREEN
+			Compliance --result 'OK' --plugin 'kernel' --color 'green' --yasatresult 'NOTFOUND'
+		else
+			Compliance --result 'KO' --plugin 'kernel' --color 'orange' --yasatresult 'FOUND'
+		fi
+	else
+		if [ -e $TMP_RESULT ] ; then
+			rm $TMP_RESULT
+		fi
+		Display --indent 2 --text "Checking modules with lsmod" --result FAILED --color ORANGE
+		Compliance --result 'KO' --plugin 'kernel' --color 'orange' --yasatresult 'ERROR'
+	fi
+	FIREWIRE_MODULES='firewire-sbp2 firewire-ohci firewire-core'
+	TMP_RESULT="${TEMPYASATDIR}/lsmod.out"
+	TESTNAME='YASAT_TEST_KERNEL_FIREWIRE_MODULE Check if Firewire modules are loaded'
+	lsmod > $TMP_RESULT 2> $ERROR_OUTPUT_FILE
+	if [ $? -eq 0 ] ; then
+		for firemodule in $FIREWIRE_MODULES
+		do
+			if [ ! -z "`grep ^$firemodule[[:space:]] $TMP_RESULT`" ] ; then
+				Display --indent 2 --text "Firewire module $firemodule" --result FOUND --color ORANGE --advice KERNEL_FIREWIRE_MODULES
+			fi
+		done
+		if [ $FIRE_FOUND -eq 0 ] ; then
+			Display --indent 2 --text "Checking for unnecessary modules.. Firewire" --result NOTFOUND --color GREEN
+			Compliance --result 'OK' --plugin 'kernel' --color 'green' --yasatresult 'NOTFOUND'
+		else
+			Compliance --result 'KO' --plugin 'kernel' --color 'orange' --yasatresult 'FOUND'
+		fi
+	else
+		if [ -e $TMP_RESULT ] ; then
+			rm $TMP_RESULT
+		fi
+		Display --indent 2 --text "Checking modules with lsmod" --result FAILED --color ORANGE
+		Compliance --result 'KO' --plugin 'kernel' --color 'orange' --yasatresult 'ERROR'
+	fi
+	if [ -e "$TMP_RESULT" ];then
+		rm $TMP_RESULT
+	fi
+else
+	Display --indent 2 --text "No /proc/modules, cannot check kernel modules" --result NOTFOUND --color BLUE
+	TESTNAME='YASAT_TEST_KERNEL_USB_MODULE Check if USB module are loaded'
+	Compliance --result 'NOTTESTED' --plugin 'kernel'
+	TESTNAME='YASAT_TEST_KERNEL_FIREWIRE_MODULE Check if Firewire modules are loaded'
+	Compliance --result 'NOTTESTED' --plugin 'kernel'
+fi
+
+#TODO check for modprobe.conf and co
+#search for "blacklist $module" or "install $module /bin/true" in /etc/modprobe.conf or /etc/modprobe.d/*.conf
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_USB_STORAGE Disable Modprobe Loading of USB Storage Driver'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag '2.2.2.2.1' --cce '4187-1'
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_UNCOMMON_FILESYSTEM Disable Mounting of Uncommon Filesystem Types'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag '2.2.2.5' --cce '14089-7' --cce 14457-6 --cce 15087-0 --cce 14093-9 --cce 14853-6 --cce 14118-4 --cce 14871-8
+
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_DCCP Disable Support for DCCP'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag 2.5.7.1 --cce 14268-7
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_SCTP Disable Support for SCTP'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag 2.5.7.2 --cce 14132-5
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_RDS Disable Support for RDS'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag 2.5.7.3 --cce 14027-7
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_TIPC Disable Support for TIPC'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag 2.5.7.3 --cce 14911-2
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_BLUETOOTH Disable Support for bluetooth'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag 3.3.14.3 --cce 14948-4
+
+
+
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_USB_STORAGE_DRIVER Remove USB Storage Driver'
+if [ -e "$SCAN_ROOT/lib/modules/`uname -r`/kernel/drivers/usb/storage/usb-storage.ko" ] ;then
+	Compliance --result 'KO' --plugin 'kernel' --nsag '2.2.2.2.2' --cce '4006-3'
+else
+	Compliance --result 'OK' --plugin 'kernel' --nsag '2.2.2.2.2' --cce '4006-3'
+fi
+
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_USB Disable Kernel Support for USB via Bootloader Configuration'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag '2.2.2.2.3' --cce '4173-1'
+
+TESTNAME='YASAT_TEST_KERNEL_DISABLE_USB_BOOT Disable Booting from USB Devices'
+Compliance --result 'NOTIMPL' --plugin 'kernel' --nsag '2.2.2.2.4' --cce '3944-6'
+
+#TODO FreeBSD security.bsd.see_other_uids
+#TODO FreeBSD net.inet.ip.random_id
+
+#kernel.panic = 60
+
+#kernel to test 2.6.24 (vmsplice)
+# 2.6.30 and 2.6.30.1 ( tun vulnerability)
+
+#TODO check if we are under virtual machine
+
+Check_tool_presence sysctl
+if [ $? -eq 0 ];then
+	SYSCTL="$RESULTAT"
+fi
+
+TESTNAME='YASAT_TEST_KERNEL_RANDOMIZE_VASPACE NSAG=2.2.4.3.1 Check if randomize_va_space is enabled'
+#/proc/sys/kernel/randomize_va_space
+RANDOM_VA_SPACE="`$SYSCTL kernel.randomize_va_space 2>> $ERROR_OUTPUT_FILE`"
+if [ $? -eq 0 ] ; then
+	RANDOM_VA_SPACE="`$SYSCTL kernel.randomize_va_space | sed 's/^.*=[[:space:]]*//'`"
+	if [ "$RANDOM_VA_SPACE" -eq 2 ] ; then
+		Display --indent 2 --text "Randomized va space" --result ENABLED --color GREEN
+#	Get_sysctl kernel.randomize_va_space
+		Compliance --result 'OK' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3.1' --color 'green' --yasatresult 'ENABLED'
+	else
+		if [ $RANDOM_VA_SPACE -eq 1 ] ; then
+			Display --indent 2 --text "Randomized va space at level 1 (want level 2)" --result PARTIAL --color ORANGE --advice KERNEL_RANDOM_VA_SPACE
+			Compliance --result 'KO' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3.1' --color 'orange' --yasatresult 'PARTIAL'
+		else
+			Display --indent 2 --text "Randomized va space" --result NO --color RED --advice KERNEL_RANDOM_VA_SPACE
+			Compliance --result 'KO' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3.1' --color 'red' --yasatresult 'DISABLED'
+		fi
+	fi
+else
+	Display --indent 2 --text "sysctl" --result FAILED --color ORANGE
+	Compliance --result 'KO' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3.1' --color 'red' --yasatresult 'ERROR'
+fi
+
+TESTNAME='YASAT_TEST_KERNEL_RANDOMIZE_VASPACE NSAG=2.2.4.3 CCEID=4146-7 Check if randomize_va_space is enabled in sysctl.conf'
+Get_sysctl kernel.randomize_va_space
+if [ "$RESULTAT" = '1' ] ;then
+	Display --indent 2 --text "Randomized va space in sysctl.conf" --result YES --color GREEN
+	Compliance --result 'OK' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3' --type 'CCE' --cid '4146-7' --color 'green' --yasatresult 'ENABLED'
+else
+	Display --indent 2 --text "Randomized va space in sysctl.conf" --result NO --color ORANGE
+	Compliance --result 'KO' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3' --type 'CCE' --cid '4146-7' --color 'orange' --yasatresult 'NO'
+fi
+
+
+
+#TODO PAX PAGEEXEC SEGEXEC and check type of processor
+# No nx on ARM
+TESTNAME='YASAT_TEST_KERNEL_NX CCEID=4177-2 NSAG=2.2.4.4.1,2.2.4.4.3 Check if the NX bit is present'
+if [ "$HARDWARE_GEN" = 'x86' -o "$HARDWARE_GEN" = 'x86_64' ];then
+	NXbit=0
+	if [ -e /proc/cpuinfo ] ;then
+		if [ -z "`grep '^flags' /proc/cpuinfo | grep ' nx '`" ] ;then
+			Display --indent 2 --text "No NX support" --result NOTFOUND --color ORANGE --advice KERNEL_NO_NX_BIT
+			Compliance --result 'KO' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.4.1' --cid '2.2.4.4.3' --type 'CCE' --cid '4177-2' --color 'orange' --yasatresult 'NOTFOUND'
+		else
+			Display --indent 2 --text "NX support" --result FOUND --color GREEN
+			NXbit=1
+			Compliance --result 'OK' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.4.1' --cid '2.2.4.4.3' --type 'CCE' --cid '4177-2' --color 'green' --yasatresult 'FOUND'
+		fi
+		#TODO Check the presence of qemu virtualbox vmware
+		TESTNAME='YASAT_TEST_KERNEL_VIRT Check if virtualization flag are present'
+		if [ ! -z "`grep '^flags' /proc/cpuinfo | grep -E ' svm | vmx '`" ] ;then
+			Display --indent 2 --text "HW VIRT support" --result FOUND --color ORANGE --advice KERNEL_HW_VIRT
+			Compliance --result 'KO' --plugin 'kernel' --color 'orange' --yasatresult 'FOUND'
+		fi
+	else
+		Display --indent 2 --text "No /proc/cpuinfo" --result NOTFOUND --color BLUE
+		Compliance --result 'NOTTESTED' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.4.1' --cid '2.2.4.4.3' --type 'CCE' --cid '4177-2' --color 'BLUE' --yasatresult 'NOTTESTED'
+	fi
+else
+	Compliance --result 'NOTTESTED' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.4.1' --cid '2.2.4.4.3' --type 'CCE' --cid '4177-2' --color 'blue' --yasatresult 'NOTFOUND'
+fi
+
+TESTNAME='YASAT_TEST_KERNEL_NEW_KERNEL Install New Kernel on Supported x86 Systems'
+Compliance --result 'NOTTESTED' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.4.2'
+
+# http://www.redhat.com/docs/manuals/enterprise/RHEL-3-Manual/release-notes/as-x86/RELEASE-NOTES-U3-x86-en.html
+#Exists only under Redhat and clone
+ES_SEVERITY='BLUE'
+if [ "$OS_NAME" = 'CentOS' -o "$OS_NAME" = 'Red Hat' ] ;then
+	ES_SEVERITY='RED'
+fi
+TESTNAME='YASAT_TEST_KERNEL_EXEC_SHIELD1 NSAG=2.2.4.3.1 Check if exec-shield is present and enabled'
+if [ -e /proc/sys/kernel/exec-shield ] ;then
+	Display --indent 2 --text "/proc/sys/kernel/exec-shield" --result FOUND --color GREEN
+	EXECSHIELD="`cat /proc/sys/kernel/exec-shield`"
+	if [ $EXECSHIELD -ge 1 ] ;then
+		Display --indent 4 --text "exec-shield value $EXECSHIELD" --result GOOD --color GREEN
+		Compliance --result 'OK' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3.1' --color 'green' --yasatresult 'GOOD'
+	else
+		Display --indent 4 --text "exec-shield value $EXECSHIELD" --result DISABLED --color RED --advice KERNEL_EXEC_SHIELD
+		Compliance --result 'KO' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3.1' --color 'red' --yasatresult 'DISABLED'
+	fi
+else
+	Display --indent 2 --text "/proc/sys/kernel/exec-shield" --result NOTFOUND --color BLUE
+	Compliance --result 'NOTTESTED' --plugin 'kernel' --type 'NSAG' --cid '2.2.4.3.1' --color 'blue' --yasatresult 'NOTFOUND'
+fi
+
+TESTNAME='YASAT_TEST_KERNEL_EXEC_SHIELD2 NSAG=2.2.4.3 CCEID=4168-1 Check if exec-shield is present and enabled in sysctl.conf'
+if [ "$OS_TYPE" = 'Linux' ] ;then
+	Get_sysctl kernel.exec-shield
+	if [ "$RESULTAT" = '1' ] ;then
+		Display --indent 4 --text "exec-shield enabled in sysctl.conf" --result ENABLED --color GREEN
+		Compliance --result 'OK' --plugin 'kernel' --nsag '2.2.4.3' --type 'CCE' --cid '4168-1' --color 'green' --yasatresult 'ENABLED'
+	else
+		Display --indent 4 --text "exec-shield not enabled in sysctl.conf" --result DISABLED --color "$ES_SEVERITY"
+		Compliance --result 'KO' --plugin 'kernel' --nsag '2.2.4.3' --type 'CCE' --cid '4168-1' --color "$ES_SEVERITY" --yasatresult 'DISABLED'
+	fi
+fi
+
+#TODO /proc/sys/kernel/exec-shield-randomize
+
+
+
+#config can be found at /boot/config-`uname -r`
+#if [ -e "/boot/config-`uname -r`" ] ;then
+#	Display --indent 2 --text "/boot/config-`uname -r`" --result FOUND --color GREEN
+#	cat "/boot/config-`uname -r`" > "${TEMPYASATDIR}/kernel_config"
+#fi
+
+# if user give me the path to a .config, I wont read /proc/config.gz
+#if [ -z $YASAT_PATH_TO_KERNEL_CONFIG ] ;then
+#	YASAT_PATH_TO_KERNEL_CONFIG='/usr/src/linux/.config'
+#	if [ -e /proc/config.gz ] ;then
+#		Display --indent 2 --text "/proc/config.gz" --result FOUND --color GREEN
+#		zcat /proc/config.gz > ${TEMPYASATDIR}/kernel_config
+#	else
+#		if [ -e "${TEMPYASATDIR}/kernel_config" ] ;then
+#			#we have already found .config elsewhere
+#			Display --indent 2 --text "/proc/config.gz" --result NOTFOUND --color BLUE
+#		else
+#			Display --indent 2 --text "/proc/config.gz" --result NOTFOUND --color ORANGE --advice KERNEL_NO_CONFIG
+#		fi
+#	fi
+#fi
+
+#if [ ! -e "${TEMPYASATDIR}/kernel_config" ] ;then
+#	if [ -e "$YASAT_PATH_TO_KERNEL_CONFIG" ] ;then
+#		Display --indent 2 --text "$YASAT_PATH_TO_KERNEL_CONFIG" --result FOUND --color GREEN
+#		cat "$YASAT_PATH_TO_KERNEL_CONFIG" > ${TEMPYASATDIR}/kernel_config
+#	else
+#		Display --indent 2 --text "$YASAT_PATH_TO_KERNEL_CONFIG" --result NOTFOUND --color ORANGE --advice KERNEL_NO_CONFIG
+#	fi
+#fi
+prepare_kernel_config
+
+#TODO IA32 disable via /proc/sys/abi/vsyscall32
+#TODO CC_STACKPROTECTOR_ALL wait until it is "stable"
+#TODO if PAX or GRSEC is enabled, check their suboptions
+if [ -e "${TEMPYASATDIR}/kernel_config" ];then
+	TESTNAME='YASAT_TEST_KERNEL_DISABLE_IA32_EMULATION Check if IA32 emulation is enabled on x86_64 arch'
+	if [ "$HARDWARE" = 'x86_64' ];then
+		if [ ! -z "`grep 'CONFIG_IA32_EMULATION=y' ${TEMPYASATDIR}/kernel_config`" ];then
+			Display --indent 2 --text "CONFIG_IA32_EMULATION" --result ENABLED --color ORANGE --advice KERNEL_CONFIG_IA32_EMULATION --comp 'KO' 'kernel'
+		else
+			Display --indent 2 --text "CONFIG_IA32_EMULATION" --result DISABLED --color GREEN --comp 'OK' 'kernel'
+		fi
+	else
+		Compliance --result 'NOTTESTED' --plugin kernel --color 'BLUE' --yasatresult 'NOTTESTED'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_COMPAT_BRK Check if COMPAT_BRK is enabled'
+	if [ ! -z "`grep 'CONFIG_COMPAT_BRK=y' ${TEMPYASATDIR}/kernel_config`" ];then
+		Display --indent 2 --text "CONFIG_COMPAT_BRK" --result ENABLED --color ORANGE --advice KERNEL_CONFIG_COMPAT_BRK --comp 'KO' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_COMPAT_BRK" --result DISABLED --color GREEN --comp 'OK' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_COMPAT_VDSO Check if COMPAT_VDSO is enabled'
+	if [ ! -z "`grep 'CONFIG_COMPAT_VDSO=y' ${TEMPYASATDIR}/kernel_config`" ];then
+		Display --indent 2 --text "CONFIG_COMPAT_VDSO" --result ENABLED --color ORANGE --advice KERNEL_CONFIG_COMPAT_VDSO --comp 'KO' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_COMPAT_VDSO" --result DISABLED --color GREEN --comp 'OK' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_DEVKMEM Check if DEVKMEM is enabled'
+	if [ ! -z "`grep 'CONFIG_DEVKMEM=y' ${TEMPYASATDIR}/kernel_config`" ];then
+		Display --indent 2 --text "CONFIG_DEVKMEM" --result ENABLED --color ORANGE --advice KERNEL_CONFIG_DEVKMEM --comp 'KO' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_DEVKMEM" --result DISABLED --color GREEN --comp 'OK' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_STRICT_DEVMEM Check if STRICT_DEVMEM is enabled'
+	if [ -z "`grep 'CONFIG_STRICT_DEVMEM=y' ${TEMPYASATDIR}/kernel_config`" ];then
+		Display --indent 2 --text "CONFIG_STRICT_DEVMEM" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_STRICT_DEVMEM --comp 'KO' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_STRICT_DEVMEM" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_MMAP_MIN_ADDR Check the value if /proc/sys/vm/mmap_min_addr'
+	if [ -e /proc/sys/vm/mmap_min_addr ];then
+		VALUE="`cat /proc/sys/vm/mmap_min_addr`"
+		if [ $? -ne 0 ];then
+			#under Redhat with a non root test this test is denied
+			Display --indent 2 --text "/proc/sys/vm/mmap_min_addr" --result DENIED --color RED --advice YASAT_DENIED --comp 'NOTTESTED' 'kernel'
+		else
+			if [ $VALUE -ge 1 ];then
+				Display --indent 2 --text "/proc/sys/vm/mmap_min_addr" --result "$VALUE" --color GREEN --comp 'OK' 'kernel'
+			else
+				Display --indent 2 --text "/proc/sys/vm/mmap_min_addr" --result "$VALUE" --color RED --advice KERNEL_MMAP_MIN_ADDR --comp 'KO' 'kernel'
+			fi
+		fi
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_MCE Check if MCE is enabled'
+	if [ "$HARDWARE_GEN" = 'x86' -o "$HARDWARE_GEN" = 'x86_64' ];then
+		if [ ! -z "`grep 'CONFIG_X86_MCE=y' ${TEMPYASATDIR}/kernel_config`" ];then
+			Display --indent 2 --text "CONFIG_X86_MCE" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+			Check_tool_presence mcelog
+		        if [ $? -eq 1 ];then
+	        	        Display --indent 4 --text "mcelog tool" --result NOTFOUND --color RED --advice MCELOG_TOOL
+		        else
+		                Display --indent 4 --text "mcelog tool" --result FOUND --color GREEN
+		        fi
+		else
+			Display --indent 2 --text "CONFIG_X86_MCE" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_MCE --comp 'KO' 'kernel'
+		fi
+	else
+		#MCE is x86 only
+		Compliance --result NOTTESTED --plugin kernel
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_PAX Check if PAX is enabled'
+	if [ ! -z "`grep 'CONFIG_PAX=y' ${TEMPYASATDIR}/kernel_config`" ];then
+		Display --indent 2 --text "CONFIG_PAX" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_PAX" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_PAX --comp 'KO' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_GRKERNSEC Check if grsecurity is enabled'
+	if [ ! -z "`grep 'CONFIG_GRKERNSEC=y' ${TEMPYASATDIR}/kernel_config`" ];then
+		Display --indent 2 --text "CONFIG_GRKERNSEC" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_GRKERNSEC" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_GRSEC --comp 'KO' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_SELINUX check if SELINUX is enabled'
+	if [ ! -z "`grep 'CONFIG_SECURITY_SELINUX=y' ${TEMPYASATDIR}/kernel_config`" ];then
+		Display --indent 2 --text "CONFIG_SECURITY_SELINUX" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_SECURITY_SELINUX" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_SECURITY_SELINUX --comp 'KO' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_RONX check if RONX is enabled'
+	if [ ! -z "`grep 'CONFIG_DEBUG_SET_MODULE_RONX=y' ${TEMPYASATDIR}/kernel_config`" ] ;then
+		Display --indent 2 --text "CONFIG_DEBUG_SET_MODULE_RONX" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_DEBUG_SET_MODULE_RONX" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_DEBUG_SET_MODULE_RONX --comp 'KO' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_RODATA check if RODATA is enabled'
+	if [ ! -z "`grep 'CONFIG_DEBUG_RODATA=y' ${TEMPYASATDIR}/kernel_config`" ] ;then
+		Display --indent 2 --text "CONFIG_DEBUG_RODATA" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_DEBUG_RODATA" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_DEBUG_RODATA --comp 'KO' 'kernel'
+	fi
+
+	TESTNAME='YASAT_TEST_KERNEL_STRICT_USER_COPY_CHECKS Check if STRICT_USER_COPY_CHECKS is enabled'
+	if [ ! -z "`grep 'CONFIG_DEBUG_STRICT_USER_COPY_CHECKS=y' ${TEMPYASATDIR}/kernel_config`" ] ;then
+		Display --indent 2 --text "CONFIG_DEBUG_STRICT_USER_COPY_CHECKS" --result ENABLED --color GREEN --comp 'OK' 'kernel'
+	else
+		Display --indent 2 --text "CONFIG_DEBUG_STRICT_USER_COPY_CHECKS" --result DISABLED --color ORANGE --advice KERNEL_CONFIG_DEBUG_STRICT_USER_COPY_CHECKS --comp 'KO' 'kernel'
+	fi
+	rm "${TEMPYASATDIR}/kernel_config"
+fi
+#end of -e "${TEMPYASATDIR}/kernel_config
+
+
+

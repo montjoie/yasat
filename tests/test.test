@@ -1,0 +1,228 @@
+#!/bin/bash
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+export PLUGINS_REP="./tests"
+
+DEBUG=0
+QUIET=0
+HIDESR=0
+ERROR_OUTPUT_FILE="`echo ~/.yasat/yasat.err`"
+YASAT_ROOT=.
+REPORT_OUTPUT="`echo ~/.yasat/yasat.report`"
+COL_WIDTH="`tput cols`"
+PRINT_LEVEL=0
+ADVICELANG='EN'
+TEMPYASATDIR=.
+COMPLIANCE_OUTPUT="$TEMPYASATDIR/compliance"
+
+. ./common
+. ./osdetection
+mkdir -p ~/.yasat/
+cat plugins/yasat_global.advice | grep $ADVICELANG > ${YASAT_ROOT}/yasat.advices
+cp plugins/yasat_global.advice $PLUGINS_REP/
+
+FindValueOfEqual $PLUGINS_REP/test.data test
+echo "test $RESULTAT"
+if [ "$RESULTAT" != '0' ]
+then
+	exit 1
+fi
+
+FindValueOfEqual $PLUGINS_REP/test.data test1
+echo "test1 $RESULTAT"
+if [ "$RESULTAT" != '1' ]
+then
+	exit 1
+fi
+FindValueOfEqual $PLUGINS_REP/test.data test2
+echo "test2 $RESULTAT"
+if [ "$RESULTAT" != '2' ]
+then
+	exit 1
+fi
+FindValueOfEqual $PLUGINS_REP/test.data test3
+echo "test3 $RESULTAT"
+if [ "$RESULTAT" != '3' ]
+then
+	exit 1
+fi
+
+FindValueOfEqual $PLUGINS_REP/test.data test4
+echo "test4 $RESULTAT"
+if [ "$RESULTAT" != '4' ]
+then
+	exit 1
+fi
+FindValueOfEqual $PLUGINS_REP/test.data test5
+echo "test5 $RESULTAT"
+if [ "$RESULTAT" != '5' ]
+then
+	exit 1
+fi
+FindValueOfEqual $PLUGINS_REP/test.data test6
+echo "test6 $RESULTAT"
+if [ "$RESULTAT" != '6' ]
+then
+	exit 1
+fi
+FindValueOfEqual $PLUGINS_REP/test.data test7
+echo "test7 $RESULTAT"
+if [ "$RESULTAT" != '7' ]
+then
+	exit 1
+fi
+FindValueOfEqual $PLUGINS_REP/test.data test8
+echo "test8 $RESULTAT"
+if [ "$RESULTAT" != '8' ]
+then
+	exit 1
+fi
+
+FindValueOf $PLUGINS_REP/test.data test9
+echo "test9 $RESULTAT"
+if [ "$RESULTAT" != '9' ]
+then
+	exit 1
+fi
+
+FindValueOfEqual $PLUGINS_REP/test.data test10
+echo "test10 $RESULTAT"
+if [ "$RESULTAT" != '10' ]
+then
+	exit 1
+fi
+
+FindValueOfEqual $PLUGINS_REP/test.data test11
+echo "test11 $RESULTAT"
+if [ "$RESULTAT" != '11' ]
+then
+	exit 1
+fi
+
+echo "Test 1 toto"
+get_path_from_apache_directives '<Directory toto>'
+echo "  $RESULTAT"
+echo "Test 2 toto/"
+get_path_from_apache_directives '<Directory toto/>'
+echo "  $RESULTAT"
+echo "Test 3 /"
+get_path_from_apache_directives '<Directory />'
+echo "  $RESULTAT"
+echo "Test 4 /i"
+get_path_from_apache_directives '<location "/i">'
+echo "  $RESULTAT"
+
+echo "Got 666 want 640"
+compare_right 666 640 YES
+qa_test $? 2
+echo "Got 777 want 640"
+compare_right 777 640 YES
+qa_test $? 2
+echo "Got 400 want 640"
+compare_right 400 640 YES
+qa_test $? 0
+echo "Got 400 want 640 (strict)"
+compare_right 400 640 NO
+qa_test $? 3
+
+which openssl > /dev/null 2> /dev/null
+if [ $? -eq 0 ];then
+	echo "====== Check a private key ======"
+	if [ ! -e ./tests/test_rsa.pem ];then
+		openssl genrsa -out ./tests/test_rsa.pem 1024
+	fi
+	if [ -e ./tests/test_rsa.pem ];then
+		check_private_key ./tests/test_rsa.pem 2
+	else
+		echo "I fail to generate the key" >&2
+	fi
+
+	echo "====== Check a private key protected with password ======"
+	if [ ! -e ./tests/test_rsa_password.pem ];then
+		openssl genrsa -des -passout pass:foobar -out ./tests/test_rsa_password.pem 1024
+	fi
+	if [ -e ./tests/test_rsa_password.pem ];then
+		check_private_key ./tests/test_rsa_password.pem 2
+	else
+		echo "I fail to generate the key" >&2
+	fi
+else
+	echo "openssl not available, skipping test"
+fi
+
+need_ret() {
+	if [ "$1" != "$2" ];then
+		echo "Return code $1 is different than $2"
+		exit 1
+	fi
+}
+
+echo "== Check Display without arguments =="
+Display
+need_ret $? 1
+
+echo "== Check Display with empty result =="
+Display --result
+need_ret $? 1
+
+echo "== Check Display with empty text =="
+Display --result test --text
+need_ret $? 1
+
+echo "== Check Display with empty comp =="
+Display --result test --text toto --comp
+need_ret $? 1
+
+echo "== Check Display with partial comp =="
+Display --result test --text toto --comp toto
+need_ret $? 1
+
+echo "== Check Display with empty advice =="
+Display --advice
+need_ret $? 1
+
+echo "== Check Check_tool_presence with no args --"
+Check_tool_presence
+need_ret $? 1
+
+echo "== Check Check_tool_presence with no args --"
+Check_tool_presence ls
+need_ret $? 0
+
+for test_sslprotocol in "ALL -SSLv2 -SSLv3" 'ALL' 'SSLv2' 'SSLv3' 'TLSv1 -SSLv2'
+do
+	echo "== Check SSLProtocol $test_sslprotocol"
+	check_ssl_protocol_openssl 2 "$test_sslprotocol"
+	need_ret $? 0
+done
+
+
+echo "Check compare function"
+is_equal yes no
+need_ret $? 1
+
+is_equal yes yes
+need_ret $? 0
+
+is_equal YES yes -i
+need_ret $? 0
+
+is_equal 'YES;' yes -i -f ';'
+need_ret $? 0

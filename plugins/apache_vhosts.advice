@@ -1,0 +1,48 @@
+EN,APACHE_VHOSTS_OPTIONS_INDEXES=Disable the directory's content providing
+  See <a href="http://httpd.apache.org/docs/2.0/mod/core.html#options">http://httpd.apache.org/docs/2.0/mod/core.html#options</a>
+ADVICEEND
+EN,APACHE_VHOSTS_OPTIONS_EXECCGI=Disable the possibility to use CGI scripts
+  See <a href="http://httpd.apache.org/docs/2.0/mod/core.html#options">http://httpd.apache.org/docs/2.0/mod/core.html#options</a>
+  And also <a href="http://httpd.apache.org/docs/2.2/misc/security_tips.html#cgi">http://httpd.apache.org/docs/2.2/misc/security_tips.html#cgi</a>
+ADVICEEND
+EN,APACHE_VHOSTS_NO_ORDER_CLAUSE=Add an order allow,deny clause to your vhost
+ADVICEEND
+EN,APACHE_VHOSTS_DOCROOT_BADGROUP=The docroot's files must be group owned by apache and not user owned
+  It is preferable that apache does not own the files that it serves.
+ADVICEEND
+EN,APACHE_VHOSTS_DOCROOT_OTHERRIGHTS=The docroot's files must not be readable by others
+  Only apache and root (or some webadmin user) have to read apache s files.
+ADVICEEND
+EN,APACHE_VHOSTS_DOCROOT_GROUPW=The docroot's files must not be writable by apache
+  Generally, apache does not have to write to the files it serves.
+ADVICEEND
+EN,APACHE_VHOSTS_KNOWN_NAME=TODO is this location useful?
+ADVICEEND
+EN,APACHE_VHOSTS_NO_ROBOTS_TXT=You can put a robots.txt for controlling where the search engine goes
+  For more informations, see <a href="http://www.robotstxt.org">http://www.robotstxt.org</a>
+ADVICEEND
+
+EN,APACHE_VHOSTS_NO_ACCESSLOG=Define an accesslog
+  Example:
+  <div class="conf">CustomLog /var/log/apache2/access_log common</div>
+  See <a href="http://httpd.apache.org/docs/2.2/logs.html#accesslog">http://httpd.apache.org/docs/2.2/logs.html#accesslog</a>
+  <a href="http://httpd.apache.org/docs/2.2/misc/security_tips.html#watchyourlogs">http://httpd.apache.org/docs/2.2/misc/security_tips.html#watchyourlogs</a>
+ADVICEEND
+
+EN,APACHE_VHOSTS_NO_ERRORLOG=Define an errorlog
+  See <a href="http://httpd.apache.org/docs/2.2/logs.html#errorlog">http://httpd.apache.org/docs/2.2/logs.html#errorlog</a>
+  <a href="http://httpd.apache.org/docs/2.2/misc/security_tips.html#watchyourlogs">http://httpd.apache.org/docs/2.2/misc/security_tips.html#watchyourlogs</a>
+ADVICEEND
+
+EN,APACHE_VHOSTS_AUTHFILE_NOTFOUND=You have defined an authfile, but I can't find it
+  Check your configuration
+  <a href="http://httpd.apache.org/docs/2.0/mod/mod_auth.html#authuserfile">http://httpd.apache.org/docs/2.0/mod/mod_auth.html#authuserfile</a>
+ADVICEEND
+EN,APACHE_VHOSTS_VAR_WWW=It's preferable to use a docroot like /var/www/servername/
+  If you want to have many vhosts, it's preferable to arrange it like that.
+ADVICEEND
+EN,APACHE_VHOSTS_NO_DOCROOT=Define a documentroot
+  See <a href="http://httpd.apache.org/docs/current/mod/core.html#documentroot">http://httpd.apache.org/docs/current/mod/core.html#documentroot</a>
+ADVICEEND
+
+#http://httpd.apache.org/docs/2.2/misc/security_tips.html

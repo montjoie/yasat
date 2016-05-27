@@ -1,0 +1,195 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+#TODO check mysql_history
+#TODO check ~/.my.cnf
+#TODO check if DATADIR is a separate partition
+#TODO SSL
+#TODO check test databases (hint to remove it)
+#TODO check test/guest user
+#TODO check empty password and password length
+#TODO skip-networking
+#TODO check socket = ????
+#TODO set-variable=local-infile=0 in [mysqld] http://dev.mysql.com/doc/refman/5.1/en/load-data-local.html
+#TODO innodb_support_xa sync_binlog
+#TODO set-variable=local-infile=0
+
+MYSQL_CONF="/etc/mysql/my.cnf"
+for LOCATION in ${POSSIBLE_MYSQL_CONF_REP}
+do
+	if [ -e "${LOCATION}/" ]
+	then
+		MYSQL_CONF="${LOCATION}"
+	fi
+done
+
+Title "Check mysql"
+
+if [ ! -e "$MYSQL_CONF" ]
+then
+	return 1;
+fi
+
+#TODO check includedir
+FindValueOfEqual $MYSQL_CONF '!includedir' JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "includedir" --result $RESULTAT --color BLUE
+fi
+
+FindValueOfEqual $MYSQL_CONF user JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	if [ "$RESULTAT" = "root" ] ; then
+		Display --indent 2 --text "user" --result $RESULTAT --color RED --advice MYSQL_RUN_AS_ROOT
+	else
+		Display --indent 2 --text "user" --result $RESULTAT --color GREEN
+		#I dont use getent because I think that mysql will be never on LDAP or such
+		MYSQLSHELL=`grep "$RESULTAT" /etc/passwd | cut -d\: -f7`
+		if [ `echo $MYSQLSHELL |grep 'sh' ` ]
+		then
+			Display --indent 2 --text "Shell de mysql $MYSQLSHELL Incorrect " --result WARNING --color RED --advice MYSQL_USER_HAVE_SHELL
+		else
+			Display --indent 2 --text "Shell de mysql $MYSQLSHELL Correct " --result OK --color GREEN
+		fi
+	fi
+else
+	Display --indent 2 --text "user" --result NOTFOUND --color RED
+fi
+
+#my.cnf is used by other client app than mysqld, so perhaps 644 is needed
+#MYSQL_CONF_RIGHT="`stat $STAT_RIGHT $MYSQL_CONF`"
+#if [ "$MYSQL_CONF_RIGHT" -ge 640 ]
+#then
+#        Display --indent 2 --text "Rights of $MYSQL_CONF" --result "$MYSQL_CONF_RIGHT" --color RED --advice GLOBAL_FILE_CHMOD640
+#else
+#        Display --indent 2 --text "Rights of $MYSQL_CONF" --result OK --color GREEN
+#fi
+if [ -e /etc/mysql/debian.cnf ]
+then
+MYSQL_CONF_RIGHT="`stat $STAT_RIGHT /etc/mysql/debian.cnf`"
+	if [ "$MYSQL_CONF_RIGHT" -gt 600 ]
+	then
+	        Display --indent 2 --text "Rights of /etc/mysql/debian.cnf" --result "$MYSQL_CONF_RIGHT" --color RED --advice GLOBAL_FILE_CHMOD600
+	else
+	        Display --indent 2 --text "Rights of /etc/mysql/debian.cnf" --result OK --color GREEN
+	fi
+fi
+
+#log is full log of requests,
+FindValueOfEqual $MYSQL_CONF log JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "log" --result FOUND --color RED --advice MYSQL_LOG
+else
+	Display --indent 2 --text "log" --result NOTFOUND --color GREEN
+fi
+
+CheckPresenceOf $MYSQL_CONF innodb_file_per_table JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "innodb_file_per_table" --result OK --color GREEN
+else
+	Display --indent 2 --text "No innodb_file_per_table" --result ADVICE --color ORANGE
+fi
+
+FindValueOfEqual $MYSQL_CONF bind-address JUSTTEST
+if [ ! -z "$RESULTAT" ]
+then
+	if [ "$RESULTAT" = "127.0.0.1" ]
+	then
+	Display --indent 2 --text "bind-address" --result $RESULTAT --color GREEN
+	else
+	Display --indent 2 --text "bind-address" --result $RESULTAT --color ORANGE
+	fi
+else
+	Display --indent 2 --text "bind-address" --result NOTFOUND --color RED --advice MYSQL_CONF_BIND
+fi
+
+#log_slow_queries        = /var/log/mysql/mysql-slow.log
+#long_query_time = 2
+#log-queries-not-using-indexes
+
+
+#if log-bin presence then there must be expire_logs_days
+FindValueOfEqual $MYSQL_CONF log-bin JUSTTEST
+if [ ! -z "`cat $MYSQL_CONF | grep '^log-bin$' `" ]
+then
+	RESULTAT='on'
+fi
+if [ ! -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "log-bin" --result $RESULTAT --color BLUE --advice MYSQL_CONF_BINLOGS
+	if [ -z "`cat $MYSQL_CONF | grep '^expire_logs_days' `" ]
+	then
+		Display --indent 4 --text "log-bin without expire_logs_days" --result NOTFOUND --color RED --advice MYSQL_CONF_NO_EXPIRELOGSDAYS
+	else
+		Display --indent 4 --text "expire_logs_days" --result FOUND --color GREEN
+	fi
+fi
+
+FindValueOfEqual $MYSQL_CONF log_slow_queries JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "log_slow_queries" --result $RESULTAT --color GREEN
+else
+	Display --indent 2 --text "log_slow_queries" --result NOTFOUND --color RED --advice MYSQL_CONF_NO_SLOWQUERY_LOG
+fi
+
+FindValueOfEqual $MYSQL_CONF innodb_support_xa JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "innodb_support_xa" --result $RESULTAT --color BLUE
+else
+	Display --indent 2 --text "innodb_support_xa" --result NOTFOUND --color BLUE
+fi
+
+FindValueOfEqual $MYSQL_CONF sync_binlog JUSTTEST
+if [ ! -z "$RESULTAT" ] ; then
+	Display --indent 2 --text "sync_binlog" --result $RESULTAT --color BLUE
+else
+	Display --indent 2 --text "sync_binlog" --result NOTFOUND --color BLUE
+fi
+
+#Check_auto_start $MYSQLD_PACKAGE_NAME
+#if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ]
+#then
+#	Display --indent 2 --text "$MYSQLD_PACKAGE_NAME is started at boot" --result UNKNOWN --color BLUE
+#else
+#	if [ "$RESULTAT" = "yes" ]
+#	then
+#		Display --indent 2 --text "$MYSQLD_PACKAGE_NAME is started at boot" --result YES --color BLUE
+#	else
+#		Display --indent 2 --text "$MYSQLD_PACKAGE_NAME is started at boot" --result NO --color GREEN
+#	fi
+#fi
+
+Is_installed_via_package_manager $MYSQLD_PACKAGE_NAME
+if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ]
+then
+	Display --indent 2 --text "$MYSQLD_PACKAGE_NAME installation" --result UNKNOWN --color BLUE
+else
+	if [ "$RESULTAT" = "yes" ]
+	then
+		Display --indent 2 --text "$MYSQLD_PACKAGE_NAME is installed by package" --result GOOD --color GREEN
+	else
+		Display --indent 2 --text "$MYSQLD_PACKAGE_NAME is installed at hand" --result BAD --color ORANGE --advice GLOBAL_PACKAGE_INSTALLED_AT_HAND
+	fi
+fi
+
+
+return 0;
+
+

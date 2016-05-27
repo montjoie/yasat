@@ -1,0 +1,55 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+
+POSSIBLE_PG_CONF_REP="/etc/postgresql/8.3/main/postgresql.conf /etc/postgresql/8.2/main/postgresql.conf /etc/postgresql/postgresql.conf /var/lib/postgresql/9.1/data /etc/postgresql-9.1/postgresql.conf"
+PG_CONF="/etc/postgresql/postgresql.conf"
+
+for LOCATION in ${POSSIBLE_PG_CONF_REP}
+do
+	if [ -e "${LOCATION}" ] ;then
+		PG_CONF="${LOCATION}"
+	fi
+done
+
+
+Title "Check postgresql $PG_CONF"
+
+if [ ! -e "$PG_CONF" ] ;then
+	return 1
+fi
+
+
+#listen_addresses
+FindValueOfEqual "$PG_CONF" listen_addresses
+if [ -z "$RESULTAT" ]
+then
+	Display --indent 2 --text "no listen_addresses (default localhost)" --result OK --color GREEN
+else
+	echo $RESULTAT | grep -qi "\'*\'"
+	if [ $? -eq 1 ]
+	then
+		Display --indent 2 --text "Listen on " --result "$RESULTAT" --color ORANGE
+	else
+		Display --indent 2 --text "Listen on *" --result WARNING --color RED
+	fi
+fi
+
+return 0;

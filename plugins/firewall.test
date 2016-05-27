@@ -1,0 +1,189 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+Title "Check firewall configurations"
+
+#freebsd pf
+if [ "$OS_TYPE" = 'other' ] ;then
+	Display --indent 2 --text  "Your OS is not supported yet" --result TODO --color BLUE
+	return 1
+fi
+
+if [ "$OS_TYPE" = 'BSD' ] ;then
+	which pfctl 2>> $ERROR_OUTPUT_FILE > /dev/null
+	if [ $? -ne 0 ]
+	then
+		Display --indent 2 --text "pfctl" --result NOTFOUND --color RED
+		return 1
+	fi
+	FindValueOfEqual /etc/rc.conf pf_enable JUSTTEST
+	if [ -z "$RESULTAT" -o "$RESULTAT" = no  -o "$RESULTAT" = NO ]
+	then
+		Display --indent 2 --text "PF is not enabled in /etc/rc.conf" --result NOTFOUND --color RED --advice FIREWALL_PF_NOT_ENABLED
+		return 1
+	fi
+	if [ "$RESULTAT" != '"yes"'  -a "$RESULTAT" != '"YES"' ]
+	then
+		Display --indent 2 --text "PF is not enabled in /etc/rc.conf" --result DISABLED --color RED --advice FIREWALL_PF_NOT_ENABLED
+	else
+		Display --indent 2 --text "PF is enabled in /etc/rc.conf" --result ENABLED --color GREEN
+	fi
+	if [ ! -e /etc/pf.conf ]
+	then
+		Display --indent 2 --text "/etc/pf.conf" --result NOTFOUND --color RED --advice FIREWALL_PF_NOT_ENABLE
+	else
+		Display --indent 2 --text "/etc/pf.conf" --result FOUND --color GREEN
+	fi
+	YASAT_FW_TMP="${TEMPYASATDIR}/fw"
+	pfctl -s rules > $YASAT_FW_TMP 2>> $ERROR_OUTPUT_FILE
+	if [ -z "`cat $YASAT_FW_TMP`" ]
+	then
+		Display --indent 2 --text "filter rules" --result EMPTY --color RED --advice FIREWALL_PF_NO_RULES
+	else
+		Display --indent 2 --text "Check BSD packet filter" --result TODO --color BLUE
+	fi
+
+
+	return 1
+fi
+
+#linux iptables
+#TODO we dont detect REJECT-at-end firewall
+
+iptables > /dev/null 2>> $ERROR_OUTPUT_FILE
+if [ $? -eq 127 ]
+then
+	Display --indent 2 --text "No iptables binary" --result WARNING --color RED
+	return 1;
+else
+	Display --indent 2 --text "Binary iptables" --result FOUND --color GREEN
+fi
+
+YASAT_FW_TMP="${TEMPYASATDIR}/fw"
+iptables -L -v -n --line-numbers > $YASAT_FW_TMP
+if [ $? -ge 1 ]
+then
+	Display --indent 2 --text "iptables error, stopping tests" --result WARNING --color RED --advice FIREWALL_TEST_ERROR
+	return 1;
+fi
+if [ ! -e "$YASAT_FW_TMP" ]
+then
+	Display --indent 2 --text "iptables error, stopping tests" --result WARNING --color RED --advice FIREWALL_TEST_ERROR
+	return 1;
+fi
+#On my SELinux enabled machine, iptables can output nothing (permission denied)
+if [ "`cat $YASAT_FW_TMP | wc -l`" -eq 0 ] ; then
+	Display --indent 2 --text "iptables error, stopping tests" --result WARNING --color RED --advice FIREWALL_TEST_ERROR
+	return 1
+fi
+
+
+POLICY_INPUT="`grep 'Chain INPUT .*policy' $YASAT_FW_TMP | cut -d\  -f4`"
+if [ "$POLICY_INPUT" = 'DROP' ];then
+	Display --indent 2 --text "Input policy" --result DROP --color GREEN
+else
+	Display --indent 2 --text "Input policy" --result "$POLICY_INPUT" --color RED --advice FIREWALL_POLICY_INPUT
+fi
+
+POLICY_FORWARD="`grep 'Chain FORWARD.*policy' $YASAT_FW_TMP | cut -d\  -f4`"
+if [ "$POLICY_FORWARD" = 'DROP' ]
+then
+	Display --indent 2 --text "Forward policy" --result DROP --color GREEN
+else
+	Display --indent 2 --text "Forward policy" --result "$POLICY_FORWARD" --color RED --advice FIREWALL_POLICY_FORWARD
+fi
+
+POLICY_OUTPUT="`grep 'Chain OUTPUT.*policy' $YASAT_FW_TMP | cut -d\  -f4`"
+if [ "$POLICY_OUTPUT" = 'DROP' ]
+then
+	Display --indent 2 --text "Output policy" --result DROP --color GREEN
+else
+	Display --indent 2 --text "Output policy" --result "$POLICY_OUTPUT" --color RED --advice FIREWALL_POLICY_OUTPUT
+fi
+
+if [ -e "$YASAT_FW_TMP" ];then
+	rm $YASAT_FW_TMP
+fi
+
+HOST_HAVE_IPV6=0
+if [ -e /proc/sys/net/ipv6 ];then
+	Display --indent 2 --text "IPv6" --result ENABLED --color BLUE
+	HOST_HAVE_IPV6=1
+else
+	Display --indent 2 --text "IPv6" --result DISABLED --color BLUE
+fi
+
+#linux ip6tables for check IPv6 firewall
+ip6tables > /dev/null 2>> $ERROR_OUTPUT_FILE
+if [ $? -eq 127 ]
+then
+	if [ $HOST_HAVE_IPV6 -eq 1 ]
+	then
+		Display --indent 2 --text "Host have IPv6 but no ip6tables" --result NOTFOUND --color RED --advice FIREWALL_IPV6_NO_FW
+		return 1;
+	else
+		Display --indent 2 --text "No ip6tables binary" --result NOTFOUND --color BLUE
+	fi
+	return 1;
+else
+	Display --indent 2 --text "Binary ip6tables" --result FOUND --color GREEN
+fi
+
+YASAT_FW_TMP="${TEMPYASATDIR}/fw"
+ip6tables -L -v -n --line-numbers > $YASAT_FW_TMP
+if [ $? -ge 1 ];then
+	Display --indent 2 --text "ip6tables error, stopping tests" --result WARNING --color RED --advice FIREWALL_TEST_ERROR
+	return 1;
+fi
+if [ ! -e "$YASAT_FW_TMP" ];then
+	Display --indent 2 --text "ip6tables error, stopping tests" --result WARNING --color RED --advice FIREWALL_TEST_ERROR
+	return 1;
+fi
+#On my SELinux enabled machine, iptables can output nothing (permission denied)
+if [ ! -s "$YASAT_FW_TMP" ] ; then
+	Display --indent 2 --text "ipt6ables error, stopping tests" --result WARNING --color RED --advice FIREWALL_TEST_ERROR
+	return 1
+fi
+
+
+POLICY_INPUT="`grep 'Chain INPUT.*policy' $YASAT_FW_TMP | cut -d\  -f4`"
+if [ "$POLICY_INPUT" = 'DROP' ];then
+	Display --indent 2 --text "Input policy for IPv6" --result DROP --color GREEN
+else
+	Display --indent 2 --text "Input policy for IPv6" --result "$POLICY_INPUT" --color RED --advice FIREWALL_POLICY_INPUT
+fi
+
+POLICY_FORWARD="`grep 'Chain FORWARD.*policy' $YASAT_FW_TMP | cut -d\  -f4`"
+if [ "$POLICY_FORWARD" = 'DROP' ];then
+	Display --indent 2 --text "Forward policy for IPv6" --result DROP --color GREEN
+else
+	Display --indent 2 --text "Forward policy for IPv6" --result "$POLICY_FORWARD" --color RED --advice FIREWALL_POLICY_FORWARD
+fi
+
+POLICY_OUTPUT="`grep 'Chain OUTPUT.*policy' $YASAT_FW_TMP | cut -d\  -f4`"
+if [ "$POLICY_OUTPUT" = 'DROP' ];then
+	Display --indent 2 --text "Output policy for IPv6" --result DROP --color GREEN
+else
+	Display --indent 2 --text "Output policy for IPv6" --result "$POLICY_OUTPUT" --color RED --advice FIREWALL_POLICY_OUTPUT
+fi
+
+rm $YASAT_FW_TMP
+
+

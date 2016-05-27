@@ -1,0 +1,7 @@
+#acl we dont want
+70,allow
+210,allow
+280,allow
+488,allow
+591,allow
+777,allow

@@ -1,0 +1,27 @@
+EN,SQUID_USER_BAD_SHELL=squid must not have a shell
+  Set a non-shell setting to squid user like /bin/false or /bin/nologin
+  <div class="command">usermod -s /bin/false squid</div>
+ADVICEEND
+EN,SQUID_HIDE_VERSION=Hide the squid version
+  Enable httpd_suppress_version_string to hide squids version.
+  Add to your squid.conf:
+  <div class="conf">httpd_suppress_version_string on</div>
+ADVICEEND
+EN,SQUID_ALLOW_UNDERSCORE=Deactivate underscore hostname support
+  It says in man squid, that underscore characters are not strictly allowed in Internet hostnames.
+  So deactivate underscore in hostname support.
+  Add to your squid.conf:
+  <div class="conf">allow_underscore off</div>
+ADVICEEND
+EN,SQUID_FTP_SANITYCHECK=Enable FTP sanitycheck
+  <div class="conf">ftp_sanitycheck on</div>
+ADVICEEND
+EN,SQUID_UNKNOWN_NAMESERVER=Enable ignore_unknown_nameservers
+  Add to your squid.conf:
+  <div class="conf">ignore_unknown_nameservers on</div>
+ADVICEEND
+EN,SQUID_CHECK_HOSTNAMES=Enable check_hostname
+  For security and stability reasons squid can check hostnames for Internet standard RFC compliance.
+  Add to your squid.conf:
+  <div class="conf">check_hostname on</div>
+ADVICEEND

@@ -1,0 +1,31 @@
+#!/bin/sh
+################################################################################
+#                                                                              #
+#   Copyright (C) 2008-2015 LABBE Corentin <clabbe.montjoie@gmail.com>
+#
+#    YASAT is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    YASAT is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with YASAT.  If not, see <http://www.gnu.org/licenses/>.
+#                                                                              #
+################################################################################
+
+TESTNAME='YASAT_TEST_BOOT_BOOTLOADER_PASSWORD Set Boot Loader Password'
+Compliance --result 'NOTIMPL' --plugin 'boot' --type 'NSAG' --cid '2.3.5.2' --cce 4144-2 --cce 3923-0 --cce 3818-2 --cce 4197-0
+
+TESTNAME='YASAT_TEST_BOOT_REQUIRE_AUTHENT Require Authentication for Single-User Mode'
+Compliance --result 'NOTIMPL' --plugin 'boot' --type 'NSAG' --cid '2.3.5.3' --cce 4241-6
+
+TESTNAME='YASAT_TEST_BOOT_DISABLE_INTERACTIVE_BOOT Disable Interactive Boot'
+Compliance --result 'NOTIMPL' --plugin 'boot' --type 'NSAG' --cid '2.3.5.4' --cce 4245-7
+
+
+return 0;

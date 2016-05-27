@@ -1,0 +1,91 @@
+EN,KERNEL_CONFIG_COMPAT_BRK=TODO
+  If possible disable it
+  See <a href="http://cateee.net/lkddb/web-lkddb/COMPAT_BRK.html">http://cateee.net/lkddb/web-lkddb/COMPAT_BRK.html</a>
+ADVICEEND
+EN,KERNEL_CONFIG_IA32_EMULATION=If not needed, disable IA32 emulation
+  If possible disable it
+  TODO
+ADVICEEND
+#http://kerneltrap.org/mailarchive/linux-kernel/2008/2/6/744164
+EN,KERNEL_CONFIG_COMPAT_VDSO=TODO
+  If possible disable it
+  See <a href="http://cateee.net/lkddb/web-lkddb/COMPAT_VDSO.html">http://cateee.net/lkddb/web-lkddb/COMPAT_VDSO.html</a>
+ADVICEEND
+EN,KERNEL_MMAP_MIN_ADDR=Set this to 4096
+  Many security flaw have been found in Linux kernel that can be exploited if this value is 0
+  See <a href="http://lwn.net/Articles/360371/">http://lwn.net/Articles/360371/</a>
+  TODO had more links to explain
+ADVICEEND
+EN,KERNEL_CONFIG_MCE=Enable MCE support in kernel
+  Enable it, it allows Linux to check/detect some hardware problem.
+  See <a href="http://en.wikipedia.org/wiki/Machine_Check_Exception">http://en.wikipedia.org/wiki/Machine_Check_Exception</a>
+ADVICEEND
+EN,KERNEL_NO_NX_BIT=Check NX bit support for your processor
+  NX bit is available on all x86 processors that have 64bit support, both AMD and Intel.
+  If your processor is recent, check your BIOS for enable it. (sometime called noexec, memory protection etc...)
+  See <a href="http://en.wikipedia.org/wiki/NX_bit">http://en.wikipedia.org/wiki/NX_bit</a> for more informations on NX bit.
+ADVICEEND
+EN,KERNEL_NO_CONFIG=Can't find you kernel config
+  Either you recompile your kernel with CONFIG_IKCONFIG_PROC or either you provide the .config to yasat with YASAT_PATH_TO_KERNEL_CONFIG <- TODO
+ADVICEEND
+EN,KERNEL_CONFIG_STRICT_DEVMEM=Disable access to /dev/mem
+  http://bugs.archlinux.org/task/14317
+  If this option is disabled, you allow userspace (root) access to all of memory, including both kernel and userspace memory.
+  Accidental access to this is obviously disastrous, but specific access can be used by people debugging the kernel.
+  Note that with PAT support enabled, even in this case there are restrictions on /dev/mem use due to the cache aliasing requirements.
+  If this option is switched on, the /dev/mem file only allows userspace access to PCI space and the BIOS code and data regions. This is sufficient for dosemu and X and all common users of /dev/mem.
+  (Doc from kernel config)
+ADVICEEND
+EN,KERNEL_CONFIG_DEVKMEM=Disable the creation of /dev/kmem
+  The /dev/kmem device is rarely used, but can be used for certain kind of kernel debugging operations.
+  (Doc from kernel config)
+ADVICEEND
+EN,KERNEL_EXEC_SHIELD=Enable Exec-Shield
+  Exec-Shield is kernel patches for using NX.
+  It is included by default on Redhat Linux and clones.
+  Activate it by "echo 1 > /proc/sys/kernel/exec-shield"
+  Add "kernel.exec-shield = 1" in /etc/sysctl.conf to make the change persistent.
+  See <a href="http://people.redhat.com/mingo/exec-shield/">http://people.redhat.com/mingo/exec-shield/</a>
+  See also <a href="http://lwn.net/Articles/144107/">http://lwn.net/Articles/144107/</a>
+ADVICEEND
+EN,OPENBSD_SECURE_LEVEL_BELOW_ZERO=Set secure level at level 0 or more
+  See <a href="http://www.openbsd.org/cgi-bin/man.cgi?query=securelevel&sektion=7&arch=&apropos=0&manpath=OpenBSD+Current">http://www.openbsd.org/cgi-bin/man.cgi?query=securelevel&sektion=7&arch=&apropos=0&manpath=OpenBSD+Current</a>
+ADVICEEND
+EN,KERNEL_CONFIG_PAX=Use PAX to harden your kernel
+  See <a href="http://grsecurity.net/">http://grsecurity.net/</a>
+  TODO do more explanation
+ADVICEEND
+EN,KERNEL_CONFIG_GRSEC=Use GRsec to harden your kernel
+  See <a href="http://grsecurity.net/">http://grsecurity.net/</a>
+  TODO do more explanation
+ADVICEEND
+EN,KERNEL_CONFIG_SECURITY_SELINUX=Use SELinux to harden your kernel
+  See <a href="http://fedoraproject.org/wiki/SELinux/">http://fedoraproject.org/wiki/SELinux/</a>
+  TODO do more explanation
+ADVICEEND
+EN,KERNEL_USB_MODULES=On a server, disable USB
+  On a server disable all possible ways to connect removable devices.
+  TODO Link to DMA attacks with USB/Firewire like http://www.breaknenter.org/projects/inception/
+ADVICEEND
+EN,KERNEL_FIREWIRE_MODULES=On a server, disable FireWire
+  On a server disable all possible ways to connect removable devices.
+  TODO Link to DMA attacks with USB/Firewire like http://www.breaknenter.org/projects/inception/
+ADVICEEND
+EN,KERNEL_RANDOM_VA_SPACE=Activate the randomize_va_space
+  See /usr/src/linux/Documentation/sysctl/kernel.txt
+  You can activate it with sysctl kernel.randomize_va_space=2.
+  Add "kernel.randomize_va_space = 2" in /etc/sysctl.conf to make the change persistent.
+  You can also access it with /proc/sys/kernel/randomize_va_space
+ADVICEEND
+EN,KERNEL_CONFIG_DEBUG_SET_MODULE_RONX=Set KERNEL_CONFIG_DEBUG_SET_MODULE_RONX
+  See <a href="http://lwn.net/Articles/422487/">http://lwn.net/Articles/422487/</a>
+ADVICEEND
+EN,KERNEL_CONFIG_DEBUG_RODATA=Set KERNEL_CONFIG_DEBUG_RODATA
+  TODO
+ADVICEEND
+EN,KERNEL_CONFIG_DEBUG_STRICT_USER_COPY_CHECKS=Set KERNEL_CONFIG_DEBUG_STRICT_USER_COPY_CHECKS
+  TODO
+ADVICEEND
+EN,KERNEL_HW_VIRT=If not needed, disable it
+  If you do not use theses virtualization helper, disable it.
+ADVICEEND
