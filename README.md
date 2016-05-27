@@ -6,20 +6,20 @@ Second goal is to document each test with maximum information and links to offic
 It do many tests for checking security configuration issue or others good practice.
 It checks many software configurations like:
 
- *Apache
- *Bind DNS
- *CUPS
- *PHP
- *kernel configuration
- *mysql
- *network configuration
- *openvpn
- *Packages update
- *samba
- *snmpd
- *squid
- *syslog
- *tomcat
- *user accounting
- *vsftpd
- *xinetd
+* Apache
+* Bind DNS
+* CUPS
+* PHP
+* kernel configuration
+* mysql
+* network configuration
+* openvpn
+* Packages update
+* samba
+* snmpd
+* squid
+* syslog
+* tomcat
+* user accounting
+* vsftpd
+* xinetd
