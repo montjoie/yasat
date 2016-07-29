@@ -346,20 +346,17 @@ is_equal() {
 ################################################################################
 report_add()
 {
-	if [ -z "$1" ]
-	then
+	if [ -z "$1" ];then
 		Display --indent 2 --text "Missing argument #1 for report_add" --result WARNING --color RED --advice YASAT_BUG
-		return -1;
+		return 1;
 	fi
-	if [ -z "$2" ]
-	then
+	if [ -z "$2" ];then
 		Display --indent 2 --text "Missing argument #2 (type of output) for report_add" --result WARNING --color RED --advice YASAT_BUG
-		return -1;
+		return 1;
 	fi
-	if [ -z "$3" ]
-	then
+	if [ -z "$3" ];then
 		Display --indent 2 --text "Missing argument #3 (name of the output file) for report_add" --result WARNING --color RED --advice YASAT_BUG
-		return -1;
+		return 1;
 	fi
 
 	Debug "report_add() called with $1 $2 $3"
@@ -370,8 +367,7 @@ report_add()
 #		echo "==  `cat yasat.advices |grep $ADVICE | cut -d\= -f2-` ==" >> $3
 #		echo "" >> $3
 #	fi
-	if [ $2 = "HTML" ]
-	then
+	if [ $2 = "HTML" ];then
 		echo "<tr><td>" >> "$3"
 	fi
 
@@ -380,40 +376,31 @@ report_add()
 	cat $LISTE_ADVICE |
 	while read line
 	do
-		if [ "$line" = "ADVICEEND" ]
-		then
+		if [ "$line" = "ADVICEEND" ];then
 			ADVICEFOUND=0
 		fi
 		#temporary
-		if [ ! -z "`echo $line |grep ^${ADVICELANG},`" ]
-		then
+		if [ ! -z "`echo $line |grep ^${ADVICELANG},`" ];then
 			ADVICEFOUND=0
 		fi
 
-		if [ $ADVICEFOUND -eq 1 ]
-		then
-			if [ $2 = "TEXT" ]
-			then
+		if [ $ADVICEFOUND -eq 1 ];then
+			if [ $2 = "TEXT" ];then
 				echo "  $line" | sed 's/<[^>]*>//g'>> "$3"
 			fi
-			if [ $2 = "HTML" ]
-			then
+			if [ $2 = "HTML" ];then
 				echo "  $line" >> "$3"
 				echo "<br>" >> "$3"
 			fi
 		fi
 
-		if [ ! -z "`echo $line |grep ${ADVICELANG},$1`" ]
-		then
+		if [ ! -z "`echo $line |grep ${ADVICELANG},$1`" ];then
 			ADVICEFOUND=1
 		fi
 	done
-	if [ $2 = "HTML" ]
-	then
+	if [ $2 = "HTML" ];then
 		echo "<br></td><td></td><td></td></tr>" >> "$3"
 	fi
-
-
 }
 
 ################################################################################
