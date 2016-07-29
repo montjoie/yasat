@@ -169,7 +169,7 @@ fi
 
 need_ret() {
 	if [ "$1" != "$2" ];then
-		echo "Return code $1 is different than $2"
+		echo "Return code $1 is not one expected $2"
 		exit 1
 	fi
 }
