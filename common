@@ -285,7 +285,7 @@ Display()
 ################################################################################
 # does $1 is equal to $2 ?
 # optionnal parameter [-f filter] [-i]
-# -f filter: filter $1 
+# -f filter: filter $1
 # -i case insesitive test but $2 need to be lowercase
 # -2 add a second value accepted
 # return 0 if yes
@@ -363,7 +363,7 @@ report_add()
 	fi
 
 	Debug "report_add() called with $1 $2 $3"
-	
+
 #	if [ $2 = "TEXT" ]
 #	then
 #		echo "" >> $3
@@ -846,7 +846,7 @@ print_help()
 
 ################################################################################
 ################################################################################
-#compare 2 right 
+#compare 2 right
 #example compare_right 666 640 YES said bad
 #example compare_right 666 640 YES said bad
 #example compare_right 400 640 NO said bad
@@ -1090,7 +1090,7 @@ check_private_key()
 		Display --indent $2 --text "SSH PRIVATE KEY FILE FORMAT 1.1" --result INFO --color BLUE
 		return 0;
 	fi
-	
+
 	Check_tool_presence openssl LOCAL
 	if [ $? -ne 0 ] ; then
 		Display --indent $2 --text "No openssl binary" --result INFO --color BLUE
@@ -1613,13 +1613,13 @@ prepare_kernel_config()
 		fi
 	fi
 	if [ ! -e "${TEMPYASATDIR}/kernel_config" ] ;then
-		if [ -e "$YASAT_PATH_TO_KERNEL_CONFIG" ] ;then  
+		if [ -e "$YASAT_PATH_TO_KERNEL_CONFIG" ] ;then
 			Display --indent 2 --text "$YASAT_PATH_TO_KERNEL_CONFIG" --result FOUND --color GREEN
 			cat "$YASAT_PATH_TO_KERNEL_CONFIG" > ${TEMPYASATDIR}/kernel_config
-		else    
+		else
 			Display --indent 2 --text "$YASAT_PATH_TO_KERNEL_CONFIG" --result NOTFOUND --color ORANGE --advice KERNEL_NO_CONFIG
-		fi      
-	fi      
+		fi
+	fi
 
 }
 
@@ -2832,7 +2832,7 @@ get_value_in_string() {
 # check SSLProtocol
 # arg1 is indent
 # arg2 is the sslprotocol list
-# TODO do the same for gnutls 
+# TODO do the same for gnutls
 # return 0 on problem
 # return 1 if list is good
 # return 2 if list is bad
@@ -3269,7 +3269,7 @@ Check_tool_presence() {
 		Display_error 'Error missing parameter #1: binary name'
 		return 1;
 	fi
-	# which is not present on minimum CentOS, 
+	# which is not present on minimum CentOS,
 	local readonly POSSIBLE_PATH_FOR_WHICH="/usr/bin /bin /usr/sbin /sbin"
 	local ppath
 	local FOUND_WHICH=0
