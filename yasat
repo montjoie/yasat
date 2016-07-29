@@ -38,6 +38,11 @@ DEBUG=0
 
 TEMPYASATDIR="`echo ~/.yasat/`"
 mkdir -p $TEMPYASATDIR
+# the .yasat directory in the home of the user running yasat
+YASAT_HOMEDIR="$HOME/.yasat/"
+if [ -z "$YASAT_HOMEDIR" ];then
+	YASAT_HOMEDIR="`echo ~/.yasat/`"
+fi
 HTML_OUTPUT=""
 HTML_COMPLIANCE_OUTPUT="${TEMPYASATDIR}/compliance.html"
 HTML_COMPLIANCE_OUTPUT_PREFIX="${TEMPYASATDIR}/compliance"
@@ -73,6 +78,7 @@ DO_COMPLIANCE='none'
 SCAN_PROFILE='server' #or desktop
 TMP_FILE_CREATED=""
 
+# try finding a yasat.conf in /etc/ /usr/local/etc and user home directory
 if [ -e '/etc/yasat/yasat.conf' ] ;then
 	. /etc/yasat/yasat.conf
 	echo 'Found /etc/yasat/yasat.conf'
@@ -81,9 +87,9 @@ if [ -e '/usr/local/etc/yasat/yasat.conf' ] ;then
 	. /usr/local/etc/yasat/yasat.conf
 	echo 'Found /usr/local/etc/yasat/yasat.conf'
 fi
-if [ -e "$TEMPYASATDIR/yasat.conf" ] ;then
-	. $TEMPYASATDIR/yasat.conf
-	echo "Found $TEMPYASATDIR/yasat.conf"
+if [ -e "$YASAT_HOMEDIR/yasat.conf" ] ;then
+	. $YASAT_HOMEDIR/yasat.conf
+	echo "Found $YASAT_HOMEDIR/yasat.conf"
 fi
 
 COMPLIANCE_OUTPUT="$TEMPYASATDIR/compliance"
