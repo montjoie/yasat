@@ -36,23 +36,12 @@ POSSIBLE_APACHE_BIN="/usr/sbin/apache2 /usr/local/sbin/httpd /usr/local/sbin/apa
 
 DEBUG=0
 
-TEMPYASATDIR="`echo ~/.yasat/`"
-mkdir -p $TEMPYASATDIR
 # the .yasat directory in the home of the user running yasat
 YASAT_HOMEDIR="$HOME/.yasat/"
 if [ -z "$YASAT_HOMEDIR" ];then
 	YASAT_HOMEDIR="`echo ~/.yasat/`"
 fi
 HTML_OUTPUT=""
-HTML_COMPLIANCE_OUTPUT="${TEMPYASATDIR}/compliance.html"
-HTML_COMPLIANCE_OUTPUT_PREFIX="${TEMPYASATDIR}/compliance"
-> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG
-> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT
-HTML_COMPLIANCE_BODY_OUTPUT="${TEMPYASATDIR}/compliance_body.html"
-> $HTML_COMPLIANCE_BODY_OUTPUT
-ERROR_OUTPUT_FILE="${TEMPYASATDIR}/yasat.err"
-REPORT_OUTPUT="${TEMPYASATDIR}/yasat.report"
-CORRECT_FILE="${TEMPYASATDIR}/yasat_correct.shell"
 ADVICELANG="EN"
 PLUGINS_REP="./plugins"
 SCANTYPE=""
@@ -92,15 +81,6 @@ if [ -e "$YASAT_HOMEDIR/yasat.conf" ] ;then
 	echo "Found $YASAT_HOMEDIR/yasat.conf"
 fi
 
-COMPLIANCE_OUTPUT="$TEMPYASATDIR/compliance"
-> $COMPLIANCE_OUTPUT
-
-if [ -e "$REPORT_OUTPUT" ] ;then
-	rm $REPORT_OUTPUT
-fi
-if [ -e "$CORRECT_FILE" ] ;then
-	rm $CORRECT_FILE
-fi
 if [ ! -e "${YASAT_ROOT}/common" -a -e '/usr/share/yasat/common' ];then
 	YASAT_ROOT='/usr/share/yasat/'
 	PLUGINS_REP="${YASAT_ROOT}/plugins"
@@ -114,6 +94,13 @@ if [ $# -eq 0 ] ;then
 	print_help
 	exit 0;
 fi
+
+setup_yasat_tmpdir
+if [ $? -ne 0 ];then
+	echo "ERROR: Cannot setup TEMPYASATDIR"
+	exit 1
+fi
+setup_yasat_defaults
 
 trap armageddon INT
 

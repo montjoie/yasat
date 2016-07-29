@@ -3429,3 +3429,46 @@ detect_chroot() {
 }
 ################################################################################
 ################################################################################
+setup_yasat_defaults() {
+	if [ -z "$TEMPYASATDIR" ];then
+		echo "ERROR: Cannot setup defaults"
+		return 1
+	fi
+	HTML_COMPLIANCE_OUTPUT="${TEMPYASATDIR}/compliance.html"
+	HTML_COMPLIANCE_OUTPUT_PREFIX="${TEMPYASATDIR}/compliance"
+	> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_NSAG
+	> ${HTML_COMPLIANCE_OUTPUT_PREFIX}_YASAT
+	HTML_COMPLIANCE_BODY_OUTPUT="${TEMPYASATDIR}/compliance_body.html"
+	> $HTML_COMPLIANCE_BODY_OUTPUT
+	ERROR_OUTPUT_FILE="${TEMPYASATDIR}/yasat.err"
+	REPORT_OUTPUT="${TEMPYASATDIR}/yasat.report"
+	CORRECT_FILE="${TEMPYASATDIR}/yasat_correct.shell"
+	COMPLIANCE_OUTPUT="$TEMPYASATDIR/compliance"
+	> $COMPLIANCE_OUTPUT
+	if [ -e "$REPORT_OUTPUT" ] ;then
+		rm $REPORT_OUTPUT
+	fi
+	if [ -e "$CORRECT_FILE" ] ;then
+	        rm $CORRECT_FILE
+	fi
+}
+################################################################################
+################################################################################
+setup_yasat_tmpdir() {
+	TEMPYASATDIR="`echo ~/.yasat/`"
+	mkdir -p $TEMPYASATDIR
+	if [ $? -ne 0 ];then
+		TEMPYASATDIR='/tmp/yasat'
+		echo "Fallback to $TEMPYASATDIR"
+		if [ ! -e "$TEMPYASATDIR" ];then
+			mkdir -p "$TEMPYASATDIR"
+			return $?
+		else
+			touch "$TEMPYASATDIR/yasat_test_write"
+			return $?
+		fi
+	fi
+	return 0
+}
+################################################################################
+################################################################################

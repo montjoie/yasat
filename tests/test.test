@@ -23,18 +23,21 @@ export PLUGINS_REP="./tests"
 DEBUG=0
 QUIET=0
 HIDESR=0
-ERROR_OUTPUT_FILE="`echo ~/.yasat/yasat.err`"
 YASAT_ROOT=.
-REPORT_OUTPUT="`echo ~/.yasat/yasat.report`"
 COL_WIDTH="`tput cols`"
 PRINT_LEVEL=0
 ADVICELANG='EN'
-TEMPYASATDIR=.
-COMPLIANCE_OUTPUT="$TEMPYASATDIR/compliance"
 
 . ./common
 . ./osdetection
-mkdir -p ~/.yasat/
+
+setup_yasat_tmpdir
+if [ $? -ne 0 ];then
+	echo "ERROR: Cannot setup TEMPYASATDIR"
+	exit 1
+fi
+setup_yasat_defaults
+
 cat plugins/yasat_global.advice | grep $ADVICELANG > ${YASAT_ROOT}/yasat.advices
 cp plugins/yasat_global.advice $PLUGINS_REP/
 
