@@ -1,0 +1,39 @@
+yasat (848-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Closes: #832841
+
+ -- Corentin LABBE <clabbe.montjoie@gmail.com>  Tue, 30 Aug 2016 09:04:43 +0000
+
+yasat (839-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Fix setuid database. Closes: #756839
+  * Fix Crashes on not finding /etc/apache2/envvars. Closes: #756840
+
+ -- Corentin LABBE <clabbe.montjoie@gmail.com>  Tue, 15 Apr 2015 06:29:09 +0000
+
+yasat (755-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Corentin LABBE <clabbe.montjoie@gmail.com>  Wed, 30 Apr 2014 14:48:45 +0000
+
+yasat (700-1) unstable; urgency=low
+
+  * New upstream release. Closes: #690636
+
+ -- Corentin LABBE <clabbe.montjoie@gmail.com>  Tue, 09 Jul 2013 05:18:25 +0000
+
+yasat (526-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Corentin LABBE <corentin.labbe@geomatys.fr>  Mon, 21 May 2012 13:31:56 +0000
+
+yasat (456-1) unstable; urgency=low
+
+  * Initial release. Closes: #653580
+
+ -- Corentin LABBE <corentin.labbe@geomatys.fr>  Sun, 11 Mar 2012 18:14:33 +0200
+

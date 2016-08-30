@@ -1,0 +1,4 @@
+version=3
+#commented until my key reach signing-key.asc
+#opts=pgpsigurlmangle=s/$/.asc/ http://sf.net/yasat/yasat-(.+).tar.gz
+http://sf.net/yasat/yasat-(.+).tar.gz
