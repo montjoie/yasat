@@ -131,6 +131,7 @@ Compliance --result 'NOTIMPL' --plugin cups --nsag 3.8.3.3
 #done
 
 #TODO cceid 3755-6
+TESTNAME='YASAT_TEST_CUPS_AUTOSTART Check if Cups is autostarted'
 Check_auto_start cups cups no 3.8.1 4112-9
 if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
 	Display --indent 2 --text "Cups is started at boot" --result UNKNOWN --color BLUE
@@ -142,6 +143,7 @@ else
 	fi
 fi
 
+TESTNAME='YASAT_TEST_CUPS_PKTMANAGET_INSTALLED Check if Cups is installed by a package manager'
 Is_installed_via_package_manager cups
 if [ "$RESULTAT" = 'NOTIMPLEMENTED' -o "$RESULTAT" = 'ERROR' ] ;then
 	Display --indent 2 --text "Cups installation" --result UNKNOWN --color BLUE
