@@ -77,11 +77,12 @@ if [ -f $PLUGINS_REP/$CONF_FILE ] ;then
 		    #echo -n "check $lepath => $lesdroits $luser $lgroup $loption"
 		    case $loption in
 		    R)
-		    	TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is chmod $lesdroits"
+			TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if others can access $lepath"
 		    	Display --indent 2 --text "Checking $lepath" --result INFO --color BLUE
 			#check for files with other rights
 		    	TMP_RESULT="${TEMPYASATDIR}/system_right.tmp"
 		    	check_directory_others $lepath $TMP_RESULT 4 GLOBAL_FILE_OTHER_READABLE
+			TESTNAME="YASAT_TEST_SYSTEMRIGHT_GENERIC Check if $lepath is chmod $lesdroits"
 			RIGHT="`stat $STAT_RIGHT $lepath`"
 			if [ $RIGHT != "$lesdroits" ] ;then
 				Display --indent 4 --text "Right of $lepath: $RIGHT" --result BAD --color RED
