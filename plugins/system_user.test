@@ -90,37 +90,37 @@ do
 	#end of if PASSFILE
 
 	if [ -e "${HOMEUSER}/.ssh/" ];then
-	    if [ `stat $STAT_RIGHT ${HOMEUSER}/.ssh/` != '700' ];then
-		Display --indent 4 --text "${HOMEUSER}/.ssh is not 700" --result WARNING --color RED --advice SYSTEM_USER_DOTDIR
+		TESTNAME="YASAT_TEST_HOMEUSER_SSH_RIGHT Check if .ssh directory have correct unix rights"
+		if [ `stat $STAT_RIGHT ${HOMEUSER}/.ssh/` != '700' ];then
+			Display --indent 4 --text "${HOMEUSER}/.ssh is not 700" --result WARNING --color RED --advice SYSTEM_USER_DOTDIR
 		else
-		Display --indent 4 --text "${HOMEUSER}/.ssh" --result OK --color GREEN
-	    fi
+			Display --indent 4 --text "${HOMEUSER}/.ssh" --result OK --color GREEN
+		fi
 #	    find ${HOMEUSER}/.ssh/ ! -user $iuser -ls
 		TMP_RESULT="${TEMPYASATDIR}/ssh_others"
 		check_directory_owner "${HOMEUSER}/.ssh/" $iuser $TMP_RESULT 4 'TODO'
 #	    find ${HOMEUSER}/.ssh/ -perm $ORWX -ls
 		check_directory_others "${HOMEUSER}/.ssh/" $TMP_RESULT 4 GLOBAL_FILE_OTHER_READABLE
-	    if [ -e "${HOMEUSER}/.ssh/authorized_keys" -o -e "${HOMEUSER}/.ssh/authorized_keys2" ];then
-		Display --indent 4 --text "authorized_keys" --result FOUND --color GREEN
-		#TODO check this files (content)
-	    fi
-	    #TODO check keysize for < 2048bits (find a good link to explain why)
-	    if [ -e "${HOMEUSER}/.ssh/id_rsa" -o -e "${HOMEUSER}/.ssh/id_rsa.pub" ] ;then
-		KEY_SIZE="`ssh-keygen -l -f ${HOMEUSER}/.ssh/id_rsa | cut -d\  -f1`"
-	    	Display --indent 4 --text "RSA keys found ($KEY_SIZE bits)" --result OK --color GREEN
-		check_private_key "${HOMEUSER}/.ssh/id_rsa" 4 'ssh' "${iuser}" "$PRIMARYGROUP"
-	    fi
-	    if [ -e "${HOMEUSER}/.ssh/id_dsa" -o -e "${HOMEUSER}/.ssh/id_dsa.pub" ] ;then
-	    	#I have read somewhere that DSA is only 1024, so perhaps reading keysize is useless
-		KEY_SIZE="`ssh-keygen -l -f ${HOMEUSER}/.ssh/id_dsa | cut -d\  -f1`"
-	   	Display --indent 4 --text "DSA keys found ($KEY_SIZE bits)" --result OK --color GREEN
-		check_private_key "${HOMEUSER}/.ssh/id_dsa" 4 'ssh' "${iuser}" "$PRIMARYGROUP"
-	    fi
+		if [ -e "${HOMEUSER}/.ssh/authorized_keys" -o -e "${HOMEUSER}/.ssh/authorized_keys2" ];then
+			Display --indent 4 --text "authorized_keys" --result FOUND --color GREEN
+			#TODO check this files (content)
+		fi
+		#TODO check keysize for < 2048bits (find a good link to explain why)
+		if [ -e "${HOMEUSER}/.ssh/id_rsa" -o -e "${HOMEUSER}/.ssh/id_rsa.pub" ] ;then
+			KEY_SIZE="`ssh-keygen -l -f ${HOMEUSER}/.ssh/id_rsa | cut -d\  -f1`"
+			Display --indent 4 --text "RSA keys found ($KEY_SIZE bits)" --result OK --color GREEN
+			check_private_key "${HOMEUSER}/.ssh/id_rsa" 4 'ssh' "${iuser}" "$PRIMARYGROUP"
+		fi
+		if [ -e "${HOMEUSER}/.ssh/id_dsa" -o -e "${HOMEUSER}/.ssh/id_dsa.pub" ] ;then
+			#I have read somewhere that DSA is only 1024, so perhaps reading keysize is useless
+			KEY_SIZE="`ssh-keygen -l -f ${HOMEUSER}/.ssh/id_dsa | cut -d\  -f1`"
+			Display --indent 4 --text "DSA keys found ($KEY_SIZE bits)" --result OK --color GREEN
+			check_private_key "${HOMEUSER}/.ssh/id_dsa" 4 'ssh' "${iuser}" "$PRIMARYGROUP"
+		fi
 
-	    if [ `stat $STAT_USER ${HOMEUSER}/.ssh/` != $iuser ];then
-		    Display --indent 4 --text "Error ${HOMEUSER}/.ssh/ is not $iuser owned" --result ERROR --color RED
-	    fi
-
+		if [ `stat $STAT_USER ${HOMEUSER}/.ssh/` != $iuser ];then
+			Display --indent 4 --text "Error ${HOMEUSER}/.ssh/ is not $iuser owned" --result ERROR --color RED
+		fi
 	fi
 	#end if [ -e "${HOMEUSER}/.ssh/" ]
 
@@ -162,8 +162,8 @@ do
 		fi
 	done
 	#check only "normal" users for the moment
-	if [ ! -z "`echo ${HOMEUSER} |grep $BASEHOME`" ]
-	then
+	if [ ! -z "`echo ${HOMEUSER} |grep $BASEHOME`" ];then
+		TESTNAME='YASAT_TEST_CHECK_HOME_OTHERS'
 		TMP_RESULT="${TEMPYASATDIR}/${iuser}.homeresult"
 		check_directory_others ${HOMEUSER} $TMP_RESULT 4 SYSTEM_USER_HOMEDIR_READABLE_BY_OTHERS
 	fi
