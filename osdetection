@@ -134,6 +134,7 @@ BIND_PACKAGE_NAME='bind'
 	  HARDWARE=`uname -m`
 	  HOMEDIRS="/home"
 	  FIND_BINARIES="whereis -b"
+	  FIND_SETUID="-4000"
 	  OS_KERNELVERSION=`uname -r`
 	  # Cobalt
 	  if [ -e "/etc/cobalt-release" ]; then		OS_FULLNAME=`cat /etc/cobalt-release`; fi
