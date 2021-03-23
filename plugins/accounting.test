@@ -144,10 +144,17 @@ if [ ! -e "$SHADOW_FILE" ];then
 	Display --indent 2 --text "$SHADOW_FILE not found, trying /etc/passwd" --result NOSHADOW --color BLUE
 	SHADOW_FILE="`echo $SCAN_ROOT/etc/passwd |sed 's,//*,/,g'`"
 fi
-if [ -e "$SHADOW_FILE" ];then
+check_shadow() {
 	Display --indent 2 --text "$SHADOW_FILE" --result FOUND --color BLUE
 	TMPFILE_ACCT="${TEMPYASATDIR}/shadow.tmp"
-	grep -v '^#' "$SHADOW_FILE" |cut -d\: -f1,2 > $TMPFILE_ACCT
+	# check if $SHADOW_FILE could be read
+	head -n1 $SHADOW_FILE 2>/dev/null >/dev/null
+	if [ $? -ne 0 ];then
+		Display --indent 2 --text "$SHADOW_FILE could not be read" --result EPERM --color RED
+		return 0
+	fi
+
+	grep -v '^#' "$SHADOW_FILE" | cut -d\: -f1,2 > $TMPFILE_ACCT
 	while read line
 	do
 		HASH_METHOD="`echo $line |cut -d\: -f2 | cut -c1,2`"
@@ -189,6 +196,10 @@ if [ -e "$SHADOW_FILE" ];then
 		#TODO Blowfish $2a
 	done < $TMPFILE_ACCT
 	rm $TMPFILE_ACCT
+}
+
+if [ -e "$SHADOW_FILE" ];then
+	check_shadow
 fi
 
 #TODO need more work
