@@ -37,9 +37,9 @@ POSSIBLE_APACHE_BIN="/usr/sbin/apache2 /usr/local/sbin/httpd /usr/local/sbin/apa
 DEBUG=0
 
 # the .yasat directory in the home of the user running yasat
-YASAT_HOMEDIR="$HOME/.yasat/"
+YASAT_HOMEDIR="$HOME/.yasat"
 if [ -z "$YASAT_HOMEDIR" ];then
-	YASAT_HOMEDIR="`echo ~/.yasat/`"
+	YASAT_HOMEDIR="`echo ~/.yasat`"
 fi
 HTML_OUTPUT=""
 ADVICELANG="EN"
@@ -505,7 +505,7 @@ fi
 
 if [ -d "$PLUGINS_REP" ] ; then
 	LISTE_ADVICE="`ls $PLUGINS_REP/*.advice`"
-	cat $LISTE_ADVICE | grep $ADVICELANG > ${YASAT_ROOT}/yasat.advices
+	cat $LISTE_ADVICE | grep $ADVICELANG > ${YASAT_HOMEDIR}/yasat.advices
 
 	if [ -z "$ONEPLUGIN" ] ; then
 		Debug "Analyse de $PLUGINS_REP"
