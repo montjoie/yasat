@@ -3442,7 +3442,7 @@ setup_yasat_defaults() {
 ################################################################################
 ################################################################################
 setup_yasat_tmpdir() {
-	TEMPYASATDIR="`echo ~/.yasat/`"
+	TEMPYASATDIR="`echo ~/.yasat`"
 	mkdir -p $TEMPYASATDIR
 	if [ $? -ne 0 ];then
 		TEMPYASATDIR='/tmp/yasat'
