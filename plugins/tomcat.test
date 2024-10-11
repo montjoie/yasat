@@ -105,7 +105,7 @@ do
 	then
 		Display --indent 2 --text "Tomcat $TOMCAT_VERSION found at $BASE_TOMCAT" --result FOUND --color GREEN
 
-		check_directory_others $BASE_TOMCAT $TMP_RESULT2 4
+		check_directory_others $BASE_TOMCAT $TMP_RESULT2 4 TODO
 
 	fi
 	if [ "$TOMCAT_MAJOR_VERSION" != "0" -a "$TOMCAT_MINOR_VERSION" != "0" ] ;then

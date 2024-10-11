@@ -26,7 +26,7 @@ Title "Check running process"
 if [ ! -e "${PLUGINS_REP}/process.data" ]
 then
 	Display --indent 2 --text "process.data" --result NOTFOUND --color RED
-	return -1;
+	return 1;
 fi
 
 #TODO FreeBSD said ps: Process environment requires procfs(5)

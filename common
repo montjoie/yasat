@@ -2455,6 +2455,20 @@ Is_installed_via_package_manager()
 		return 0;
 	fi
 	if [ "$LIST_PKG" = "emerge" ] ;then
+		if [ -z "$CACHE_EMERGE_OK" ];then
+			# check if we have can use portage
+			emerge --info 2>/dev/null >/dev/null
+			if [ $? -ne 0 ];then
+				Display --indent 2 --text "Could not work with emerge (cached)" --result EPERM --color RED
+				CACHE_EMERGE_OK="ko"
+				return 0
+			fi
+		fi
+		if [ "$CACHE_EMERGE_OK" = 'ko' ];then
+			Display --indent 2 --text "Could not work with emerge (cached)" --result EPERM --color RED
+			return 0
+		fi
+		CACHE_EMERGE_OK="ok"
 		#TODO could be better
 		PKGLIST="`equery -C -q l $1`"
 		if [ -z "$PKGLIST" ] ;then
