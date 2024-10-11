@@ -25,8 +25,16 @@ QUIET=0
 HIDESR=0
 YASAT_ROOT=.
 COL_WIDTH="`tput cols`"
+# tput could fail
+if [ -z "$COL_WIDTH" ];then
+	COL_WIDTH=79
+fi
 PRINT_LEVEL=0
 ADVICELANG='EN'
+
+if [ "$1" == "-d" ];then
+	DEBUG=1
+fi
 
 . ./common
 . ./osdetection

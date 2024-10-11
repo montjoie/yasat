@@ -1,0 +1,82 @@
+---
+# yamllint disable rule:line-length
+name: tests yasat
+
+on:  # yamllint disable-line rule:truthy
+  push:
+  pull_request:
+
+jobs:
+  test-ubuntu:
+    runs-on: ubuntu-latest
+    name: test on ubuntu
+    steps:
+      - uses: actions/checkout@v4
+      - name: update pkglist
+        run: sudo apt-get update
+      - name: install some tested packages
+        run: sudo apt-get -y install tomcat9
+      - name: Run tests
+        run: |
+          make test
+          ./tests/test.test -d
+      - name: Run yasat
+        run: |
+          ./yasat
+          ./yasat -1 ntp
+          ./yasat -1 cups
+          ./yasat -1 classique
+          ls -l /home/runner/.yasat//yasat.report
+  test-bashishms:
+    runs-on: ubuntu-latest
+    name: Check bashisms
+    steps:
+      - uses: actions/checkout@v4
+      - name: update pkglist
+        run: sudo apt-get update
+      - name: install checkbashisms
+        run: sudo apt-get -y install devscripts
+      - name: Run checkbashisms
+        run: checkbashisms yasat common plugins/*test
+  ubuntu-pkg:
+    runs-on: ubuntu-latest
+    name: build ubuntu package
+    steps:
+      - uses: actions/checkout@v4
+      - name: update pkglist
+        run: sudo apt-get update
+      - name: Install packages
+        run: sudo apt-get -y install devscripts gnupg debhelper-compat 
+      - name: create orig targz
+        run: cd .. && tar czf yasat_0-1.orig.tar.gz yasat
+      - name: Run debuild
+        run: debuild -i -us -uc -b  --lintian-opts --profile debian
+      - name: Run debuild help
+        run: debuild --help
+  debian-pkg:
+    runs-on: ubuntu-latest
+    name: build debian package
+    steps:
+      - uses: actions/checkout@v4
+      - name: update pkglist
+        run: sudo apt-get update
+      - name: Install packages
+        run: sudo apt-get -y install debootstrap
+      - name: Create a bookworm
+        run: sudo debootstrap bookworm /root/bookworm
+      - name: copy yasat source
+        run: sudo cp -a ../yasat /root/bookworm/
+      - name: Install update pkg in chroot
+        run: sudo chroot /root/bookworm apt-get update
+      - name: Install update pkg in chroot
+        run: sudo chroot /root/bookworm apt-get -y install devscripts gnupg debhelper-compat
+      - name: Generate wrapper
+        run: |
+          echo '#!/bin/sh' >> run.sh
+          echo 'cd /yasat' >> run.sh
+          echo 'debuild -i -us -uc -b' >> run.sh
+          chmod 755 run.sh
+          sudo cp run.sh /root/bookworm/
+      - name: Run debuild
+        run: sudo chroot /root/bookworm /run.sh
+

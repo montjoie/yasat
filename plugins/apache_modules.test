@@ -65,7 +65,15 @@ fi
 check_file "$APACHE_BIN" 2 BINARY
 
 if [ "$LINUX_VERSION" = "Gentoo" ] ;then
-	. /etc/conf.d/apache2
+	if [ ! -r /etc/conf.d/apache2 ];then
+		TESTNAME='YASAT_TEST_APACHE_MODULES_READ_CONFD_APACHE Check if we can use /etc/conf.d/apache2'
+		Display --indent 2 --text "Cannot read /etc/conf.d/apache2" --result ERROR --color RED
+	else
+		. /etc/conf.d/apache2
+		if [ $? -ne 0 ];then
+			echo "ERROR: could not read /etc/conf.d/apache2"
+		fi
+	fi
 	APACHE_BIN="$APACHE_BIN $APACHE2_OPTS"
 fi
 

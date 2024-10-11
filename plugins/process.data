@@ -29,6 +29,11 @@ aisexec=CANBEROOT
 /usr/sbin/atd=CANBEROOT
 /usr/sbin/monit=CANBEROOT
 /sbin/rsyslogd=CANBEROOT
+/usr/bin/containerd=CANBEROOT
+/usr/libexec/packagekitd=CANBEROOT
+/usr/libexec/polkitd=CANBEROOT
+/sbin/agetty=CANBEROOT
+/usr/bin/podman=CANBEROOT
 
 #ONLYROOT
 /sbin/udevd=ONLYROOT
