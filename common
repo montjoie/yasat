@@ -215,7 +215,7 @@ Display()
 	if [ -z "${ADVICE}" -o "${ADVICE}" = 'NONE' ] ;then
 		ADVICEVALUE=''
 	else
-		ADVICEVALUE="`grep ${ADVICE}= ${YASAT_ROOT}/yasat.advices | cut -d\= -f2-`"
+		ADVICEVALUE="`grep ${ADVICE}= ${YASAT_HOME}/yasat.advices | cut -d\= -f2-`"
 		if [ -z "$ADVICEVALUE" ] ;then
 			Display --indent 2 --text "BUG ADVICEVALUE is empty for ${ADVICE}" --result WARNING --color RED --advice YASAT_BUG
 		fi
@@ -3456,7 +3456,7 @@ setup_yasat_defaults() {
 ################################################################################
 ################################################################################
 setup_yasat_tmpdir() {
-	TEMPYASATDIR="`echo ~/.yasat/`"
+	TEMPYASATDIR="`echo ~/.yasat`"
 	mkdir -p $TEMPYASATDIR
 	if [ $? -ne 0 ];then
 		TEMPYASATDIR='/tmp/yasat'
